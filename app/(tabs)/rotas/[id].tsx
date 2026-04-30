@@ -44,13 +44,11 @@ function MemberRow({
   isOwner,
   isMe,
   rotaId,
-  members,
 }: {
   member: Member;
   isOwner: boolean;
   isMe: boolean;
   rotaId: string;
-  members: Member[];
 }) {
   const changeRole = useChangeMemberRole(rotaId);
   const removeMember = useRemoveMember(rotaId);
@@ -286,7 +284,6 @@ export default function RotaDetailScreen() {
                 isOwner={isOwner}
                 isMe={m.user_id === myId}
                 rotaId={id}
-                members={members}
               />
             ))}
           </View>

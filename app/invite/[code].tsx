@@ -27,21 +27,13 @@ export default function InviteAcceptScreen() {
 
     async function loadInvite() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('rota_invites')
-        .select('rota_id, role, rota:rotas(name)')
-        .eq('code', code)
-        .is('consumed_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      const { data, error } = await supabase.rpc('lookup_invite', { p_code: code });
 
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         setLoadError('This invite is invalid, expired, or already used.');
       } else {
-        const rotaName = Array.isArray(data.rota)
-          ? (data.rota[0] as { name?: string } | undefined)?.name
-          : (data.rota as { name?: string } | null)?.name;
-        setInvite({ rota_id: data.rota_id, role: data.role, rota_name: rotaName });
+        const row = data[0];
+        setInvite({ rota_id: row.rota_id, role: row.role, rota_name: row.rota_name });
       }
       setLoading(false);
     }

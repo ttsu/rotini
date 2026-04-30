@@ -275,6 +275,14 @@ export type Database = {
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }
       leave_rota: { Args: { p_rota_id: string }; Returns: undefined }
+      lookup_invite: {
+        Args: { p_code: string }
+        Returns: {
+          role: string
+          rota_id: string
+          rota_name: string
+        }[]
+      }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
         Returns: undefined
