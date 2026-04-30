@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
@@ -18,6 +19,7 @@ type FormValues = z.infer<typeof schema>;
 
 export default function OnboardingProfileScreen() {
   const { session, refreshProfile } = useAuth();
+  const router = useRouter();
 
   const {
     control,
@@ -29,14 +31,14 @@ export default function OnboardingProfileScreen() {
     if (!session?.user.id) return;
     const { error } = await supabase
       .from('profiles')
-      .update({ display_name })
-      .eq('id', session.user.id);
+      .upsert({ id: session.user.id, display_name });
     if (error) {
       Alert.alert('Try again');
       console.error('Error updating profile:', error);
       return;
     }
     await refreshProfile();
+    router.replace('/(tabs)');
   }
 
   return (

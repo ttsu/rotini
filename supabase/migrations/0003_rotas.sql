@@ -129,7 +129,7 @@ create policy "rotas: members can select"
 create policy "rotas: authenticated can insert"
   on public.rotas for insert
   to authenticated
-  with check (owner_id = auth.uid());
+  with check ((select auth.uid()) = owner_id);
 
 create policy "rotas: owners can update"
   on public.rotas for update
@@ -181,8 +181,8 @@ drop policy "profiles: authenticated can select" on public.profiles;
 create policy "profiles: self or rota peer can select"
   on public.profiles for select
   using (
-    auth.uid() = id
-    or public.users_share_rota(auth.uid(), id)
+    (select auth.uid()) = id
+    or public.users_share_rota((select auth.uid()), id)
   );
 
 -- ── Realtime ──────────────────────────────────────────────────────────────
