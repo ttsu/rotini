@@ -55,12 +55,174 @@ export type Database = {
         }
         Relationships: []
       }
+      rota_invites: {
+        Row: {
+          code: string
+          consumed_at: string | null
+          consumed_by: string | null
+          email: string | null
+          expires_at: string
+          id: string
+          invited_by: string
+          role: string
+          rota_id: string
+        }
+        Insert: {
+          code: string
+          consumed_at?: string | null
+          consumed_by?: string | null
+          email?: string | null
+          expires_at: string
+          id?: string
+          invited_by: string
+          role: string
+          rota_id: string
+        }
+        Update: {
+          code?: string
+          consumed_at?: string | null
+          consumed_by?: string | null
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: string
+          rota_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_invites_consumed_by_fkey"
+            columns: ["consumed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_invites_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rota_members: {
+        Row: {
+          joined_at: string
+          position: number | null
+          role: string
+          rota_id: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string
+          position?: number | null
+          role: string
+          rota_id: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string
+          position?: number | null
+          role?: string
+          rota_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_members_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rotas: {
+        Row: {
+          archived_at: string | null
+          assignment_mode: string
+          created_at: string
+          cursor_user_id: string | null
+          description: string | null
+          dtstart: string | null
+          duration_minutes: number | null
+          fixed_default: Json | null
+          id: string
+          name: string
+          owner_id: string
+          rrule: string | null
+          tz: string
+        }
+        Insert: {
+          archived_at?: string | null
+          assignment_mode: string
+          created_at?: string
+          cursor_user_id?: string | null
+          description?: string | null
+          dtstart?: string | null
+          duration_minutes?: number | null
+          fixed_default?: Json | null
+          id?: string
+          name: string
+          owner_id: string
+          rrule?: string | null
+          tz: string
+        }
+        Update: {
+          archived_at?: string | null
+          assignment_mode?: string
+          created_at?: string
+          cursor_user_id?: string | null
+          description?: string | null
+          dtstart?: string | null
+          duration_minutes?: number | null
+          fixed_default?: Json | null
+          id?: string
+          name?: string
+          owner_id?: string
+          rrule?: string | null
+          tz?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rotas_cursor_user_id_fkey"
+            columns: ["cursor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rotas_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
+      is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }
+      users_share_rota: { Args: { a: string; b: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
