@@ -1,0 +1,319 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+import { useCreateRota } from '@/features/rotas/hooks';
+import {
+  COMMON_TIMEZONES,
+  DURATION_PRESETS,
+  type CreateRotaValues,
+  createRotaSchema,
+} from '@/features/rotas/schemas';
+
+const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function TzPickerModal({
+  visible,
+  current,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  current: string;
+  onSelect: (tz: string) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const filtered = COMMON_TIMEZONES.filter((tz) =>
+    tz.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <View className="flex-1 bg-white dark:bg-black pt-6">
+        <View className="flex-row items-center justify-between px-4 mb-4">
+          <Text className="text-xl font-bold text-black dark:text-white">Timezone</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Text className="text-blue-600 text-base">Done</Text>
+          </TouchableOpacity>
+        </View>
+        <View className="mx-4 mb-3">
+          <TextInput
+            className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2 text-black dark:text-white"
+            placeholder="Search…"
+            placeholderTextColor="#9ca3af"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+        <FlatList
+          data={filtered}
+          keyExtractor={(tz) => tz}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-900"
+              onPress={() => {
+                onSelect(item);
+                onClose();
+              }}
+            >
+              <Text className="text-base text-black dark:text-white">{item}</Text>
+              {item === current && (
+                <Text className="text-blue-600 font-semibold">✓</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </Modal>
+  );
+}
+
+export default function NewRotaScreen() {
+  const router = useRouter();
+  const createRota = useCreateRota();
+  const [tzPickerOpen, setTzPickerOpen] = useState(false);
+  const [customDuration, setCustomDuration] = useState('');
+  const [durationType, setDurationType] = useState<number | 'custom'>(60);
+
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateRotaValues>({
+    resolver: zodResolver(createRotaSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      tz: deviceTz,
+      duration_minutes: 60,
+      assignment_mode: 'round_robin',
+    },
+  });
+
+  const tz = watch('tz');
+  const assignmentMode = watch('assignment_mode');
+
+  async function onSubmit(values: CreateRotaValues) {
+    try {
+      const rota = await createRota.mutateAsync(values);
+      router.replace(`/(tabs)/rotas/${rota.id}` as any);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to create rota. Please try again.');
+      console.error(err);
+    }
+  }
+
+  function handleDurationPreset(minutes: number) {
+    setDurationType(minutes);
+    setValue('duration_minutes', minutes, { shouldValidate: true });
+  }
+
+  function handleCustomDurationChange(text: string) {
+    setCustomDuration(text);
+    const num = parseInt(text, 10);
+    if (!isNaN(num) && num > 0) {
+      setValue('duration_minutes', num, { shouldValidate: true });
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView
+      className="flex-1 bg-white dark:bg-black"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="px-4 pt-4">
+          {/* Name */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+            Name *
+          </Text>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-1 text-base text-black dark:text-white"
+                placeholder="e.g. Kitchen cleaning"
+                placeholderTextColor="#9ca3af"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                autoFocus
+                returnKeyType="next"
+              />
+            )}
+          />
+          {errors.name && (
+            <Text className="text-red-500 text-xs mb-3">{errors.name.message}</Text>
+          )}
+
+          {/* Description */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 mt-3">
+            Description
+          </Text>
+          <Controller
+            control={control}
+            name="description"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-1 text-base text-black dark:text-white"
+                placeholder="Optional"
+                placeholderTextColor="#9ca3af"
+                value={value ?? ''}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                multiline
+                numberOfLines={2}
+                returnKeyType="next"
+              />
+            )}
+          />
+          {errors.description && (
+            <Text className="text-red-500 text-xs mb-3">{errors.description.message}</Text>
+          )}
+
+          {/* Timezone */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 mt-3">
+            Timezone
+          </Text>
+          <TouchableOpacity
+            className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-1 flex-row items-center justify-between"
+            onPress={() => setTzPickerOpen(true)}
+          >
+            <Text className="text-base text-black dark:text-white">{tz}</Text>
+            <Text className="text-gray-400 text-base">›</Text>
+          </TouchableOpacity>
+
+          {/* Duration */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-3">
+            Duration per turn
+          </Text>
+          <View className="flex-row flex-wrap gap-2 mb-1">
+            {DURATION_PRESETS.map((preset) => (
+              <TouchableOpacity
+                key={preset.minutes}
+                className={`px-4 py-2 rounded-xl border ${
+                  durationType === preset.minutes
+                    ? 'bg-blue-600 border-blue-600'
+                    : 'border-gray-300 dark:border-gray-700'
+                }`}
+                onPress={() => handleDurationPreset(preset.minutes)}
+              >
+                <Text
+                  className={`text-sm font-medium ${
+                    durationType === preset.minutes ? 'text-white' : 'text-black dark:text-white'
+                  }`}
+                >
+                  {preset.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              className={`px-4 py-2 rounded-xl border ${
+                durationType === 'custom'
+                  ? 'bg-blue-600 border-blue-600'
+                  : 'border-gray-300 dark:border-gray-700'
+              }`}
+              onPress={() => setDurationType('custom')}
+            >
+              <Text
+                className={`text-sm font-medium ${
+                  durationType === 'custom' ? 'text-white' : 'text-black dark:text-white'
+                }`}
+              >
+                Custom
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {durationType === 'custom' && (
+            <View className="flex-row items-center gap-2 mt-2 mb-1">
+              <TextInput
+                className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2 text-base text-black dark:text-white w-28"
+                placeholder="Minutes"
+                placeholderTextColor="#9ca3af"
+                value={customDuration}
+                onChangeText={handleCustomDurationChange}
+                keyboardType="number-pad"
+              />
+              <Text className="text-sm text-gray-500">minutes</Text>
+            </View>
+          )}
+          {errors.duration_minutes && (
+            <Text className="text-red-500 text-xs mb-3">{errors.duration_minutes.message}</Text>
+          )}
+
+          {/* Assignment mode */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-3">
+            Assignment
+          </Text>
+          <View className="flex-row gap-3 mb-1">
+            {(['round_robin', 'fixed'] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                className={`flex-1 py-3 rounded-xl border items-center ${
+                  assignmentMode === mode
+                    ? 'bg-blue-600 border-blue-600'
+                    : 'border-gray-300 dark:border-gray-700'
+                }`}
+                onPress={() => setValue('assignment_mode', mode, { shouldValidate: true })}
+              >
+                <Text
+                  className={`text-sm font-medium ${
+                    assignmentMode === mode ? 'text-white' : 'text-black dark:text-white'
+                  }`}
+                >
+                  {mode === 'round_robin' ? 'Round-robin' : 'Fixed'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text className="text-xs text-gray-400 mb-6">
+            {assignmentMode === 'round_robin'
+              ? 'Members take turns in order automatically.'
+              : 'Each occurrence has a fixed assignee.'}
+          </Text>
+
+          {/* Submit */}
+          <TouchableOpacity
+            className="bg-blue-600 rounded-xl py-3 items-center"
+            onPress={handleSubmit(onSubmit)}
+            disabled={isSubmitting}
+          >
+            <Text className="text-white font-semibold text-base">
+              {isSubmitting ? 'Creating…' : 'Create Rota'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      <TzPickerModal
+        visible={tzPickerOpen}
+        current={tz}
+        onSelect={(newTz) => setValue('tz', newTz, { shouldValidate: true })}
+        onClose={() => setTzPickerOpen(false)}
+      />
+    </KeyboardAvoidingView>
+  );
+}

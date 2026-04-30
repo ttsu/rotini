@@ -31,7 +31,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 6. App shell — tab nav, auth gate, sign-out
 
 ### Phase 2 — Rotas (no scheduling)
-- [ ] 7. Migration 0002 — `rotas`, `rota_members`, `rota_invites` + RLS
+- [x] 7. Migration 0002 — `rotas`, `rota_members`, `rota_invites` + RLS
 - [ ] 8. Rotas list + create form (name, tz, duration, assignment mode)
 - [ ] 9. Member management — invites, roles, role changes
 
