@@ -11,7 +11,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "db:types": "supabase gen types typescript --local | tail -n +2 > lib/database.types.ts"
+    "db:types": "supabase gen types typescript --local > lib/database.types.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
