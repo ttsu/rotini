@@ -1,4 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { makeRedirectUri } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -14,6 +15,7 @@ export default function SignInScreen() {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     scopes: ['profile', 'email', 'openid'],
+    redirectUri: makeRedirectUri(),
   });
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function SignInScreen() {
     setLoading('magic');
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: 'rotini://auth-callback' },
+      options: { emailRedirectTo: makeRedirectUri({ path: '/auth-callback' }) },
     });
     setLoading(null);
     if (error) Alert.alert('Try again');
