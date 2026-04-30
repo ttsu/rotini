@@ -33,6 +33,7 @@ export default function OnboardingProfileScreen() {
       .eq('id', session.user.id);
     if (error) {
       Alert.alert('Try again');
+      console.error('Error updating profile:', error);
       return;
     }
     await refreshProfile();
@@ -40,7 +41,9 @@ export default function OnboardingProfileScreen() {
 
   return (
     <View className="flex-1 justify-center px-6 bg-white dark:bg-black">
-      <Text className="text-3xl font-bold mb-2 text-black dark:text-white">{"What's your name?"}</Text>
+      <Text className="text-3xl font-bold mb-2 text-black dark:text-white">
+        {"What's your name?"}
+      </Text>
       <Text className="text-base text-gray-500 mb-8">
         {"This is how you'll appear to other rota members."}
       </Text>

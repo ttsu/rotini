@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, sess) => {
+      console.log('[auth] event:', _event, 'session:', !!sess);
       setSession(sess);
       if (!sess) {
         setStatus('unauthenticated');
