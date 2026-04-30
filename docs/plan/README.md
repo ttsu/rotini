@@ -26,9 +26,9 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 3. Migration 0001 — `profiles` + auth trigger
 
 ### Phase 1 — Auth & shell
-- [ ] 4. Auth flow (magic link / Apple / Google)
-- [ ] 5. Onboarding (display name)
-- [ ] 6. App shell — tab nav, auth gate, sign-out
+- [x] 4. Auth flow (magic link / Apple / Google)
+- [x] 5. Onboarding (display name)
+- [x] 6. App shell — tab nav, auth gate, sign-out
 
 ### Phase 2 — Rotas (no scheduling)
 - [ ] 7. Migration 0002 — `rotas`, `rota_members`, `rota_invites` + RLS
