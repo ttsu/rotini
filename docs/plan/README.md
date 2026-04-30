@@ -21,7 +21,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 ## Progress
 
 ### Phase 0 — Foundations
-- [ ] 1. Bootstrap Expo + TypeScript + Expo Router + tooling
+- [x] 1. Bootstrap Expo + TypeScript + Expo Router + tooling
 - [ ] 2. Supabase project setup + typed client
 - [ ] 3. Migration 0001 — `profiles` + auth trigger
 
