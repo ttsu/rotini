@@ -220,8 +220,69 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: {
+        Args: { p_code: string }
+        Returns: {
+          joined_at: string
+          position: number | null
+          role: string
+          rota_id: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rota_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      change_member_role: {
+        Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
+        Returns: {
+          joined_at: string
+          position: number | null
+          role: string
+          rota_id: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rota_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_invite: {
+        Args: { p_email?: string; p_role: string; p_rota_id: string }
+        Returns: {
+          code: string
+          consumed_at: string | null
+          consumed_by: string | null
+          email: string | null
+          expires_at: string
+          id: string
+          invited_by: string
+          role: string
+          rota_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rota_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }
+      leave_rota: { Args: { p_rota_id: string }; Returns: undefined }
+      remove_member: {
+        Args: { p_rota_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      transfer_ownership: {
+        Args: { p_new_owner_id: string; p_rota_id: string }
+        Returns: undefined
+      }
       users_share_rota: { Args: { a: string; b: string }; Returns: boolean }
     }
     Enums: {

@@ -32,7 +32,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 
 ### Phase 2 — Rotas (no scheduling)
 - [x] 7. Migration 0002 — `rotas`, `rota_members`, `rota_invites` + RLS
-- [ ] 8. Rotas list + create form (name, tz, duration, assignment mode)
+- [x] 8. Rotas list + create form (name, tz, duration, assignment mode)
 - [ ] 9. Member management — invites, roles, role changes
 
 ### Phase 3 — Recurrence engine

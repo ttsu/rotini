@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 
 import type { CreateRotaValues } from './schemas';
+
+type MemberRole = 'owner' | 'member' | 'viewer';
 
 export function useRotas() {
   const { session } = useAuth();
@@ -37,6 +40,21 @@ export function useRotas() {
 
 export function useRota(rotaId: string) {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!rotaId) return;
+    const channel = supabase
+      .channel(`rota_members:${rotaId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rota_members', filter: `rota_id=eq.${rotaId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [rotaId, queryClient]);
+
   return useQuery({
     queryKey: ['rotas', rotaId],
     queryFn: async () => {
@@ -73,6 +91,98 @@ export function useCreateRota() {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+    },
+  });
+}
+
+export function useCreateInvite(rotaId: string) {
+  return useMutation({
+    mutationFn: async ({ role, email }: { role: MemberRole; email?: string }) => {
+      const { data, error } = await supabase.rpc('create_invite', {
+        p_rota_id: rotaId,
+        p_role: role,
+        p_email: email ?? undefined,
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const { data, error } = await supabase.rpc('accept_invite', { p_code: code });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+    },
+  });
+}
+
+export function useChangeMemberRole(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: MemberRole }) => {
+      const { data, error } = await supabase.rpc('change_member_role', {
+        p_rota_id: rotaId,
+        p_user_id: userId,
+        p_new_role: newRole,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+    },
+  });
+}
+
+export function useRemoveMember(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc('remove_member', {
+        p_rota_id: rotaId,
+        p_user_id: userId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+    },
+  });
+}
+
+export function useLeaveRota() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rotaId: string) => {
+      const { error } = await supabase.rpc('leave_rota', { p_rota_id: rotaId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+    },
+  });
+}
+
+export function useTransferOwnership(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (newOwnerId: string) => {
+      const { error } = await supabase.rpc('transfer_ownership', {
+        p_rota_id: rotaId,
+        p_new_owner_id: newOwnerId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
       queryClient.invalidateQueries({ queryKey: ['rotas'] });
     },
   });
