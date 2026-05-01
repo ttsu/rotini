@@ -1,12 +1,44 @@
 import { useEffect, useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 
+import { LargeTitle } from '@/components/ui/large-title';
+import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 
+function ProfileAvatar({ name }: { name: string | null }) {
+  const initial = name ? name.charAt(0).toUpperCase() : '?';
+  return (
+    <View
+      style={{
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: '#0a7ea4',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+      }}
+    >
+      <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }}>{initial}</Text>
+    </View>
+  );
+}
+
+function RowChevron() {
+  return <Text style={{ fontSize: 17, color: '#AEAEB2', marginLeft: 8 }}>›</Text>;
+}
+
 export default function SettingsScreen() {
   const { session } = useAuth();
+  const scheme = useColorScheme();
   const [displayName, setDisplayName] = useState<string | null>(null);
+
+  const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
+  const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
+  const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
+  const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
+  const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -24,25 +56,98 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white dark:bg-black pt-16 px-6">
-      <Text className="text-2xl font-bold mb-8 text-black dark:text-white">Settings</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <LargeTitle title="Settings" />
 
-      <View className="mb-2">
-        <Text className="text-xs text-gray-400 uppercase mb-1">Name</Text>
-        <Text className="text-base text-black dark:text-white">{displayName ?? '—'}</Text>
+      {/* Profile card */}
+      <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+        <View
+          style={{
+            backgroundColor: card,
+            borderRadius: 18,
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 2,
+          }}
+        >
+          <ProfileAvatar name={displayName} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>
+              {displayName ?? '—'}
+            </Text>
+            <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
+              {session?.user.email ?? '—'}
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <View className="mb-8">
-        <Text className="text-xs text-gray-400 uppercase mb-1">Email</Text>
-        <Text className="text-base text-black dark:text-white">{session?.user.email ?? '—'}</Text>
+      {/* Preferences section */}
+      <SectionHeader label="Preferences" />
+      <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+        <View
+          style={{
+            backgroundColor: card,
+            borderRadius: 18,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 2,
+          }}
+        >
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderBottomWidth: 0.5,
+              borderBottomColor: sep,
+            }}
+          >
+            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Notifications</Text>
+            <RowChevron />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+            }}
+          >
+            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Default time zone</Text>
+            <RowChevron />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <TouchableOpacity
-        className="bg-red-500 rounded-xl py-3 items-center"
-        onPress={handleSignOut}
-      >
-        <Text className="text-white font-semibold text-base">Sign out</Text>
-      </TouchableOpacity>
-    </View>
+      {/* Sign out */}
+      <View style={{ marginHorizontal: 16, marginTop: 8 }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: card,
+            borderRadius: 16,
+            paddingVertical: 16,
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 2,
+          }}
+          onPress={handleSignOut}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '600', color: '#FF3B30' }}>Sign out</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
