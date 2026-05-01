@@ -93,6 +93,13 @@ export function useCreateRota() {
         .select()
         .single();
       if (error) throw error;
+
+      // Materialize occurrences; non-fatal if it fails (pg_cron will catch up)
+      const { error: matErr } = await supabase.functions.invoke('materialize-rota', {
+        body: { rota_id: data.id },
+      });
+      if (matErr) console.error('materialize-rota:', matErr);
+
       return data;
     },
     onSuccess: () => {

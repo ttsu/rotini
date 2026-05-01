@@ -38,7 +38,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 ### Phase 3 — Recurrence engine
 - [x] 10. Migration 0003 — `occurrences` + indices
 - [x] 11. RRULE builder UI + duration validator
-- [ ] 12. `materialize-rota` edge function + DB function
+- [x] 12. `materialize-rota` edge function + DB function
 - [ ] 13. `pg_cron` daily top-up
 - [ ] 14. `v_rota_now` view + `useRotaNow` hook
 - [ ] 15. Rota detail — status header + upcoming list/calendar
