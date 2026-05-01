@@ -22,7 +22,8 @@ import {
   useTransferOwnership,
 } from '@/features/rotas/hooks';
 
-function formatDuration(minutes: number | null): string {
+function formatDuration(minutes: number | null, backToBack: boolean): string {
+  if (backToBack) return 'Back to back';
   if (minutes === null) return '—';
   if (minutes < 60) return `${minutes} min`;
   if (minutes === 60) return '1 hour';
@@ -244,7 +245,7 @@ export default function RotaDetailScreen() {
           {/* Details */}
           <View className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
             <DetailRow label="Timezone" value={rota.tz} />
-            <DetailRow label="Duration" value={formatDuration(rota.duration_minutes)} />
+            <DetailRow label="Duration" value={formatDuration(rota.duration_minutes, rota.back_to_back)} />
             <DetailRow label="Assignment" value="Round-robin" />
           </View>
 

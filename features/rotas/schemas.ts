@@ -54,8 +54,24 @@ export const createRotaSchema = z.object({
   // "YYYY-MM-DDTHH:MM" local time in the selected tz — converted to UTC before DB insert
   dtstart: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Invalid start date/time'),
   rrule: z.string().min(1, 'Schedule is required'),
-  duration_minutes: z.number().int('Must be a whole number').positive('Must be positive'),
+  back_to_back: z.boolean(),
+  duration_minutes: z.number().int('Must be a whole number').positive('Must be positive').optional(),
   assignment_mode: z.enum(['round_robin']),
+}).superRefine((data, ctx) => {
+  if (!data.back_to_back && data.duration_minutes == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Duration is required',
+      path: ['duration_minutes'],
+    });
+  }
+  if (data.back_to_back && data.duration_minutes != null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Cannot set both duration and back-to-back',
+      path: ['duration_minutes'],
+    });
+  }
 });
 
 export type CreateRotaValues = z.infer<typeof createRotaSchema>;

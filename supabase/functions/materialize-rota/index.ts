@@ -85,23 +85,25 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   // Load rota
   const { data: rota, error: rotaErr } = await admin
     .from('rotas')
-    .select('id, rrule, dtstart, tz, duration_minutes, assignment_mode, cursor_user_id')
+    .select('id, rrule, dtstart, tz, duration_minutes, back_to_back, assignment_mode, cursor_user_id')
     .eq('id', rotaId)
     .single();
   if (rotaErr) throw new Error(`Rota load: ${rotaErr.message}`);
 
-  if (!rota.rrule || !rota.dtstart || !rota.duration_minutes) {
+  if (!rota.rrule || !rota.dtstart || (!rota.back_to_back && !rota.duration_minutes)) {
     return { count: 0, skipped: true };
   }
 
   const dtstart = new Date(rota.dtstart);
   const tz = rota.tz as string;
-  const durationMinutes = rota.duration_minutes as number;
+  const durationMinutes = rota.duration_minutes as number | null;
 
-  // Server-side duration validation (mirrors client-side check in lib/rrule.ts)
-  const gap = smallestGapMinutes(rota.rrule, dtstart, tz);
-  if (gap != null && durationMinutes >= gap) {
-    throw new Error(`Duration must be shorter than the time between turns (${(gap / 60).toFixed(1)}h)`);
+  // Server-side duration validation — skipped for back-to-back (no fixed duration)
+  if (!rota.back_to_back) {
+    const gap = smallestGapMinutes(rota.rrule, dtstart, tz);
+    if (gap != null && durationMinutes != null && durationMinutes >= gap) {
+      throw new Error(`Duration must be shorter than the time between turns (${(gap / 60).toFixed(1)}h)`);
+    }
   }
 
   // Active members (owners + members only), ordered by position
@@ -121,6 +123,26 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   const from = now > dtstart ? now : dtstart;
   const to = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   const desired = expand(rota.rrule, dtstart, tz, { from, to }, 200);
+
+  // For back-to-back: each turn ends when the next starts. Pre-compute ends_at for the last
+  // occurrence by expanding one occurrence beyond the window. If none exists (finite RRULE),
+  // fall back to the smallest recurring gap, or 1 week as a last resort.
+  let backToBackSentinel: Date | null = null;
+  let backToBackFallbackMs = 0;
+  if (rota.back_to_back && desired.length > 0) {
+    const lastTs = desired[desired.length - 1];
+    const next = expand(
+      rota.rrule,
+      dtstart,
+      tz,
+      { from: new Date(lastTs.getTime() + 1000), to: new Date(lastTs.getTime() + 366 * 24 * 60 * 60 * 1000) },
+      1,
+    );
+    backToBackSentinel = next[0] ?? null;
+    if (!backToBackSentinel) {
+      backToBackFallbackMs = (smallestGapMinutes(rota.rrule, dtstart, tz) ?? 10080) * 60_000;
+    }
+  }
 
   // Load existing future 'scheduled' occurrences (preserves round-robin assignments)
   const { data: existing, error: existErr } = await admin
@@ -150,9 +172,19 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
     assigned_user_id: string | null;
   }> = [];
 
-  for (const ts of desired) {
+  for (let i = 0; i < desired.length; i++) {
+    const ts = desired[i];
     const key = ts.toISOString();
-    const endsAt = new Date(ts.getTime() + durationMinutes * 60_000);
+    let endsAt: Date;
+    if (rota.back_to_back) {
+      if (i < desired.length - 1) {
+        endsAt = desired[i + 1];
+      } else {
+        endsAt = backToBackSentinel ?? new Date(ts.getTime() + backToBackFallbackMs);
+      }
+    } else {
+      endsAt = new Date(ts.getTime() + (durationMinutes ?? 0) * 60_000);
+    }
 
     let assignedUserId: string | null = null;
 

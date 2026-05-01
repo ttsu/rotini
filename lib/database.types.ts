@@ -203,6 +203,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           assignment_mode: string
+          back_to_back: boolean
           created_at: string
           cursor_user_id: string | null
           description: string | null
@@ -218,6 +219,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           assignment_mode: string
+          back_to_back?: boolean
           created_at?: string
           cursor_user_id?: string | null
           description?: string | null
@@ -233,6 +235,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           assignment_mode?: string
+          back_to_back?: boolean
           created_at?: string
           cursor_user_id?: string | null
           description?: string | null
@@ -329,6 +332,15 @@ export type Database = {
           rota_id: string
           rota_name: string
         }[]
+      }
+      materialize_rota: { Args: { p_rota_id: string }; Returns: number }
+      materialize_rota_apply: {
+        Args: {
+          p_new_cursor_user_id: string
+          p_occurrences: Json
+          p_rota_id: string
+        }
+        Returns: undefined
       }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }

@@ -107,7 +107,7 @@ export default function NewRotaScreen() {
   const createRota = useCreateRota();
   const [tzPickerOpen, setTzPickerOpen] = useState(false);
   const [customDuration, setCustomDuration] = useState('');
-  const [durationType, setDurationType] = useState<number | 'custom'>(60);
+  const [durationType, setDurationType] = useState<number | 'custom' | 'back_to_back'>(60);
 
   const {
     control,
@@ -123,6 +123,7 @@ export default function NewRotaScreen() {
       tz: deviceTz,
       dtstart: `${todayLocalString(deviceTz)}T09:00`,
       rrule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO',
+      back_to_back: false,
       duration_minutes: 60,
       assignment_mode: 'round_robin',
     },
@@ -166,7 +167,20 @@ export default function NewRotaScreen() {
 
   function handleDurationPreset(minutes: number) {
     setDurationType(minutes);
+    setValue('back_to_back', false, { shouldValidate: true });
     setValue('duration_minutes', minutes, { shouldValidate: true });
+  }
+
+  function handleCustomDuration() {
+    setDurationType('custom');
+    setValue('back_to_back', false, { shouldValidate: true });
+  }
+
+  function handleBackToBack() {
+    setDurationType('back_to_back');
+    setValue('back_to_back', true, { shouldValidate: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setValue('duration_minutes', undefined as any, { shouldValidate: true });
   }
 
   function handleCustomDurationChange(text: string) {
@@ -352,7 +366,7 @@ export default function NewRotaScreen() {
                   ? 'bg-blue-600 border-blue-600'
                   : 'border-gray-300 dark:border-gray-700'
               }`}
-              onPress={() => setDurationType('custom')}
+              onPress={handleCustomDuration}
             >
               <Text
                 className={`text-sm font-medium ${
@@ -362,7 +376,28 @@ export default function NewRotaScreen() {
                 Custom
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              className={`px-4 py-2 rounded-xl border ${
+                durationType === 'back_to_back'
+                  ? 'bg-blue-600 border-blue-600'
+                  : 'border-gray-300 dark:border-gray-700'
+              }`}
+              onPress={handleBackToBack}
+            >
+              <Text
+                className={`text-sm font-medium ${
+                  durationType === 'back_to_back' ? 'text-white' : 'text-black dark:text-white'
+                }`}
+              >
+                Back to back
+              </Text>
+            </TouchableOpacity>
           </View>
+          {durationType === 'back_to_back' && (
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-1">
+              Each turn lasts until the next one starts.
+            </Text>
+          )}
           {durationType === 'custom' && (
             <View className="flex-row items-center gap-2 mt-2 mb-1">
               <TextInput

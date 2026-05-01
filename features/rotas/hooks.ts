@@ -86,7 +86,8 @@ export function useCreateRota() {
           tz: values.tz,
           dtstart: dtstartUtc,
           rrule: values.rrule,
-          duration_minutes: values.duration_minutes,
+          back_to_back: values.back_to_back,
+          duration_minutes: values.back_to_back ? null : values.duration_minutes ?? null,
           assignment_mode: values.assignment_mode,
           owner_id: session!.user.id,
         })
