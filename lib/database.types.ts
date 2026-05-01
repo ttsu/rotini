@@ -7,33 +7,80 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      occurrences: {
+        Row: {
+          assigned_user_id: string | null
+          created_at: string
+          ends_at: string
+          generated_from_rule: boolean
+          id: string
+          original_assignee_id: string | null
+          override_reason: string | null
+          rota_id: string
+          scheduled_at: string
+          scheduled_local_date: string
+          status: string
+          swap_request_id: string | null
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          created_at?: string
+          ends_at: string
+          generated_from_rule?: boolean
+          id?: string
+          original_assignee_id?: string | null
+          override_reason?: string | null
+          rota_id: string
+          scheduled_at: string
+          scheduled_local_date: string
+          status?: string
+          swap_request_id?: string | null
+        }
+        Update: {
+          assigned_user_id?: string | null
+          created_at?: string
+          ends_at?: string
+          generated_from_rule?: boolean
+          id?: string
+          original_assignee_id?: string | null
+          override_reason?: string | null
+          rota_id?: string
+          scheduled_at?: string
+          scheduled_local_date?: string
+          status?: string
+          swap_request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "occurrences_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "occurrences_original_assignee_id_fkey"
+            columns: ["original_assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "occurrences_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -420,11 +467,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
-
