@@ -58,7 +58,7 @@ function MemberRow({
   const name = member.profile?.display_name ?? 'Unknown';
 
   function showActions() {
-    const roles: Array<'owner' | 'member' | 'viewer'> = ['owner', 'member', 'viewer'];
+    const roles: ('owner' | 'member' | 'viewer')[] = ['owner', 'member', 'viewer'];
     const options = [
       ...roles.filter((r) => r !== member.role).map((r) => `Make ${r}`),
       `Transfer ownership to ${name}`,

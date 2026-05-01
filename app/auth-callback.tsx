@@ -11,7 +11,7 @@ export default function AuthCallback() {
   useEffect(() => {
     Linking.getInitialURL().then((url) => console.log('[auth-callback] initial URL:', url));
     console.log('[auth-callback] params:', { code });
-  }, []);
+  }, [code]);
 
   useEffect(() => {
     if (code) {

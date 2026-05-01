@@ -91,7 +91,7 @@ export default function InviteAcceptScreen() {
         {invite.rota_name ?? 'Join rota'}
       </Text>
       <Text className="text-base text-gray-500 mb-8 text-center">
-        You've been invited to join as a{' '}
+        You&apos;ve been invited to join as a{' '}
         <Text className="font-semibold text-black dark:text-white">{invite.role}</Text>.
       </Text>
       <TouchableOpacity

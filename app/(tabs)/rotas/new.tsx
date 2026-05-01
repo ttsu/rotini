@@ -179,7 +179,6 @@ export default function NewRotaScreen() {
   function handleBackToBack() {
     setDurationType('back_to_back');
     setValue('back_to_back', true, { shouldValidate: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setValue('duration_minutes', undefined as any, { shouldValidate: true });
   }
 
