@@ -10,8 +10,11 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from 'react-native';
 
+import { Pill } from '@/components/ui/pill';
+import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import {
   useChangeMemberRole,
@@ -40,16 +43,41 @@ type Member = {
   profile: { id: string; display_name: string | null } | null;
 };
 
+function MemberAvatar({ name, isMe }: { name: string; isMe: boolean }) {
+  const initial = name.charAt(0).toUpperCase();
+  return (
+    <View
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: isMe ? '#0a7ea4' : '#AEAEB2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+      }}
+    >
+      <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>{initial}</Text>
+    </View>
+  );
+}
+
 function MemberRow({
   member,
   isOwner,
   isMe,
   rotaId,
+  textPrimary,
+  sep,
+  showSep,
 }: {
   member: Member;
   isOwner: boolean;
   isMe: boolean;
   rotaId: string;
+  textPrimary: string;
+  sep: string;
+  showSep: boolean;
 }) {
   const changeRole = useChangeMemberRole(rotaId);
   const removeMember = useRemoveMember(rotaId);
@@ -70,7 +98,7 @@ function MemberRow({
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: options.length - 1, destructiveButtonIndex: options.length - 2 },
         (idx) => {
-          if (idx === options.length - 1) return; // Cancel
+          if (idx === options.length - 1) return;
           if (idx === options.length - 2) {
             confirmRemove();
           } else if (options[idx].startsWith('Transfer')) {
@@ -109,7 +137,7 @@ function MemberRow({
   }
 
   function confirmRemove() {
-    Alert.alert(`Remove ${name}?`, 'They will lose access to this rota.', [
+    Alert.alert(`Remove ${name}?`, 'They will lose access to this shift.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -141,21 +169,36 @@ function MemberRow({
   }
 
   return (
-    <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-900">
-      <View className="flex-1">
-        <Text className="text-base text-black dark:text-white">
-          {name}
-          {isMe ? ' (you)' : ''}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: showSep ? 0.5 : 0,
+        borderBottomColor: sep,
+      }}
+    >
+      <MemberAvatar name={name} isMe={isMe} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 16, fontWeight: '500', color: textPrimary }}>
+          {name}{isMe ? ' (you)' : ''}
         </Text>
-      </View>
-      <View className="flex-row items-center gap-3">
-        <Text className="text-xs text-gray-400 capitalize">{member.role}</Text>
-        {isOwner && !isMe && (
-          <TouchableOpacity onPress={showActions} hitSlop={8}>
-            <Text className="text-gray-400 text-lg">⋯</Text>
-          </TouchableOpacity>
+        {member.position !== null && (
+          <Text style={{ fontSize: 12, color: '#AEAEB2', marginTop: 1 }}>
+            Position {member.position + 1}
+          </Text>
         )}
       </View>
+      <Pill
+        label={member.role}
+        color={member.role === 'owner' ? 'teal' : 'gray'}
+      />
+      {isOwner && !isMe && (
+        <TouchableOpacity onPress={showActions} hitSlop={8} style={{ marginLeft: 10 }}>
+          <Text style={{ color: '#AEAEB2', fontSize: 18 }}>⋯</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -168,10 +211,27 @@ export default function RotaDetailScreen() {
   const createInvite = useCreateInvite(id);
   const leaveRota = useLeaveRota();
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const scheme = useColorScheme();
+
+  const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
+  const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
+  const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
+  const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
+  const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
+
+  const cardStyle = {
+    backgroundColor: card,
+    borderRadius: 18,
+    overflow: 'hidden' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 2,
+  };
 
   const myId = session?.user.id;
   const members = ((rota?.rota_members ?? []) as Member[]).sort((a, b) => {
-    // owners first, then members, then viewers; within group by position
     const order = { owner: 0, member: 1, viewer: 2 };
     const roleOrder = (order[a.role as keyof typeof order] ?? 2) - (order[b.role as keyof typeof order] ?? 2);
     if (roleOrder !== 0) return roleOrder;
@@ -199,7 +259,7 @@ export default function RotaDetailScreen() {
   );
 
   function handleLeave() {
-    Alert.alert('Leave rota?', 'You will lose access unless re-invited.', [
+    Alert.alert('Leave shift?', 'You will lose access unless re-invited.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Leave',
@@ -215,7 +275,7 @@ export default function RotaDetailScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white dark:bg-black">
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
         <ActivityIndicator />
       </View>
     );
@@ -223,8 +283,8 @@ export default function RotaDetailScreen() {
 
   if (error || !rota) {
     return (
-      <View className="flex-1 items-center justify-center bg-white dark:bg-black px-6">
-        <Text className="text-red-500">Failed to load rota.</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg, paddingHorizontal: 24 }}>
+        <Text style={{ color: '#FF3B30' }}>Failed to load shift.</Text>
       </View>
     );
   }
@@ -232,71 +292,85 @@ export default function RotaDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: rota.name }} />
-      <ScrollView className="flex-1 bg-white dark:bg-black">
-        <View className="px-4 pt-4 pb-12">
-          {/* Header */}
-          <Text className="text-3xl font-bold text-black dark:text-white">{rota.name}</Text>
-          {rota.description ? (
-            <Text className="text-base text-gray-500 mt-1 mb-4">{rota.description}</Text>
-          ) : (
-            <View className="mb-4" />
-          )}
+      <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
 
-          {/* Details */}
-          <View className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
-            <DetailRow label="Timezone" value={rota.tz} />
-            <DetailRow label="Duration" value={formatDuration(rota.duration_minutes, rota.back_to_back)} />
-            <DetailRow label="Assignment" value="Round-robin" />
+          {/* Details card */}
+          <View style={[cardStyle, { marginBottom: 12 }]}>
+            <DetailRow label="Duration" value={formatDuration(rota.duration_minutes, rota.back_to_back)} sep={sep} textPrimary={textPrimary} textSec={textSec} />
+            <DetailRow label="Assignment" value="Round-robin" sep={sep} textPrimary={textPrimary} textSec={textSec} isLast />
           </View>
 
-          {/* Members */}
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-semibold text-black dark:text-white">
-              Members ({members.length})
-            </Text>
-            {isOwner && (
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  className="bg-blue-600 rounded-lg px-3 py-1.5"
-                  onPress={() => handleCreateInvite('member')}
-                  disabled={createInvite.isPending}
-                >
-                  <Text className="text-white text-xs font-semibold">+ Invite member</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-1.5"
-                  onPress={() => handleCreateInvite('viewer')}
-                  disabled={createInvite.isPending}
-                >
-                  <Text className="text-gray-600 dark:text-gray-300 text-xs">+ Viewer</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          <View className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
-            {members.map((m) => (
+          {/* Members section */}
+          <SectionHeader label={`Members (${members.length})`} />
+          <View style={[cardStyle, { marginBottom: 12 }]}>
+            {members.map((m, i) => (
               <MemberRow
                 key={m.user_id}
                 member={m}
                 isOwner={isOwner}
                 isMe={m.user_id === myId}
                 rotaId={id}
+                textPrimary={textPrimary}
+                sep={sep}
+                showSep={i < members.length - 1}
               />
             ))}
           </View>
 
-          {/* Last invite link, for easy copy */}
+          {/* Owner invite actions */}
+          {isOwner && (
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: '#0a7ea4',
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}
+                onPress={() => handleCreateInvite('member')}
+                disabled={createInvite.isPending}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>+ Invite member</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  borderWidth: 1.5,
+                  borderColor: '#0a7ea4',
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}
+                onPress={() => handleCreateInvite('viewer')}
+                disabled={createInvite.isPending}
+              >
+                <Text style={{ color: '#0a7ea4', fontSize: 15, fontWeight: '600' }}>+ Viewer</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Last invite link */}
           {inviteLink && (
             <TouchableOpacity
-              className="border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-3 mb-6"
+              style={{
+                borderWidth: 1,
+                borderColor: 'rgba(10,126,164,0.25)',
+                borderRadius: 14,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                marginBottom: 12,
+              }}
               onPress={() => {
                 Clipboard.setStringAsync(inviteLink);
                 Alert.alert('Copied!', inviteLink);
               }}
             >
-              <Text className="text-xs text-gray-400 mb-1">Last invite link (tap to copy)</Text>
-              <Text className="text-sm text-blue-600 font-mono" numberOfLines={1}>
+              <Text style={{ fontSize: 12, color: '#AEAEB2', marginBottom: 4 }}>
+                Last invite link (tap to copy)
+              </Text>
+              <Text style={{ fontSize: 13, color: '#0a7ea4', fontFamily: 'monospace' }} numberOfLines={1}>
                 {inviteLink}
               </Text>
             </TouchableOpacity>
@@ -305,10 +379,20 @@ export default function RotaDetailScreen() {
           {/* Leave */}
           {myMembership && (
             <TouchableOpacity
-              className="border border-red-200 dark:border-red-900 rounded-xl py-3 items-center"
+              style={{
+                backgroundColor: card,
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.06,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
               onPress={handleLeave}
             >
-              <Text className="text-red-500 font-semibold">Leave Rota</Text>
+              <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 16 }}>Leave Shift</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -317,11 +401,35 @@ export default function RotaDetailScreen() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  sep,
+  textPrimary,
+  textSec,
+  isLast = false,
+}: {
+  label: string;
+  value: string;
+  sep: string;
+  textPrimary: string;
+  textSec: string;
+  isLast?: boolean;
+}) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-900 last:border-b-0">
-      <Text className="text-sm text-gray-500">{label}</Text>
-      <Text className="text-sm font-medium text-black dark:text-white">{value}</Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: isLast ? 0 : 0.5,
+        borderBottomColor: sep,
+      }}
+    >
+      <Text style={{ fontSize: 15, color: textSec }}>{label}</Text>
+      <Text style={{ fontSize: 15, fontWeight: '500', color: textPrimary }}>{value}</Text>
     </View>
   );
 }
