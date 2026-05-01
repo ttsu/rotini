@@ -1,6 +1,6 @@
 # Phase 3 — Recurrence engine
 
-**Goal:** rotas have a real RRULE schedule, occurrences are materialized in advance with `ends_at` stamped from `duration_minutes`, round-robin/fixed assignment works, and the UI shows live "is on now" / "up next" status that auto-flips at boundaries.
+**Goal:** rotas have a real RRULE schedule, occurrences are materialized in advance with `ends_at` stamped from `duration_minutes`, round-robin assignment works, and the UI shows live "is on now" / "up next" status that auto-flips at boundaries.
 
 **Prerequisites:** Phase 2 (rotas + members + invites).
 
@@ -31,7 +31,7 @@
   - Expand RRULE in `tz` for `[max(now(), dtstart) … now() + 90 days]`, cap at 200 occurrences.
   - Diff against existing rows: keep `status IN ('done','overridden')` rows untouched; replace future `scheduled` rows; stamp `ends_at = scheduled_at + duration_minutes` on every newly-written row.
   - Round-robin: walk forward from `cursor_user_id` over the filtered members (ordered by `position`), advancing once per generated row; update `cursor_user_id` at the end.
-  - Fixed: read `fixed_default` (jsonb mapping weekday/day → user_id) and assign accordingly; fall back to `null` (which the UI surfaces as "Unassigned" with an owner-only "Assign" CTA).
+  - Fixed mode is out of scope for MVP; the DB schema retains the columns but the materializer only implements round-robin.
 - A thin Postgres function `public.materialize_rota(p_rota_id uuid)` wraps the same logic for `pg_cron` consumption (or the cron job calls the edge function over HTTP — pick whichever is simpler given Supabase's cron capabilities at build time).
 - Idempotent: running it twice on an unchanged rota should be a no-op.
 

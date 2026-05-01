@@ -85,7 +85,7 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   // Load rota
   const { data: rota, error: rotaErr } = await admin
     .from('rotas')
-    .select('id, rrule, dtstart, tz, duration_minutes, assignment_mode, fixed_default, cursor_user_id')
+    .select('id, rrule, dtstart, tz, duration_minutes, assignment_mode, cursor_user_id')
     .eq('id', rotaId)
     .single();
   if (rotaErr) throw new Error(`Rota load: ${rotaErr.message}`);
@@ -138,7 +138,7 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
 
   // Round-robin cursor: cursorIdx points to the next member to assign
   let cursorIdx = 0;
-  if (rota.assignment_mode === 'round_robin' && members.length > 0 && rota.cursor_user_id) {
+  if (members.length > 0 && rota.cursor_user_id) {
     const idx = members.findIndex((m: { user_id: string }) => m.user_id === rota.cursor_user_id);
     cursorIdx = idx >= 0 ? idx : 0;
   }
@@ -156,17 +156,12 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
 
     let assignedUserId: string | null = null;
 
-    if (rota.assignment_mode === 'round_robin') {
-      if (existingMap.has(key)) {
-        // Preserve existing assignment; cursor only advances for genuinely new rows
-        assignedUserId = existingMap.get(key) ?? null;
-      } else if (members.length > 0) {
-        assignedUserId = members[cursorIdx].user_id;
-        cursorIdx = (cursorIdx + 1) % members.length;
-      }
-    } else {
-      // Fixed: always (re)compute so rule changes take effect on future rows
-      assignedUserId = lookupFixed(rota.fixed_default, ts, tz);
+    if (existingMap.has(key)) {
+      // Preserve existing assignment; cursor only advances for genuinely new rows
+      assignedUserId = existingMap.get(key) ?? null;
+    } else if (members.length > 0) {
+      assignedUserId = members[cursorIdx].user_id;
+      cursorIdx = (cursorIdx + 1) % members.length;
     }
 
     occurrences.push({
@@ -178,10 +173,9 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   }
 
   // cursorIdx now points to who goes next after all new assignments
-  const newCursor =
-    rota.assignment_mode === 'round_robin' && members.length > 0
-      ? members[cursorIdx % members.length].user_id
-      : (rota.cursor_user_id ?? null);
+  const newCursor = members.length > 0
+    ? members[cursorIdx % members.length].user_id
+    : null;
 
   const { error: applyErr } = await admin.rpc('materialize_rota_apply', {
     p_rota_id: rotaId,
@@ -193,19 +187,3 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   return { count: occurrences.length };
 }
 
-// ─── Fixed-mode assignment lookup ─────────────────────────────────────────────
-
-function lookupFixed(
-  // deno-lint-ignore no-explicit-any
-  fixedDefault: Record<string, string> | null | any,
-  ts: Date,
-  tz: string,
-): string | null {
-  if (!fixedDefault) return null;
-  // Try RRULE weekday code (MO, TU, WE, TH, FR, SA, SU)
-  const weekdayCode = formatInTimeZone(ts, tz, 'EEEEEE').toUpperCase();
-  if (fixedDefault[weekdayCode]) return fixedDefault[weekdayCode];
-  // Try numeric day-of-month (1–31)
-  const dom = formatInTimeZone(ts, tz, 'd');
-  return fixedDefault[dom] ?? null;
-}

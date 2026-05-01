@@ -15,7 +15,7 @@ Cross-cutting design for the app. Per-phase implementation lives in `0N-*.md`; t
 
 ## Core concepts
 
-- **Rota** — a named recurring duty. Stores recurrence rule, time zone, **occurrence duration**, assignment mode (round-robin or fixed), and a set of members.
+- **Rota** — a named recurring duty. Stores recurrence rule, time zone, **occurrence duration**, assignment mode (round-robin only in MVP), and a set of members.
 - **Member** — a user attached to a rota. Three roles:
   - `owner` — full edit, manage members, force overrides, change recurrence, transfer ownership.
   - `member` — appears in the rotation, gets reminders for their own turns, can request swaps on their own occurrences.
@@ -39,11 +39,12 @@ Multi-user. Every member is an app user. Rotas shared via invite code (deep link
 
 ## Assignment
 
-Per-rota choice:
-- **Round-robin** — members are ordered (`position`); each newly-materialized occurrence is assigned to the next non-viewer member in sequence. The cursor (`rotas.cursor_user_id`) is persisted. Adding/removing members updates positions; in-flight assignments do not retroactively change.
-- **Fixed** — each generated occurrence carries an explicit assignee. The rota stores a default rule for filling new occurrences (e.g. "Mon→Sam, Tue→Jo"); each occurrence is independently editable.
+MVP supports **round-robin only**. Fixed mode is out of scope and not exposed in the UI.
 
-Overrides work in both modes and don't disturb the rotation cursor.
+- **Round-robin** — members are ordered (`position`); each newly-materialized occurrence is assigned to the next non-viewer member in sequence. The cursor (`rotas.cursor_user_id`) is persisted. Adding/removing members updates positions; in-flight assignments do not retroactively change.
+- **Fixed** _(post-MVP)_ — each generated occurrence carries an explicit assignee from a per-weekday/day-of-month mapping. The DB schema retains `fixed_default` and the `check` constraint for future use; the materializer and UI ignore it for now.
+
+Overrides don't disturb the rotation cursor.
 
 ## Recurrence & duration
 
@@ -94,9 +95,9 @@ rotas
   dtstart          timestamptz
   rrule            text          -- RFC 5545
   duration_minutes int           -- > 0; must be < smallest gap between occurrences
-  assignment_mode  text          -- enum('round_robin','fixed')
-  fixed_default    jsonb         -- rules for auto-fill in fixed mode; null in round-robin
-  cursor_user_id   uuid -> profiles.id  -- next-up in round-robin; null in fixed
+  assignment_mode  text          -- enum('round_robin','fixed'); MVP only uses 'round_robin'
+  fixed_default    jsonb         -- reserved for post-MVP fixed mode; always null in MVP
+  cursor_user_id   uuid -> profiles.id  -- next-up in round-robin
   created_at       timestamptz
   archived_at      timestamptz
 

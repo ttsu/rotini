@@ -30,7 +30,7 @@
   - `description` (optional, 0–280)
   - `tz` (default to device IANA via `Intl.DateTimeFormat().resolvedOptions().timeZone`; picker for override)
   - `duration_minutes` (presets: 1h / 4h / 1 day / 1 week + Custom; stored as int)
-  - `assignment_mode` (radio: round-robin / fixed) — stored only; behavior is in Phase 3.
+  - `assignment_mode` — hardcoded to `round_robin`; fixed mode is out of scope for MVP.
   - Recurrence fields are deferred — for now insert with placeholder `dtstart = now()` and a stub `rrule` that's overwritten in Phase 3 (or leave nullable; if nullable, gate Phase 3 list-render on `rrule IS NOT NULL`).
 - After create: navigate to rota detail (stub for now: shows name, description, tz, duration, member list).
 
@@ -59,7 +59,7 @@
 ## Done-when
 
 - [ ] Migration 0002 applied; RLS verified with at least one negative-path test.
-- [ ] Create-rota form persists all fields incl. `duration_minutes` and `assignment_mode`.
+- [ ] Create-rota form persists all fields incl. `duration_minutes` (assignment always `round_robin`).
 - [ ] Invite-by-code deep link round-trip works.
 - [ ] Role changes + transfer ownership respected by RLS and the "≥1 owner / ≥1 member" invariant.
 - [ ] Units 7–9 ticked in `README.md`; one commit per unit.

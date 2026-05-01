@@ -132,7 +132,6 @@ export default function NewRotaScreen() {
   const rrule = watch('rrule');
   const dtstart = watch('dtstart');
   const durationMinutes = watch('duration_minutes');
-  const assignmentMode = watch('assignment_mode');
 
   // Parse dtstart for the RRuleBuilder preview
   const dtstartUtc: Date | null = (() => {
@@ -383,37 +382,6 @@ export default function NewRotaScreen() {
           {durationError && (
             <Text className="text-red-500 text-xs mb-3">{durationError}</Text>
           )}
-
-          {/* Assignment mode */}
-          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-3">
-            Assignment
-          </Text>
-          <View className="flex-row gap-3 mb-1">
-            {(['round_robin', 'fixed'] as const).map((mode) => (
-              <TouchableOpacity
-                key={mode}
-                className={`flex-1 py-3 rounded-xl border items-center ${
-                  assignmentMode === mode
-                    ? 'bg-blue-600 border-blue-600'
-                    : 'border-gray-300 dark:border-gray-700'
-                }`}
-                onPress={() => setValue('assignment_mode', mode, { shouldValidate: true })}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    assignmentMode === mode ? 'text-white' : 'text-black dark:text-white'
-                  }`}
-                >
-                  {mode === 'round_robin' ? 'Round-robin' : 'Fixed'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Text className="text-xs text-gray-400 mb-6">
-            {assignmentMode === 'round_robin'
-              ? 'Members take turns in order automatically.'
-              : 'Each occurrence has a fixed assignee.'}
-          </Text>
 
           {/* Submit */}
           <TouchableOpacity

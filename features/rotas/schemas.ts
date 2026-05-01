@@ -55,7 +55,7 @@ export const createRotaSchema = z.object({
   dtstart: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Invalid start date/time'),
   rrule: z.string().min(1, 'Schedule is required'),
   duration_minutes: z.number().int('Must be a whole number').positive('Must be positive'),
-  assignment_mode: z.enum(['round_robin', 'fixed']),
+  assignment_mode: z.enum(['round_robin']),
 });
 
 export type CreateRotaValues = z.infer<typeof createRotaSchema>;

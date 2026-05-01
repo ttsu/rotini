@@ -245,10 +245,7 @@ export default function RotaDetailScreen() {
           <View className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
             <DetailRow label="Timezone" value={rota.tz} />
             <DetailRow label="Duration" value={formatDuration(rota.duration_minutes)} />
-            <DetailRow
-              label="Assignment"
-              value={rota.assignment_mode === 'round_robin' ? 'Round-robin' : 'Fixed'}
-            />
+            <DetailRow label="Assignment" value="Round-robin" />
           </View>
 
           {/* Members */}

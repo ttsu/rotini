@@ -81,9 +81,7 @@ export default function RotasListScreen() {
               <Text className="text-xs text-gray-400">·</Text>
               <Text className="text-xs text-gray-400">{formatDuration(item.rota.duration_minutes)}</Text>
               <Text className="text-xs text-gray-400">·</Text>
-              <Text className="text-xs text-gray-400">
-                {item.rota.assignment_mode === 'round_robin' ? 'Round-robin' : 'Fixed'}
-              </Text>
+              <Text className="text-xs text-gray-400">Round-robin</Text>
             </View>
           </TouchableOpacity>
         )}
