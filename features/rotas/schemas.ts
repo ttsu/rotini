@@ -51,6 +51,9 @@ export const createRotaSchema = z.object({
   name: z.string().min(1, 'Name is required').max(80, 'Max 80 characters').trim(),
   description: z.string().max(280, 'Max 280 characters').trim().optional(),
   tz: z.string().min(1, 'Timezone is required'),
+  // "YYYY-MM-DDTHH:MM" local time in the selected tz — converted to UTC before DB insert
+  dtstart: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Invalid start date/time'),
+  rrule: z.string().min(1, 'Schedule is required'),
   duration_minutes: z.number().int('Must be a whole number').positive('Must be positive'),
   assignment_mode: z.enum(['round_robin', 'fixed']),
 });

@@ -36,8 +36,8 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 9. Member management — invites, roles, role changes
 
 ### Phase 3 — Recurrence engine
-- [ ] 10. Migration 0003 — `occurrences` + indices
-- [ ] 11. RRULE builder UI + duration validator
+- [x] 10. Migration 0003 — `occurrences` + indices
+- [x] 11. RRULE builder UI + duration validator
 - [ ] 12. `materialize-rota` edge function + DB function
 - [ ] 13. `pg_cron` daily top-up
 - [ ] 14. `v_rota_now` view + `useRotaNow` hook

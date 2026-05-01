@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { fromZonedTime } from 'date-fns-tz';
 
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
@@ -75,12 +76,16 @@ export function useCreateRota() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (values: CreateRotaValues) => {
+      // Convert local dtstart string ("YYYY-MM-DDTHH:MM") to UTC
+      const dtstartUtc = fromZonedTime(values.dtstart, values.tz).toISOString();
       const { data, error } = await supabase
         .from('rotas')
         .insert({
           name: values.name,
           description: values.description || null,
           tz: values.tz,
+          dtstart: dtstartUtc,
+          rrule: values.rrule,
           duration_minutes: values.duration_minutes,
           assignment_mode: values.assignment_mode,
           owner_id: session!.user.id,

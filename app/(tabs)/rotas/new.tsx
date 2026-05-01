@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { fromZonedTime } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -15,6 +16,7 @@ import {
   View,
 } from 'react-native';
 
+import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
 import { useCreateRota } from '@/features/rotas/hooks';
 import {
   COMMON_TIMEZONES,
@@ -22,8 +24,24 @@ import {
   type CreateRotaValues,
   createRotaSchema,
 } from '@/features/rotas/schemas';
+import { validateDuration } from '@/lib/rrule';
 
 const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function todayLocalString(tz: string): string {
+  // Returns "YYYY-MM-DD" in the given timezone
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const y = parts.find((p) => p.type === 'year')!.value;
+  const m = parts.find((p) => p.type === 'month')!.value;
+  const d = parts.find((p) => p.type === 'day')!.value;
+  return `${y}-${m}-${d}`;
+}
 
 function TzPickerModal({
   visible,
@@ -103,15 +121,41 @@ export default function NewRotaScreen() {
       name: '',
       description: '',
       tz: deviceTz,
+      dtstart: `${todayLocalString(deviceTz)}T09:00`,
+      rrule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO',
       duration_minutes: 60,
       assignment_mode: 'round_robin',
     },
   });
 
   const tz = watch('tz');
+  const rrule = watch('rrule');
+  const dtstart = watch('dtstart');
+  const durationMinutes = watch('duration_minutes');
   const assignmentMode = watch('assignment_mode');
 
+  // Parse dtstart for the RRuleBuilder preview
+  const dtstartUtc: Date | null = (() => {
+    if (!dtstart || !tz) return null;
+    try {
+      return fromZonedTime(dtstart, tz);
+    } catch {
+      return null;
+    }
+  })();
+
+  // Duration validation against RRULE gap
+  const durationError: string | null = (() => {
+    if (!rrule || !dtstartUtc || !durationMinutes) return null;
+    try {
+      return validateDuration(rrule, dtstartUtc, tz, durationMinutes);
+    } catch {
+      return null;
+    }
+  })();
+
   async function onSubmit(values: CreateRotaValues) {
+    if (durationError) return; // blocked by client-side validator
     try {
       const rota = await createRota.mutateAsync(values);
       router.replace(`/(tabs)/rotas/${rota.id}` as any);
@@ -133,6 +177,10 @@ export default function NewRotaScreen() {
       setValue('duration_minutes', num, { shouldValidate: true });
     }
   }
+
+  // Time presets for start time
+  const TIME_PRESETS = ['06:00', '07:00', '08:00', '09:00', '10:00', '12:00', '17:00', '18:00'];
+  const currentTime = dtstart?.split('T')[1] ?? '09:00';
 
   return (
     <KeyboardAvoidingView
@@ -199,12 +247,81 @@ export default function NewRotaScreen() {
             Timezone
           </Text>
           <TouchableOpacity
-            className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-1 flex-row items-center justify-between"
+            className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-4 flex-row items-center justify-between"
             onPress={() => setTzPickerOpen(true)}
           >
             <Text className="text-base text-black dark:text-white">{tz}</Text>
             <Text className="text-gray-400 text-base">›</Text>
           </TouchableOpacity>
+
+          {/* Start date */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+            Start date
+          </Text>
+          <Controller
+            control={control}
+            name="dtstart"
+            render={({ field: { onChange, onBlur, value } }) => {
+              const dateStr = value?.split('T')[0] ?? '';
+              const timeStr = value?.split('T')[1] ?? '09:00';
+              return (
+                <TextInput
+                  className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-1 text-base text-black dark:text-white"
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#9ca3af"
+                  value={dateStr}
+                  onChangeText={(text) => onChange(`${text}T${timeStr}`)}
+                  onBlur={onBlur}
+                  keyboardType="numbers-and-punctuation"
+                  returnKeyType="next"
+                />
+              );
+            }}
+          />
+          {errors.dtstart && (
+            <Text className="text-red-500 text-xs mb-2">{errors.dtstart.message}</Text>
+          )}
+
+          {/* Start time */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 mt-2">
+            Start time
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+            <View className="flex-row gap-2">
+              {TIME_PRESETS.map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  className={`px-3 py-2 rounded-xl border ${
+                    currentTime === t ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-700'
+                  }`}
+                  onPress={() => {
+                    const dateStr = dtstart?.split('T')[0] ?? todayLocalString(tz);
+                    setValue('dtstart', `${dateStr}T${t}`, { shouldValidate: true });
+                  }}
+                >
+                  <Text className={`text-sm ${currentTime === t ? 'text-white' : 'text-black dark:text-white'}`}>
+                    {t}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* Schedule / RRULE builder */}
+          <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-1">
+            Schedule
+          </Text>
+          <View className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-1">
+            <RRuleBuilder
+              value={rrule}
+              dtstart={dtstartUtc}
+              tz={tz}
+              onChangeRRule={(r) => setValue('rrule', r, { shouldValidate: true })}
+            />
+          </View>
+          {errors.rrule && (
+            <Text className="text-red-500 text-xs mb-3">{errors.rrule.message}</Text>
+          )}
 
           {/* Duration */}
           <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-3">
@@ -261,7 +378,10 @@ export default function NewRotaScreen() {
             </View>
           )}
           {errors.duration_minutes && (
-            <Text className="text-red-500 text-xs mb-3">{errors.duration_minutes.message}</Text>
+            <Text className="text-red-500 text-xs mb-1">{errors.duration_minutes.message}</Text>
+          )}
+          {durationError && (
+            <Text className="text-red-500 text-xs mb-3">{durationError}</Text>
           )}
 
           {/* Assignment mode */}
@@ -297,9 +417,9 @@ export default function NewRotaScreen() {
 
           {/* Submit */}
           <TouchableOpacity
-            className="bg-blue-600 rounded-xl py-3 items-center"
+            className={`rounded-xl py-3 items-center ${durationError ? 'bg-gray-300 dark:bg-gray-700' : 'bg-blue-600'}`}
             onPress={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!durationError}
           >
             <Text className="text-white font-semibold text-base">
               {isSubmitting ? 'Creating…' : 'Create Rota'}
