@@ -2,19 +2,22 @@ import { Tabs } from 'expo-router';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: '#0a7ea4',
+        tabBarInactiveTintColor: '#AEAEB2',
+        tabBarStyle: {
+          backgroundColor: 'rgba(255,255,255,0.85)',
+          borderTopWidth: 0.5,
+          borderTopColor: 'rgba(60,60,67,0.10)',
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -25,7 +28,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="rotas"
         options={{
-          title: 'Rotas',
+          title: 'Shifts',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />

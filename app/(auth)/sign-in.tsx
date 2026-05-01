@@ -94,7 +94,7 @@ export default function SignInScreen() {
       />
 
       <TouchableOpacity
-        className="bg-blue-600 rounded-xl py-3 mb-6 items-center"
+        className="bg-[#0a7ea4] rounded-xl py-3 mb-6 items-center"
         onPress={signInWithMagicLink}
         disabled={busy}
       >
