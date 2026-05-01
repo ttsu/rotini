@@ -160,6 +160,73 @@ export type Database = {
           },
         ]
       }
+      rota_materialization_errors: {
+        Row: {
+          created_at: string
+          details: Json
+          error_message: string
+          id: string
+          request_id: number | null
+          rota_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          error_message: string
+          id?: string
+          request_id?: number | null
+          rota_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          error_message?: string
+          id?: string
+          request_id?: number | null
+          rota_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_materialization_errors_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rota_materialization_requests: {
+        Row: {
+          checked_at: string | null
+          id: string
+          request_id: number
+          requested_at: string
+          rota_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          id?: string
+          request_id: number
+          requested_at?: string
+          rota_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          id?: string
+          request_id?: number
+          requested_at?: string
+          rota_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_materialization_requests_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rota_members: {
         Row: {
           joined_at: string
@@ -333,6 +400,7 @@ export type Database = {
           rota_name: string
         }[]
       }
+      materialize_active_rotas: { Args: never; Returns: Json }
       materialize_rota: { Args: { p_rota_id: string }; Returns: number }
       materialize_rota_apply: {
         Args: {
@@ -342,6 +410,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_rota_materialization_http_errors: { Args: never; Returns: number }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
         Returns: undefined
@@ -483,3 +552,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
