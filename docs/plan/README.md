@@ -42,7 +42,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 13. `pg_cron` daily top-up
 - [x] 14. `v_rota_now` view + `useRotaNow` hook
 - [x] 15. Rota detail — status header + upcoming list/calendar
-- [ ] 16. Home cards driven by `useRotaNow`
+- [x] 16. Home cards driven by `useRotaNow`
 
 ### Phase 4 — Swaps & overrides
 - [ ] 17. Migration 0004 — `swap_requests` + RPCs
