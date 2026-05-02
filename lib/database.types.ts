@@ -538,7 +538,19 @@ export type Database = {
           user_id: string
         }
       }
+      add_rota_reminder: {
+        Args: { p_lead_minutes: number; p_rota_id: string }
+        Returns: {
+          id: string
+          lead_minutes: number
+          rota_id: string
+        }
+      }
       cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
+      delete_rota_reminder: {
+        Args: { p_reminder_id: string }
+        Returns: undefined
+      }
       change_member_role: {
         Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
         Returns: {
@@ -603,6 +615,10 @@ export type Database = {
           status: string
           swap_request_id: string | null
         }
+      }
+      reconcile_notifications_for_rota: {
+        Args: { p_rota_id: string }
+        Returns: undefined
       }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }

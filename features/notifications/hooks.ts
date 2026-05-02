@@ -30,9 +30,10 @@ export function useAddReminder(rotaId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (leadMinutes: number) => {
-      const { error } = await supabase
-        .from('rota_reminders')
-        .insert({ rota_id: rotaId, lead_minutes: leadMinutes });
+      const { error } = await supabase.rpc('add_rota_reminder', {
+        p_rota_id: rotaId,
+        p_lead_minutes: leadMinutes,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -45,10 +46,9 @@ export function useDeleteReminder(rotaId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (reminderId: string) => {
-      const { error } = await supabase
-        .from('rota_reminders')
-        .delete()
-        .eq('id', reminderId);
+      const { error } = await supabase.rpc('delete_rota_reminder', {
+        p_reminder_id: reminderId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
