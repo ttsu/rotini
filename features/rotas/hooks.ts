@@ -9,6 +9,75 @@ import type { CreateRotaValues } from './schemas';
 
 type MemberRole = 'owner' | 'member' | 'viewer';
 
+export type HomeRota = {
+  role: string;
+  rota: {
+    id: string;
+    name: string;
+    description: string | null;
+    duration_minutes: number | null;
+    back_to_back: boolean;
+  };
+  nextOccurrence: {
+    id: string;
+    rota_id: string;
+    scheduled_at: string;
+    ends_at: string;
+    status: string;
+  } | null;
+  isActive: boolean;
+};
+
+export function useHomeRotas() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['home-rotas'],
+    queryFn: async () => {
+      const userId = session!.user.id;
+      const now = new Date().toISOString();
+
+      const [rotasRes, occurrencesRes] = await Promise.all([
+        supabase
+          .from('rota_members')
+          .select('role, rota:rotas(id, name, description, duration_minutes, back_to_back)')
+          .eq('user_id', userId)
+          .order('joined_at', { ascending: false }),
+        supabase
+          .from('occurrences')
+          .select('id, rota_id, scheduled_at, ends_at, status')
+          .eq('assigned_user_id', userId)
+          .gte('ends_at', now)
+          .order('scheduled_at', { ascending: true }),
+      ]);
+
+      if (rotasRes.error) throw rotasRes.error;
+      if (occurrencesRes.error) throw occurrencesRes.error;
+
+      // Map: first upcoming occurrence per rota
+      const occByRota = new Map<string, typeof occurrencesRes.data[number]>();
+      for (const occ of occurrencesRes.data ?? []) {
+        if (!occByRota.has(occ.rota_id)) occByRota.set(occ.rota_id, occ);
+      }
+
+      return (rotasRes.data ?? [])
+        .filter((row) => row.rota !== null)
+        .map((row) => {
+          const occ = occByRota.get((row.rota as any).id) ?? null;
+          const isActive = occ
+            ? new Date(occ.scheduled_at) <= new Date() && new Date(occ.ends_at) >= new Date()
+            : false;
+          return {
+            role: row.role,
+            rota: row.rota as HomeRota['rota'],
+            nextOccurrence: occ,
+            isActive,
+          } satisfies HomeRota;
+        });
+    },
+    enabled: !!session,
+  });
+}
+
 export function useRotas() {
   const { session } = useAuth();
   return useQuery({
