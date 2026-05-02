@@ -1,11 +1,20 @@
+import { useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, View, useColorScheme } from 'react-native';
+import {
+  ActivityIndicator, Alert, Modal, ScrollView, Text,
+  TextInput, TouchableOpacity, View, useColorScheme,
+} from 'react-native';
 import { formatInTimeZone } from 'date-fns-tz';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
-import { useQuery } from '@tanstack/react-query';
+import { useRota } from '@/features/rotas/hooks';
+import {
+  useSwapRequest, useRequestSwap, useRespondSwap,
+  useCancelSwap, useOverrideOccurrence,
+} from '@/features/swaps/hooks';
 
 type OccurrenceDetail = {
   id: string;
@@ -14,28 +23,54 @@ type OccurrenceDetail = {
   ends_at: string;
   status: string;
   assigned_user_id: string | null;
+  original_assignee_id: string | null;
   override_reason: string | null;
+  swap_request_id: string | null;
   rota: { name: string; tz: string } | null;
   assignee: { display_name: string | null } | null;
+};
+
+type RotaMember = {
+  user_id: string;
+  role: string;
+  profile: { id: string; display_name: string | null } | null;
 };
 
 export default function OccurrenceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const scheme = useColorScheme();
+  const queryClient = useQueryClient();
 
-  const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
-  const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
+  const bg          = scheme === 'dark' ? '#000000' : '#F2F2F7';
+  const card        = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
-  const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
-  const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
+  const textSec     = scheme === 'dark' ? '#8E8E93' : '#636366';
+  const sep         = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
+
+  // Swap modal state
+  const [showSwapModal, setShowSwapModal]       = useState(false);
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [swapMessage, setSwapMessage]           = useState('');
+
+  // Override modal state
+  const [showOverrideModal, setShowOverrideModal]     = useState(false);
+  const [selectedAssigneeId, setSelectedAssigneeId]   = useState<string | null>(null);
+  const [overrideReason, setOverrideReason]           = useState('');
+
+  // ── Queries ──────────────────────────────────────────────────────────────
 
   const { data: occ, isLoading } = useQuery({
     queryKey: ['occurrence', id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('occurrences')
-        .select('id, rota_id, scheduled_at, ends_at, status, assigned_user_id, override_reason, rota:rotas(name, tz), assignee:profiles!occurrences_assigned_user_id_fkey(display_name)')
+        .select(
+          'id, rota_id, scheduled_at, ends_at, status,' +
+          'assigned_user_id, original_assignee_id, override_reason, swap_request_id,' +
+          'rota:rotas(name, tz),' +
+          'assignee:profiles!occurrences_assigned_user_id_fkey(display_name)'
+        )
         .eq('id', id)
         .single();
       if (error) throw error;
@@ -44,12 +79,86 @@ export default function OccurrenceDetailScreen() {
     enabled: !!session && !!id,
   });
 
-  const tz = occ?.rota?.tz ?? 'UTC';
-  const now = new Date();
-  const isActive = occ
-    ? new Date(occ.scheduled_at) <= now && new Date(occ.ends_at) > now
-    : false;
-  const isPast = occ ? new Date(occ.ends_at) <= now : false;
+  // Realtime: refresh on occurrence or swap change
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`occ-detail:${id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'occurrences', filter: `id=eq.${id}` },
+        () => queryClient.invalidateQueries({ queryKey: ['occurrence', id] }))
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'swap_requests', filter: `occurrence_id=eq.${id}` },
+        () => queryClient.invalidateQueries({ queryKey: ['occurrence', id] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, queryClient]);
+
+  const { data: swapReq }  = useSwapRequest(occ?.swap_request_id);
+  const { data: rotaData } = useRota(occ?.rota_id ?? '');
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
+
+  const requestSwap      = useRequestSwap();
+  const respondSwap      = useRespondSwap();
+  const cancelSwap       = useCancelSwap();
+  const overrideOccurrence = useOverrideOccurrence();
+
+  // ── Derived state ─────────────────────────────────────────────────────────
+
+  const userId   = session!.user.id;
+  const now      = new Date();
+  const tz       = occ?.rota?.tz ?? 'UTC';
+  const isActive = occ ? new Date(occ.scheduled_at) <= now && new Date(occ.ends_at) > now : false;
+  const isPast   = occ ? new Date(occ.ends_at) <= now : false;
+  const isFuture = occ ? new Date(occ.scheduled_at) > now : false;
+
+  const members     = (rotaData?.rota_members as unknown as RotaMember[]) ?? [];
+  const myRole      = members.find((m) => m.user_id === userId)?.role;
+  const isOwner     = myRole === 'owner';
+  const isAssignee  = occ?.assigned_user_id === userId;
+
+  const hasPendingSwap = !!occ?.swap_request_id;
+  const isRequester    = swapReq?.requester_id === userId;
+  const isSwapTarget   = swapReq?.target_user_id === userId;
+  const canRequestSwap = isAssignee && isFuture && occ?.status === 'scheduled' && !hasPendingSwap;
+
+  const swapTargets      = members.filter((m) => m.role !== 'viewer' && m.user_id !== userId);
+  const overrideTargets  = members.filter((m) => m.role !== 'viewer');
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  function submitSwapRequest() {
+    if (!selectedTargetId || !occ) return;
+    requestSwap.mutate(
+      { occurrenceId: occ.id, targetUserId: selectedTargetId, message: swapMessage || null },
+      {
+        onSuccess: () => {
+          setShowSwapModal(false);
+          setSelectedTargetId(null);
+          setSwapMessage('');
+        },
+        onError: (err: any) => Alert.alert('Error', err.message ?? 'Failed to request swap'),
+      }
+    );
+  }
+
+  function submitOverride() {
+    if (!selectedAssigneeId || !occ) return;
+    overrideOccurrence.mutate(
+      { occurrenceId: occ.id, newAssigneeId: selectedAssigneeId, reason: overrideReason || null },
+      {
+        onSuccess: () => {
+          setShowOverrideModal(false);
+          setSelectedAssigneeId(null);
+          setOverrideReason('');
+        },
+        onError: (err: any) => Alert.alert('Error', err.message ?? 'Failed to override'),
+      }
+    );
+  }
+
+  // ── Row style ─────────────────────────────────────────────────────────────
 
   const rowStyle = {
     flexDirection: 'row' as const,
@@ -61,41 +170,56 @@ export default function OccurrenceDetailScreen() {
     borderBottomColor: sep,
   };
 
+  const cardStyle = {
+    backgroundColor: card, borderRadius: 18 as const, overflow: 'hidden' as const, marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <>
       <Stack.Screen options={{ title: occ?.rota?.name ?? 'Occurrence' }} />
-      <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}>
+
+      <ScrollView
+        style={{ flex: 1, backgroundColor: bg }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
+      >
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} />
         ) : !occ ? (
           <Text style={{ color: '#FF3B30', textAlign: 'center', marginTop: 40 }}>Failed to load.</Text>
         ) : (
           <>
-            {/* Status bar */}
-            <View style={{
-              backgroundColor: card, borderRadius: 18, overflow: 'hidden', marginBottom: 12,
-              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
-            }}>
-              <View style={{ height: 3, backgroundColor: isActive ? '#34C759' : isPast ? '#AEAEB2' : '#0a7ea4' }} />
+            {/* ── Status card ──────────────────────────────────────────── */}
+            <View style={cardStyle}>
+              <View style={{
+                height: 3,
+                backgroundColor: occ.status === 'overridden' ? '#FF9F0A'
+                  : isActive ? '#34C759' : isPast ? '#AEAEB2' : '#0a7ea4',
+              }} />
               <View style={{ padding: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Text style={{ fontSize: 20, fontWeight: '700', color: textPrimary, flex: 1 }}>
                     {occ.assignee?.display_name ?? 'Unassigned'}
                   </Text>
                   <Pill
-                    label={isActive ? 'On now' : isPast ? 'Ended' : 'Upcoming'}
-                    color={isActive ? 'green' : 'gray'}
+                    label={
+                      occ.status === 'overridden' ? 'Overridden'
+                        : isActive ? 'On now' : isPast ? 'Ended' : 'Upcoming'
+                    }
+                    color={
+                      occ.status === 'overridden' ? 'amber'
+                        : isActive ? 'green' : 'gray'
+                    }
                     dot={isActive}
                   />
                 </View>
               </View>
             </View>
 
-            {/* Details */}
-            <View style={{
-              backgroundColor: card, borderRadius: 18, overflow: 'hidden', marginBottom: 12,
-              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
-            }}>
+            {/* ── Details ──────────────────────────────────────────────── */}
+            <View style={cardStyle}>
               <View style={rowStyle}>
                 <Text style={{ fontSize: 15, color: textSec }}>Starts</Text>
                 <Text style={{ fontSize: 15, fontWeight: '500', color: textPrimary }}>
@@ -110,22 +234,287 @@ export default function OccurrenceDetailScreen() {
               </View>
             </View>
 
-            {occ.override_reason && (
-              <View style={{
-                backgroundColor: card, borderRadius: 18, padding: 16, marginBottom: 12,
-                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
-              }}>
+            {/* ── Override reason ───────────────────────────────────────── */}
+            {occ.override_reason ? (
+              <View style={{ ...cardStyle, padding: 16 }}>
                 <Text style={{ fontSize: 13, color: textSec, marginBottom: 4 }}>Override reason</Text>
                 <Text style={{ fontSize: 15, color: textPrimary }}>{occ.override_reason}</Text>
               </View>
-            )}
+            ) : null}
 
-            <Text style={{ fontSize: 12, color: textSec, textAlign: 'center', marginTop: 8 }}>
-              Swap and override actions coming in a future update.
-            </Text>
+            {/* ── Pending swap banner ───────────────────────────────────── */}
+            {hasPendingSwap && swapReq?.status === 'pending' ? (
+              <View style={{
+                backgroundColor: '#FF9F0A', borderRadius: 18, padding: 16, marginBottom: 12,
+                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
+              }}>
+                <Text style={{ fontSize: 12, color: '#fff', opacity: 0.85, marginBottom: 2 }}>Swap pending</Text>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff', marginBottom: swapReq.message ? 4 : 12 }}>
+                  {swapReq.requester?.display_name ?? '—'} → {swapReq.target?.display_name ?? '—'}
+                </Text>
+                {swapReq.message ? (
+                  <Text style={{ fontSize: 14, color: '#fff', opacity: 0.9, marginBottom: 12 }}>
+                    "{swapReq.message}"
+                  </Text>
+                ) : null}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {isRequester && (
+                    <TouchableOpacity
+                      onPress={() =>
+                        Alert.alert('Cancel swap?', 'Your request will be cancelled.', [
+                          { text: 'Keep', style: 'cancel' },
+                          {
+                            text: 'Cancel swap', style: 'destructive',
+                            onPress: () => cancelSwap.mutate(
+                              { swapId: swapReq.id },
+                              { onError: (e: any) => Alert.alert('Error', e.message) }
+                            ),
+                          },
+                        ])
+                      }
+                      style={{
+                        flex: 1, backgroundColor: 'rgba(255,255,255,0.25)',
+                        borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
+                    </TouchableOpacity>
+                  )}
+                  {isSwapTarget && (
+                    <>
+                      <TouchableOpacity
+                        onPress={() => respondSwap.mutate(
+                          { swapId: swapReq.id, accept: false },
+                          { onError: (e: any) => Alert.alert('Error', e.message) }
+                        )}
+                        style={{
+                          flex: 1, backgroundColor: 'rgba(255,255,255,0.25)',
+                          borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: '600' }}>Decline</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => respondSwap.mutate(
+                          { swapId: swapReq.id, accept: true },
+                          { onError: (e: any) => Alert.alert('Error', e.message) }
+                        )}
+                        style={{
+                          flex: 1, backgroundColor: '#fff',
+                          borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ color: '#FF9F0A', fontWeight: '700' }}>Accept</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </View>
+            ) : null}
+
+            {/* ── Actions ──────────────────────────────────────────────── */}
+            {(canRequestSwap || isOwner) ? (
+              <View style={cardStyle}>
+                {canRequestSwap && (
+                  <TouchableOpacity
+                    onPress={() => setShowSwapModal(true)}
+                    style={{
+                      ...rowStyle,
+                      borderBottomWidth: isOwner ? 0.5 : 0,
+                      borderBottomColor: sep,
+                    }}
+                  >
+                    <Text style={{ fontSize: 15, color: '#0a7ea4' }}>Request swap</Text>
+                  </TouchableOpacity>
+                )}
+                {isOwner && (
+                  <TouchableOpacity
+                    onPress={() => setShowOverrideModal(true)}
+                    style={{ ...rowStyle, borderBottomWidth: 0 }}
+                  >
+                    <Text style={{ fontSize: 15, color: '#FF3B30' }}>Override assignment</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
           </>
         )}
       </ScrollView>
+
+      {/* ── Swap request modal ──────────────────────────────────────────────── */}
+      <Modal visible={showSwapModal} animationType="slide" presentationStyle="pageSheet">
+        <View style={{ flex: 1, backgroundColor: bg }}>
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12,
+            borderBottomWidth: 0.5, borderBottomColor: sep,
+          }}>
+            <TouchableOpacity onPress={() => {
+              setShowSwapModal(false); setSelectedTargetId(null); setSwapMessage('');
+            }}>
+              <Text style={{ fontSize: 16, color: '#0a7ea4' }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Request swap</Text>
+            <TouchableOpacity
+              onPress={submitSwapRequest}
+              disabled={!selectedTargetId || requestSwap.isPending}
+            >
+              <Text style={{
+                fontSize: 16, fontWeight: '600',
+                color: selectedTargetId && !requestSwap.isPending ? '#0a7ea4' : textSec,
+              }}>
+                {requestSwap.isPending ? 'Sending…' : 'Send'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 }}>
+            <Text style={{
+              fontSize: 13, fontWeight: '600', color: '#AEAEB2',
+              textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+            }}>
+              Swap with
+            </Text>
+            <View style={{ ...cardStyle, marginBottom: 20 }}>
+              {swapTargets.length === 0 ? (
+                <View style={{ padding: 16 }}>
+                  <Text style={{ color: textSec, fontSize: 15 }}>No eligible members.</Text>
+                </View>
+              ) : swapTargets.map((m, idx) => (
+                <TouchableOpacity
+                  key={m.user_id}
+                  onPress={() => setSelectedTargetId(m.user_id)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 16, paddingVertical: 14,
+                    borderBottomWidth: idx < swapTargets.length - 1 ? 0.5 : 0,
+                    borderBottomColor: sep,
+                  }}
+                >
+                  <Text style={{ fontSize: 15, color: textPrimary }}>
+                    {m.profile?.display_name ?? m.user_id}
+                  </Text>
+                  {selectedTargetId === m.user_id && (
+                    <Text style={{ fontSize: 17, color: '#0a7ea4' }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{
+              fontSize: 13, fontWeight: '600', color: '#AEAEB2',
+              textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+            }}>
+              Message (optional)
+            </Text>
+            <View style={cardStyle}>
+              <TextInput
+                value={swapMessage}
+                onChangeText={(t) => setSwapMessage(t.slice(0, 200))}
+                placeholder="Add a note…"
+                placeholderTextColor={textSec}
+                multiline
+                style={{
+                  color: textPrimary, fontSize: 15,
+                  paddingHorizontal: 16, paddingVertical: 14,
+                  minHeight: 80, textAlignVertical: 'top',
+                }}
+              />
+            </View>
+            {swapMessage.length > 0 && (
+              <Text style={{ fontSize: 12, color: textSec, textAlign: 'right', marginTop: 4 }}>
+                {swapMessage.length}/200
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Override modal ──────────────────────────────────────────────────── */}
+      <Modal visible={showOverrideModal} animationType="slide" presentationStyle="pageSheet">
+        <View style={{ flex: 1, backgroundColor: bg }}>
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12,
+            borderBottomWidth: 0.5, borderBottomColor: sep,
+          }}>
+            <TouchableOpacity onPress={() => {
+              setShowOverrideModal(false); setSelectedAssigneeId(null); setOverrideReason('');
+            }}>
+              <Text style={{ fontSize: 16, color: '#0a7ea4' }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Override assignment</Text>
+            <TouchableOpacity
+              onPress={submitOverride}
+              disabled={!selectedAssigneeId || overrideOccurrence.isPending}
+            >
+              <Text style={{
+                fontSize: 16, fontWeight: '600',
+                color: selectedAssigneeId && !overrideOccurrence.isPending ? '#FF3B30' : textSec,
+              }}>
+                {overrideOccurrence.isPending ? 'Saving…' : 'Override'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 }}>
+            <Text style={{
+              fontSize: 13, fontWeight: '600', color: '#AEAEB2',
+              textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+            }}>
+              Assign to
+            </Text>
+            <View style={{ ...cardStyle, marginBottom: 20 }}>
+              {overrideTargets.length === 0 ? (
+                <View style={{ padding: 16 }}>
+                  <Text style={{ color: textSec, fontSize: 15 }}>No eligible members.</Text>
+                </View>
+              ) : overrideTargets.map((m, idx) => (
+                <TouchableOpacity
+                  key={m.user_id}
+                  onPress={() => setSelectedAssigneeId(m.user_id)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 16, paddingVertical: 14,
+                    borderBottomWidth: idx < overrideTargets.length - 1 ? 0.5 : 0,
+                    borderBottomColor: sep,
+                  }}
+                >
+                  <Text style={{ fontSize: 15, color: textPrimary }}>
+                    {m.profile?.display_name ?? m.user_id}
+                  </Text>
+                  {selectedAssigneeId === m.user_id && (
+                    <Text style={{ fontSize: 17, color: '#FF3B30' }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{
+              fontSize: 13, fontWeight: '600', color: '#AEAEB2',
+              textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+            }}>
+              Reason (optional)
+            </Text>
+            <View style={cardStyle}>
+              <TextInput
+                value={overrideReason}
+                onChangeText={setOverrideReason}
+                placeholder="Why are you overriding this?"
+                placeholderTextColor={textSec}
+                multiline
+                style={{
+                  color: textPrimary, fontSize: 15,
+                  paddingHorizontal: 16, paddingVertical: 14,
+                  minHeight: 80, textAlignVertical: 'top',
+                }}
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </>
   );
 }

@@ -6,6 +6,7 @@ import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
 import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
+import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -21,7 +22,7 @@ function formatCountdown(targetIso: string): string {
   return 'soon';
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
+// ── ShiftCard ─────────────────────────────────────────────────────────────────
 
 function ShiftCard({
   item,
@@ -58,7 +59,6 @@ function ShiftCard({
     >
       <View style={{ height: 3, backgroundColor: barColor }} />
       <View style={{ padding: 16 }}>
-        {/* Name + pill */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
           <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: textPrimary }} numberOfLines={1}>
             {rota.name}
@@ -69,8 +69,6 @@ function ShiftCard({
             dot={isActive}
           />
         </View>
-
-        {/* Time info */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <View>
             <Text style={{ fontSize: 13, color: textSec }}>{isActive ? 'Ends' : 'Starts'}</Text>
@@ -90,18 +88,76 @@ function ShiftCard({
   );
 }
 
+// ── SwapInboxCard ─────────────────────────────────────────────────────────────
+
+function SwapInboxCard({
+  item,
+  onPress,
+  card,
+  textPrimary,
+  textSec,
+  sep,
+}: {
+  item: PendingSwapForMe;
+  onPress: () => void;
+  card: string;
+  textPrimary: string;
+  textSec: string;
+  sep: string;
+}) {
+  const occ = item.occurrence;
+  const tz  = (occ?.rota as any)?.tz ?? 'UTC';
+  const timeLabel = occ
+    ? formatInTimeZone(new Date(occ.scheduled_at), tz, 'EEE d MMM, h:mm a')
+    : '';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: card, borderRadius: 18, overflow: 'hidden', marginBottom: 10,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
+      }}
+    >
+      <View style={{ height: 3, backgroundColor: '#FF9F0A' }} />
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: textPrimary }} numberOfLines={1}>
+            {(occ?.rota as any)?.name ?? 'Rota'}
+          </Text>
+          <Pill label="Swap request" color="amber" />
+        </View>
+        <Text style={{ fontSize: 13, color: textSec }}>
+          {item.requester?.display_name ?? 'Someone'} wants to swap their turn
+        </Text>
+        {timeLabel ? (
+          <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>{timeLabel}</Text>
+        ) : null}
+        {item.message ? (
+          <Text style={{ fontSize: 13, color: textSec, marginTop: 4, fontStyle: 'italic' }}>
+            "{item.message}"
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { data, isLoading } = useHomeRotas();
+  const { data: pendingSwaps } = usePendingSwapsForMe();
   const scheme = useColorScheme();
 
-  const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
-  const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
+  const bg          = scheme === 'dark' ? '#000000' : '#F2F2F7';
+  const card        = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
-  const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
+  const textSec     = scheme === 'dark' ? '#8E8E93' : '#636366';
+  const sep         = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
 
   const displayName = session?.user.user_metadata?.full_name ?? session?.user.email?.split('@')[0] ?? null;
   const hour = new Date().getHours();
@@ -117,6 +173,30 @@ export default function HomeScreen() {
         </Text>
       </View>
       <LargeTitle title={greetingTitle} />
+
+      {/* Swap requests inbox */}
+      {pendingSwaps && pendingSwaps.length > 0 && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <Text style={{
+            fontSize: 13, fontWeight: '600', color: '#AEAEB2',
+            textTransform: 'uppercase', letterSpacing: 0.5,
+            marginBottom: 10, paddingHorizontal: 4,
+          }}>
+            Swap requests for you
+          </Text>
+          {pendingSwaps.map((item) => (
+            <SwapInboxCard
+              key={item.id}
+              item={item}
+              onPress={() => router.push(`/(tabs)/rotas/occurrence/${item.occurrence_id}` as any)}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+              sep={sep}
+            />
+          ))}
+        </View>
+      )}
 
       {/* Your shifts section */}
       <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
