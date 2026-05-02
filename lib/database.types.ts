@@ -86,6 +86,13 @@ export type Database = {
             referencedRelation: "v_rota_now"
             referencedColumns: ["rota_id"]
           },
+          {
+            foreignKeyName: "occurrences_swap_request_id_fkey"
+            columns: ["swap_request_id"]
+            isOneToOne: false
+            referencedRelation: "swap_requests"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -286,6 +293,75 @@ export type Database = {
           },
         ]
       }
+      swap_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          id: string
+          message: string | null
+          occurrence_id: string
+          requester_id: string
+          status: string
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          occurrence_id: string
+          requester_id: string
+          status?: string
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          occurrence_id?: string
+          requester_id?: string
+          status?: string
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swap_requests_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["active_occurrence_id"]
+          },
+          {
+            foreignKeyName: "swap_requests_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["upcoming_occurrence_id"]
+          },
+          {
+            foreignKeyName: "swap_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_rota_now: {
@@ -337,6 +413,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
       change_member_role: {
         Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
         Returns: {
@@ -393,9 +470,82 @@ export type Database = {
         }
         Returns: undefined
       }
+      override_occurrence: {
+        Args: {
+          p_new_assignee_id: string
+          p_occurrence_id: string
+          p_reason?: string
+        }
+        Returns: {
+          assigned_user_id: string | null
+          created_at: string
+          ends_at: string
+          generated_from_rule: boolean
+          id: string
+          original_assignee_id: string | null
+          override_reason: string | null
+          rota_id: string
+          scheduled_at: string
+          scheduled_local_date: string
+          status: string
+          swap_request_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
         Returns: undefined
+      }
+      request_swap: {
+        Args: {
+          p_message?: string
+          p_occurrence_id: string
+          p_target_user_id: string
+        }
+        Returns: {
+          created_at: string
+          decided_at: string | null
+          id: string
+          message: string | null
+          occurrence_id: string
+          requester_id: string
+          status: string
+          target_user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "swap_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      respond_swap: {
+        Args: { p_accept: boolean; p_swap_request_id: string }
+        Returns: {
+          assigned_user_id: string | null
+          created_at: string
+          ends_at: string
+          generated_from_rule: boolean
+          id: string
+          original_assignee_id: string | null
+          override_reason: string | null
+          rota_id: string
+          scheduled_at: string
+          scheduled_local_date: string
+          status: string
+          swap_request_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       transfer_ownership: {
         Args: { p_new_owner_id: string; p_rota_id: string }
