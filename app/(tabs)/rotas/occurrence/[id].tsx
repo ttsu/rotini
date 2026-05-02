@@ -323,6 +323,8 @@ export default function OccurrenceDetailScreen() {
                       borderBottomWidth: isOwner ? 0.5 : 0,
                       borderBottomColor: sep,
                     }}
+                    accessibilityLabel="Request swap"
+                    accessibilityRole="button"
                   >
                     <Text style={{ fontSize: 15, color: '#0a7ea4' }}>Request swap</Text>
                   </TouchableOpacity>
@@ -331,6 +333,8 @@ export default function OccurrenceDetailScreen() {
                   <TouchableOpacity
                     onPress={() => setShowOverrideModal(true)}
                     style={{ ...rowStyle, borderBottomWidth: 0 }}
+                    accessibilityLabel="Override assignment"
+                    accessibilityRole="button"
                   >
                     <Text style={{ fontSize: 15, color: '#FF3B30' }}>Override assignment</Text>
                   </TouchableOpacity>

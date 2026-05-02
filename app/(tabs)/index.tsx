@@ -4,6 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
+import { ErrorState } from '@/components/ui/error-state';
 import { useAuth } from '@/contexts/auth';
 import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
 import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
@@ -56,6 +57,8 @@ function ShiftCard({
         elevation: 2,
       }}
       onPress={onPress}
+      accessibilityLabel={`${item.rota.name}, ${item.isActive ? 'on now' : 'your turn upcoming'}`}
+      accessibilityRole="button"
     >
       <View style={{ height: 3, backgroundColor: barColor }} />
       <View style={{ padding: 16 }}>
@@ -114,6 +117,8 @@ function SwapInboxCard({
   return (
     <TouchableOpacity
       onPress={onPress}
+      accessibilityLabel={`Swap request from ${item.requester?.display_name ?? 'someone'} for ${(item.occurrence?.rota as any)?.name ?? 'a rota'}`}
+      accessibilityRole="button"
       style={{
         backgroundColor: card, borderRadius: 18, overflow: 'hidden', marginBottom: 10,
         shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
@@ -149,7 +154,7 @@ function SwapInboxCard({
 export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const { data, isLoading } = useHomeRotas();
+  const { data, isLoading, error, refetch } = useHomeRotas();
   const { data: pendingSwaps } = usePendingSwapsForMe();
   const scheme = useColorScheme();
 
@@ -212,6 +217,8 @@ export default function HomeScreen() {
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>
             <ActivityIndicator />
           </View>
+        ) : error ? (
+          <ErrorState message="Failed to load shifts." onRetry={refetch} textSec={textSec} />
         ) : !data || data.length === 0 ? (
           <View style={{
             backgroundColor: card, borderRadius: 18, padding: 24, alignItems: 'center',
@@ -227,6 +234,8 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={{ backgroundColor: '#0a7ea4', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 }}
               onPress={() => router.push('/(tabs)/rotas/new')}
+              accessibilityLabel="Create a shift"
+              accessibilityRole="button"
             >
               <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Create a shift</Text>
             </TouchableOpacity>

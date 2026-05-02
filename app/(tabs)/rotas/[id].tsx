@@ -17,6 +17,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 import { Pill } from '@/components/ui/pill';
 import { SectionHeader } from '@/components/ui/section-header';
+import { ErrorState } from '@/components/ui/error-state';
 import { useAuth } from '@/contexts/auth';
 import {
   useChangeMemberRole,
@@ -163,6 +164,8 @@ function OccurrenceListRow({
   return (
     <TouchableOpacity
       onPress={onPress}
+      accessibilityLabel={`${name}, ${startStr}`}
+      accessibilityRole="button"
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -257,10 +260,10 @@ function UpcomingSection({
           flexDirection: 'row', backgroundColor: card,
           borderRadius: 10, padding: 3,
         }}>
-          <TouchableOpacity style={toggleStyle(view === 'list')} onPress={() => setView('list')}>
+          <TouchableOpacity style={toggleStyle(view === 'list')} onPress={() => setView('list')} accessibilityLabel="List view" accessibilityRole="button">
             <Text style={toggleText(view === 'list')}>List</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={toggleStyle(view === 'calendar')} onPress={() => setView('calendar')}>
+          <TouchableOpacity style={toggleStyle(view === 'calendar')} onPress={() => setView('calendar')} accessibilityLabel="Calendar view" accessibilityRole="button">
             <Text style={toggleText(view === 'calendar')}>Calendar</Text>
           </TouchableOpacity>
         </View>
@@ -437,7 +440,7 @@ function MemberRow({
       </View>
       <Pill label={member.role} color={member.role === 'owner' ? 'teal' : 'gray'} />
       {isOwner && !isMe && (
-        <TouchableOpacity onPress={showActions} hitSlop={8} style={{ marginLeft: 10 }}>
+        <TouchableOpacity onPress={showActions} hitSlop={8} style={{ marginLeft: 10 }} accessibilityLabel={`Manage ${name}`} accessibilityRole="button">
           <Text style={{ color: '#AEAEB2', fontSize: 18 }}>⋯</Text>
         </TouchableOpacity>
       )}
@@ -593,6 +596,8 @@ function RemindersSection({
               <TouchableOpacity
                 onPress={() => handleDelete(r.id, r.lead_minutes)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={`Remove ${formatLeadMinutes(r.lead_minutes)} reminder`}
+                accessibilityRole="button"
               >
                 <Text style={{ fontSize: 20, color: '#FF3B30', lineHeight: 22 }}>−</Text>
               </TouchableOpacity>
@@ -608,6 +613,8 @@ function RemindersSection({
             }}
             onPress={handleAdd}
             disabled={addReminder.isPending}
+            accessibilityLabel="Add reminder"
+            accessibilityRole="button"
           >
             <Text style={{ fontSize: 15, color: '#0a7ea4', fontWeight: '500' }}>+ Add reminder</Text>
           </TouchableOpacity>
@@ -623,7 +630,7 @@ export default function RotaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
-  const { data: rota, isLoading, error } = useRota(id);
+  const { data: rota, isLoading, error, refetch } = useRota(id);
   const rotaNow = useRotaNow(id);
   const createInvite = useCreateInvite(id);
   const leaveRota = useLeaveRota();
@@ -698,8 +705,8 @@ export default function RotaDetailScreen() {
 
   if (error || !rota) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg, paddingHorizontal: 24 }}>
-        <Text style={{ color: '#FF3B30' }}>Failed to load shift.</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+        <ErrorState message="Failed to load shift." onRetry={refetch} />
       </View>
     );
   }
@@ -764,6 +771,8 @@ export default function RotaDetailScreen() {
                 }}
                 onPress={() => handleCreateInvite('member')}
                 disabled={createInvite.isPending}
+                accessibilityLabel="Invite member"
+                accessibilityRole="button"
               >
                 <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>+ Invite member</Text>
               </TouchableOpacity>
@@ -774,6 +783,8 @@ export default function RotaDetailScreen() {
                 }}
                 onPress={() => handleCreateInvite('viewer')}
                 disabled={createInvite.isPending}
+                accessibilityLabel="Invite viewer"
+                accessibilityRole="button"
               >
                 <Text style={{ color: '#0a7ea4', fontSize: 15, fontWeight: '600' }}>+ Viewer</Text>
               </TouchableOpacity>
@@ -821,6 +832,8 @@ export default function RotaDetailScreen() {
                 shadowRadius: 2, elevation: 2,
               }}
               onPress={handleLeave}
+              accessibilityLabel="Leave shift"
+              accessibilityRole="button"
             >
               <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 16 }}>Leave Shift</Text>
             </TouchableOpacity>

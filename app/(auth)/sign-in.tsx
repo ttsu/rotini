@@ -97,6 +97,8 @@ export default function SignInScreen() {
         className="bg-[#0a7ea4] rounded-xl py-3 mb-6 items-center"
         onPress={signInWithMagicLink}
         disabled={busy}
+        accessibilityLabel="Send magic link"
+        accessibilityRole="button"
       >
         <Text className="text-white font-semibold text-base">
           {loading === 'magic' ? 'Sending…' : 'Send magic link'}
@@ -123,6 +125,8 @@ export default function SignInScreen() {
         className="border border-gray-300 dark:border-gray-700 rounded-xl py-3 items-center"
         onPress={signInWithGoogle}
         disabled={busy}
+        accessibilityLabel="Continue with Google"
+        accessibilityRole="button"
       >
         <Text className="font-semibold text-base text-black dark:text-white">
           {loading === 'google' ? 'Opening…' : 'Continue with Google'}

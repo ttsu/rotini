@@ -124,6 +124,8 @@ export default function SettingsScreen() {
             onPress={() => {
               if (notifStatus !== 'granted') Linking.openSettings();
             }}
+            accessibilityLabel={`Notifications, ${notifStatus === 'granted' ? 'allowed' : 'tap to enable in Settings'}`}
+            accessibilityRole="button"
           >
             <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Notifications</Text>
             <Text style={{ fontSize: 15, color: notifStatus === 'granted' ? '#34C759' : '#FF9500', marginRight: 4 }}>
@@ -160,6 +162,8 @@ export default function SettingsScreen() {
             elevation: 2,
           }}
           onPress={handleSignOut}
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
         >
           <Text style={{ fontSize: 17, fontWeight: '600', color: '#FF3B30' }}>Sign out</Text>
         </TouchableOpacity>

@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, useColorSc
 
 import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
+import { ErrorState } from '@/components/ui/error-state';
 import { useRotas } from '@/features/rotas/hooks';
 
 function formatDuration(minutes: number | null): string {
@@ -18,7 +19,7 @@ function formatDuration(minutes: number | null): string {
 
 export default function RotasListScreen() {
   const router = useRouter();
-  const { data, isLoading, error } = useRotas();
+  const { data, isLoading, error, refetch } = useRotas();
   const scheme = useColorScheme();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
@@ -28,7 +29,12 @@ export default function RotasListScreen() {
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
 
   const PlusButton = () => (
-    <TouchableOpacity hitSlop={8} onPress={() => router.push('/(tabs)/rotas/new')}>
+    <TouchableOpacity
+      hitSlop={8}
+      onPress={() => router.push('/(tabs)/rotas/new')}
+      accessibilityLabel="Create new shift"
+      accessibilityRole="button"
+    >
       <Text style={{ fontSize: 28, fontWeight: '300', color: '#0a7ea4', lineHeight: 34 }}>+</Text>
     </TouchableOpacity>
   );
@@ -45,8 +51,8 @@ export default function RotasListScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: bg }}>
         <LargeTitle title="Shifts" right={<PlusButton />} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ color: '#FF3B30', textAlign: 'center' }}>Failed to load shifts.</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ErrorState message="Failed to load shifts." onRetry={refetch} textSec={textSec} />
         </View>
       </View>
     );
@@ -71,6 +77,8 @@ export default function RotasListScreen() {
               paddingVertical: 12,
             }}
             onPress={() => router.push('/(tabs)/rotas/new')}
+            accessibilityLabel="Create a shift"
+            accessibilityRole="button"
           >
             <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 16 }}>Create a shift</Text>
           </TouchableOpacity>
@@ -110,6 +118,8 @@ export default function RotasListScreen() {
               borderBottomColor: sep,
             }}
             onPress={() => router.push(`/(tabs)/rotas/${item.rota.id}` as any)}
+            accessibilityLabel={`${item.rota.name}, ${item.role}`}
+            accessibilityRole="button"
           >
             {/* Top row: status dot + name + role badge */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
