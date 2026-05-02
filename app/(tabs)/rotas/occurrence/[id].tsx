@@ -254,7 +254,7 @@ export default function OccurrenceDetailScreen() {
                 </Text>
                 {swapReq.message ? (
                   <Text style={{ fontSize: 14, color: '#fff', opacity: 0.9, marginBottom: 12 }}>
-                    "{swapReq.message}"
+                    {`"${swapReq.message}"`}
                   </Text>
                 ) : null}
                 <View style={{ flexDirection: 'row', gap: 8 }}>

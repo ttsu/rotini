@@ -16,14 +16,9 @@ import { usePushToken } from '@/features/notifications/usePushToken';
 import { useNotificationNavigation } from '@/features/notifications/useNotificationNavigation';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OfflineBanner } from '@/components/ui/offline-banner';
+import { initSentry } from '@/lib/sentry';
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  debug: false,
-  environment: __DEV__ ? 'development' : 'production',
-  tracesSampleRate: 0.2,
-  enabled: !__DEV__,
-});
+initSentry();
 
 const PERSIST_KEYS = new Set(['rotas', 'all-rotas-now', 'rota-now', 'occurrences']);
 
@@ -51,6 +46,18 @@ function AuthGate() {
   useNotificationNavigation(status === 'authenticated');
 
   useEffect(() => {
+    if (status !== 'authenticated' || !session?.user) {
+      Sentry.setUser(null);
+      return;
+    }
+
+    Sentry.setUser({
+      id: session.user.id,
+      email: session.user.email,
+    });
+  }, [status, session?.user]);
+
+  useEffect(() => {
     if (!navigationState?.key || status === 'loading') return;
 
     const inAuth = segments[0] === '(auth)';
@@ -68,7 +75,7 @@ function AuthGate() {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
@@ -102,3 +109,5 @@ export default function RootLayout() {
     </PersistQueryClientProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

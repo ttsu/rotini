@@ -141,7 +141,7 @@ function SwapInboxCard({
         ) : null}
         {item.message ? (
           <Text style={{ fontSize: 13, color: textSec, marginTop: 4, fontStyle: 'italic' }}>
-            "{item.message}"
+            {`"${item.message}"`}
           </Text>
         ) : null}
       </View>

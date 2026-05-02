@@ -12,7 +12,7 @@ export function OfflineBanner() {
       alignItems: 'center',
     }}>
       <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
-        You're offline — showing cached data
+        {"You're offline - showing cached data"}
       </Text>
     </View>
   );

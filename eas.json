@@ -1,36 +1,46 @@
 {
   "cli": {
     "version": ">= 14.0.0",
+    "appVersionSource": "remote",
     "promptToConfigurePushNotifications": false
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "development"
       }
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "preview"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production"
+      }
     }
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "tim.tsu@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
-      },
+      "ios": {},
       "android": {
-        "serviceAccountKeyPath": "./google-services-key.json",
         "track": "internal"
       }
     }

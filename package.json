@@ -11,6 +11,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
+    "build:production": "npx eas-cli build --platform all --profile production",
+    "submit:production": "npx eas-cli submit --platform all --profile production --latest",
     "db:types": "supabase gen types typescript --project-id hvruvvedzsnlwsotzwqg > lib/database.types.ts"
   },
   "dependencies": {
