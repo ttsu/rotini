@@ -58,7 +58,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 25. Notification tap → deep link
 
 ### Phase 6 — Polish & ship-ready
-- [ ] 26. Realtime subscriptions
+- [x] 26. Realtime subscriptions
 - [ ] 27. Offline read cache
 - [ ] 28. Empty states / errors / a11y
 - [ ] 29. EAS Build + TestFlight + Internal Test Track + Sentry

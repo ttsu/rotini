@@ -133,8 +133,33 @@ export function useHomeRotas() {
 
 export function useRotas() {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const key = ['rotas'] as const;
+
+  // Realtime: update list when user's memberships change
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    const channel = supabase
+      .channel('rotas-members')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'rota_members', filter: `user_id=eq.${userId}` },
+        () => queryClient.invalidateQueries({ queryKey: key })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user.id, queryClient]);
+
+  // Re-check on foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') queryClient.invalidateQueries({ queryKey: key });
+    });
+    return () => sub.remove();
+  }, [queryClient]);
+
   return useQuery({
-    queryKey: ['rotas'],
+    queryKey: key,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rota_members')
