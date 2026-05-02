@@ -50,12 +50,12 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 19. Owner override UI
 
 ### Phase 5 — Notifications
-- [ ] 20. Migration 0005 — `rota_reminders`, `push_tokens`, `notification_jobs`
-- [ ] 21. Push token registration
-- [ ] 22. Reminder configuration UI
-- [ ] 23. `enqueue-notifications` reconciler
-- [ ] 24. `dispatch-notifications` edge function + `pg_cron` minute job
-- [ ] 25. Notification tap → deep link
+- [x] 20. Migration 0005 — `rota_reminders`, `push_tokens`, `notification_jobs`
+- [x] 21. Push token registration
+- [x] 22. Reminder configuration UI
+- [x] 23. `enqueue-notifications` reconciler
+- [x] 24. `dispatch-notifications` edge function + `pg_cron` minute job
+- [x] 25. Notification tap → deep link
 
 ### Phase 6 — Polish & ship-ready
 - [ ] 26. Realtime subscriptions
