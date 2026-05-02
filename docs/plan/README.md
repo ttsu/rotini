@@ -45,9 +45,9 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 16. Home cards driven by `useRotaNow`
 
 ### Phase 4 — Swaps & overrides
-- [ ] 17. Migration 0004 — `swap_requests` + RPCs
-- [ ] 18. Swap UI
-- [ ] 19. Owner override UI
+- [x] 17. Migration 0004 — `swap_requests` + RPCs
+- [x] 18. Swap UI
+- [x] 19. Owner override UI
 
 ### Phase 5 — Notifications
 - [ ] 20. Migration 0005 — `rota_reminders`, `push_tokens`, `notification_jobs`
