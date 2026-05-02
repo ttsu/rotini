@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 import { LargeTitle } from '@/components/ui/large-title';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
+import { type ThemePreference, useAppPreferences } from '@/contexts/app-preferences';
 import { supabase } from '@/lib/supabase';
 import { usePushToken } from '@/features/notifications/usePushToken';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const THEME_OPTIONS: readonly { readonly value: ThemePreference; readonly label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
 
 function ProfileAvatar({ name }: { name: string | null }) {
   const initial = name ? name.charAt(0).toUpperCase() : '?';
@@ -33,6 +41,7 @@ function RowChevron() {
 
 export default function SettingsScreen() {
   const { session } = useAuth();
+  const { themePreference, setThemePreference } = useAppPreferences();
   const scheme = useColorScheme();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
@@ -133,6 +142,63 @@ export default function SettingsScreen() {
             </Text>
             {notifStatus !== 'granted' && <RowChevron />}
           </TouchableOpacity>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderBottomWidth: 0.5,
+              borderBottomColor: sep,
+            }}
+          >
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={{ fontSize: 17, color: textPrimary }}>Appearance</Text>
+              <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
+                Choose how Rotini looks
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                backgroundColor: scheme === 'dark' ? '#2C2C2E' : '#F2F2F7',
+                borderRadius: 10,
+                padding: 2,
+              }}
+            >
+              {THEME_OPTIONS.map((option) => {
+                const isSelected = themePreference === option.value;
+
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => {
+                      void setThemePreference(option.value);
+                    }}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      backgroundColor: isSelected ? card : 'transparent',
+                    }}
+                    accessibilityLabel={`${option.label} appearance`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <Text
+                      style={{
+                        color: isSelected ? textPrimary : textSec,
+                        fontSize: 13,
+                        fontWeight: isSelected ? '600' : '500',
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
           <TouchableOpacity
             style={{
               flexDirection: 'row',

@@ -1,5 +1,7 @@
 import React from 'react';
-import { Text, View, useColorScheme } from 'react-native';
+import { Text, View } from 'react-native';
+
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function LargeTitle({ title, right }: { title: string; right?: React.ReactNode }) {
   const scheme = useColorScheme();

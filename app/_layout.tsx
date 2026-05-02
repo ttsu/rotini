@@ -17,6 +17,7 @@ import { useNotificationNavigation } from '@/features/notifications/useNotificat
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { initSentry } from '@/lib/sentry';
+import { AppPreferencesProvider } from '@/contexts/app-preferences';
 
 initSentry();
 
@@ -75,9 +76,28 @@ function AuthGate() {
   return null;
 }
 
-function RootLayout() {
+function AppShell() {
   const colorScheme = useColorScheme();
 
+  return (
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <OfflineBanner />
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+          <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
+        </Stack>
+        <AuthGate />
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </AuthProvider>
+  );
+}
+
+function RootLayout() {
   return (
     <PersistQueryClientProvider
       client={queryClient}
@@ -92,20 +112,9 @@ function RootLayout() {
         },
       }}
     >
-      <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <OfflineBanner />
-          <Stack>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-            <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
-          </Stack>
-          <AuthGate />
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </AuthProvider>
+      <AppPreferencesProvider>
+        <AppShell />
+      </AppPreferencesProvider>
     </PersistQueryClientProvider>
   );
 }

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { ScrollView, Text, View, useColorScheme } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ITEM_H = 42;
 const VISIBLE = 5;

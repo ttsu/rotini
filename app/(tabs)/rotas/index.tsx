@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
 import { ErrorState } from '@/components/ui/error-state';
 import { useRotas } from '@/features/rotas/hooks';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function formatDuration(minutes: number | null): string {
   if (minutes === null) return '—';

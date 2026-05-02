@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { formatInTimeZone } from 'date-fns-tz';
 
 import { LargeTitle } from '@/components/ui/large-title';
@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useAuth } from '@/contexts/auth';
 import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
 import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

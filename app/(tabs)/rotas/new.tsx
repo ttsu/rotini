@@ -14,7 +14,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  useColorScheme,
 } from 'react-native';
 
 import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
@@ -22,6 +21,7 @@ import { useCreateRota } from '@/features/rotas/hooks';
 import { type CreateRotaValues, createRotaSchema } from '@/features/rotas/schemas';
 import { validateDuration } from '@/lib/rrule';
 import { DurationWheelPicker } from '@/components/ui/duration-wheel-picker';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 

@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator, Alert, Modal, ScrollView, Text,
-  TextInput, TouchableOpacity, View, useColorScheme,
+  TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
 import { useRota } from '@/features/rotas/hooks';
 import {

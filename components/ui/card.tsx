@@ -1,6 +1,8 @@
 import React from 'react';
-import { Pressable, StyleProp, View, ViewStyle, useColorScheme } from 'react-native';
+import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const SHADOW = {
   shadowColor: '#000',

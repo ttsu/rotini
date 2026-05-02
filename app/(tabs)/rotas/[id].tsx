@@ -10,7 +10,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useColorScheme,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -19,6 +18,7 @@ import { Pill } from '@/components/ui/pill';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState } from '@/components/ui/error-state';
 import { useAuth } from '@/contexts/auth';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   useChangeMemberRole,
   useCreateInvite,
