@@ -55,7 +55,7 @@ export function useHomeRotas() {
 
       // Map: first upcoming occurrence per rota
       const occByRota = new Map<string, typeof occurrencesRes.data[number]>();
-      for (const occ of occurrencesRes.data ?? []) {
+      for (const occ of (occurrencesRes.data ?? [])) {
         if (!occByRota.has(occ.rota_id)) occByRota.set(occ.rota_id, occ);
       }
 
@@ -91,7 +91,7 @@ export function useRotas() {
         .eq('user_id', session!.user.id)
         .order('joined_at', { ascending: false });
       if (error) throw error;
-      return data.filter((row) => row.rota !== null) as Array<{
+      return data.filter((row) => row.rota !== null) as {
         role: string;
         rota: {
           id: string;
@@ -102,7 +102,7 @@ export function useRotas() {
           assignment_mode: string;
           created_at: string;
         };
-      }>;
+      }[];
     },
     enabled: !!session,
   });

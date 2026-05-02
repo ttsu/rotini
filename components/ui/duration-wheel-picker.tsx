@@ -31,6 +31,8 @@ function WheelColumn({
   const scrollRef = useRef<ScrollView>(null);
   const pendingSnap = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isScrolling = useRef(false);
+  const initialSelected = useRef(selected);
+  const initialValues = useRef(values);
 
   const scrollToIndex = useCallback(
     (idx: number, animated = true) => {
@@ -40,12 +42,9 @@ function WheelColumn({
   );
 
   useEffect(() => {
-    const idx = values.indexOf(selected);
-    if (idx >= 0) {
-      // Defer to let ScrollView lay out first
-      setTimeout(() => scrollToIndex(idx, false), 0);
-    }
-  }, []);  // only on mount
+    const idx = initialValues.current.indexOf(initialSelected.current);
+    if (idx >= 0) setTimeout(() => scrollToIndex(idx, false), 0);
+  }, [scrollToIndex]);
 
   function handleScroll(y: number) {
     isScrolling.current = true;
