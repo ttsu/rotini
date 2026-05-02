@@ -4,7 +4,7 @@
 
 **Prerequisites:** Phases 0–5 (full feature surface).
 
-**Read alongside:** [`SPEC.md`](./SPEC.md) §Architecture decisions (Offline behaviour, Realtime).
+**Read alongside:** `[SPEC.md](./SPEC.md)` §Architecture decisions (Offline behaviour, Realtime).
 
 ---
 
@@ -57,8 +57,8 @@
 
 ## Done-when
 
-- [ ] All checkboxes 1–30 in `README.md` ticked.
-- [ ] An external beta tester can use the app for a week without contacting you.
-- [ ] App Store + Play Console listings ready for submission (binary uploaded; metadata pending only on visual assets if those are deferred).
-- [ ] No open severity-high issues from beta feedback.
-- [ ] Units 26–30 ticked; one commit per unit.
+- All checkboxes 1–30 in `README.md` ticked.
+- An external beta tester can use the app for a week without contacting you.
+- App Store + Play Console listings ready for submission (binary uploaded; metadata pending only on visual assets if those are deferred).
+- No open severity-high issues from beta feedback.
+- Units 26–30 ticked; one commit per unit.

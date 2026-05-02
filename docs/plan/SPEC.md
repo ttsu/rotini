@@ -42,7 +42,7 @@ Multi-user. Every member is an app user. Rotas shared via invite code (deep link
 MVP supports **round-robin only**. Fixed mode is out of scope and not exposed in the UI.
 
 - **Round-robin** — members are ordered (`position`); each newly-materialized occurrence is assigned to the next non-viewer member in sequence. The cursor (`rotas.cursor_user_id`) is persisted. Adding/removing members updates positions; in-flight assignments do not retroactively change.
-- **Fixed** _(post-MVP)_ — each generated occurrence carries an explicit assignee from a per-weekday/day-of-month mapping. The DB schema retains `fixed_default` and the `check` constraint for future use; the materializer and UI ignore it for now.
+- **Fixed** *(post-MVP)* — each generated occurrence carries an explicit assignee from a per-weekday/day-of-month mapping. The DB schema retains `fixed_default` and the `check` constraint for future use; the materializer and UI ignore it for now.
 
 Overrides don't disturb the rotation cursor.
 
@@ -60,18 +60,20 @@ Per-rota reminders, multiple lead times allowed. Push only in v1 via Expo Push. 
 
 ## Tech stack
 
-| Layer | Choice |
-| --- | --- |
-| App | Expo (managed) + React Native + TypeScript, latest SDK |
-| Navigation | Expo Router (file-based) — needed for notification deep links |
-| Server state | TanStack Query (with persistor for offline read cache) |
-| Forms | React Hook Form + Zod (Zod schemas reused on edge functions) |
-| UI | NativeWind (Tailwind for RN) + custom primitives |
-| Backend | Supabase: Postgres + Auth + Realtime + Edge Functions + `pg_cron` |
-| Auth | Email magic link + Apple Sign-In + Google Sign-In |
-| Push | Expo Push API |
-| Recurrence | `rrule.js` (works in client + Deno edge functions) |
-| Dates/TZ | `@js-temporal/polyfill` or `date-fns-tz` (no `moment`) |
+
+| Layer        | Choice                                                            |
+| ------------ | ----------------------------------------------------------------- |
+| App          | Expo (managed) + React Native + TypeScript, latest SDK            |
+| Navigation   | Expo Router (file-based) — needed for notification deep links     |
+| Server state | TanStack Query (with persistor for offline read cache)            |
+| Forms        | React Hook Form + Zod (Zod schemas reused on edge functions)      |
+| UI           | NativeWind (Tailwind for RN) + custom primitives                  |
+| Backend      | Supabase: Postgres + Auth + Realtime + Edge Functions + `pg_cron` |
+| Auth         | Email magic link + Apple Sign-In + Google Sign-In                 |
+| Push         | Expo Push API                                                     |
+| Recurrence   | `rrule.js` (works in client + Deno edge functions)                |
+| Dates/TZ     | `@js-temporal/polyfill` or `date-fns-tz` (no `moment`)            |
+
 
 ---
 
@@ -197,8 +199,9 @@ notification_jobs
 ### Active vs. upcoming derivation
 
 Clients render with the help of `v_rota_now`:
-- If `active_occurrence_id` is non-null → **"<assignee> is on now (until <ends_at>)"**.
-- Else → **"Up next: <assignee> at <scheduled_at>"**.
+
+- If `active_occurrence_id` is non-null → **"**** is on now (until ****)"**.
+- Else → **"Up next: **** at ****"**.
 
 A `useRotaNow(rotaId)` hook re-queries on realtime invalidation and schedules a single timer to re-query at the next boundary (the active occurrence's `ends_at`, or the upcoming's `scheduled_at`). Same view drives the Home screen across all the user's rotas.
 
@@ -226,7 +229,7 @@ A `useRotaNow(rotaId)` hook re-queries on realtime invalidation and schedules a 
 ## UX surface (key screens)
 
 1. **Auth** — magic link / Apple / Google. Post-auth onboarding: display name, optional avatar.
-2. **Home** — for each rota the user is in, a card showing either "<assignee> is on now" (countdown to `ends_at`) or "Up next: <assignee>" (countdown to start). Plus pending swap requests.
+2. **Home** — for each rota the user is in, a card showing either " is on now" (countdown to `ends_at`) or "Up next: " (countdown to start). Plus pending swap requests.
 3. **Rotas list** — all rotas you're in, each row showing the same active/upcoming summary in compact form.
 4. **Rota detail** — large status header (active or upcoming), upcoming list + month calendar with the active occurrence highlighted, members, reminders, settings.
 5. **Create / edit rota** — name, tz, recurrence (daily/weekly/monthly builder), occurrence duration (1h / 4h / 1 day / 1 week presets + custom; validated against recurrence interval), assignment mode, members (invite by link/email).
@@ -261,3 +264,4 @@ A `useRotaNow(rotaId)` hook re-queries on realtime invalidation and schedules a 
 - Mutation queue for full offline editing.
 - Overlapping occurrence windows.
 - Per-user reminder overrides on a rota default.
+

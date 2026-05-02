@@ -4,7 +4,7 @@
 
 **Prerequisites:** none.
 
-**Read alongside:** [`SPEC.md`](./SPEC.md) §Tech stack, §Data model (`profiles`).
+**Read alongside:** `[SPEC.md](./SPEC.md)` §Tech stack, §Data model (`profiles`).
 
 ---
 
@@ -15,7 +15,7 @@
 - `npx create-expo-app@latest .` with the **default (Expo Router)** template, TypeScript.
 - Add NativeWind (per current docs: `nativewind`, `tailwindcss`, Babel + Metro config), set up `tailwind.config.js`, smoke-test a `className` on a `View`.
 - ESLint (Expo's recommended config) + Prettier; integrate via a `lint` script.
-- Absolute imports via `tsconfig.json` `paths` (`@/*` → project root) and matching Babel `module-resolver` if needed.
+- Absolute imports via `tsconfig.json` `paths` (`@/`* → project root) and matching Babel `module-resolver` if needed.
 - Scripts: `typecheck` (`tsc --noEmit`), `lint`, `format`.
 - `.gitignore` for Expo + macOS + env files.
 - Confirm: `npm run typecheck && npm run lint` both pass on a fresh checkout.
@@ -49,8 +49,8 @@
 
 ## Done-when
 
-- [ ] Repo has a runnable Expo app with NativeWind + lint + typecheck + Expo Router.
-- [ ] Supabase project linked locally; `supabase db reset` recreates schema cleanly.
-- [ ] `lib/supabase.ts` exports a typed client; `lib/database.types.ts` is committed.
-- [ ] `0001_profiles.sql` is applied; trigger verified.
-- [ ] All three checkboxes ticked in `README.md`; one commit per unit.
+- Repo has a runnable Expo app with NativeWind + lint + typecheck + Expo Router.
+- Supabase project linked locally; `supabase db reset` recreates schema cleanly.
+- `lib/supabase.ts` exports a typed client; `lib/database.types.ts` is committed.
+- `0001_profiles.sql` is applied; trigger verified.
+- All three checkboxes ticked in `README.md`; one commit per unit.

@@ -4,7 +4,7 @@
 
 **Prerequisites:** Phase 4 (swaps + overrides emit reconcile signals).
 
-**Read alongside:** [`SPEC.md`](./SPEC.md) §Notifications, §Architecture decisions (Notification scheduling), §Data model (`rota_reminders`, `push_tokens`, `notification_jobs`).
+**Read alongside:** `[SPEC.md](./SPEC.md)` §Notifications, §Architecture decisions (Notification scheduling), §Data model (`rota_reminders`, `push_tokens`, `notification_jobs`).
 
 ---
 
@@ -76,8 +76,8 @@ Automated:
 
 ## Done-when
 
-- [ ] Reminders fire reliably on iOS + Android within ~30s of `fire_at`.
-- [ ] Reassignments (swap accept + override + reminder add/remove) reconcile correctly within one transaction.
-- [ ] Sign-out cleans up tokens; `DeviceNotRegistered` responses prune dead tokens.
-- [ ] Tap-to-open works from background and cold start.
-- [ ] Units 20–25 ticked in `README.md`; one commit per unit.
+- Reminders fire reliably on iOS + Android within ~30s of `fire_at`.
+- Reassignments (swap accept + override + reminder add/remove) reconcile correctly within one transaction.
+- Sign-out cleans up tokens; `DeviceNotRegistered` responses prune dead tokens.
+- Tap-to-open works from background and cold start.
+- Units 20–25 ticked in `README.md`; one commit per unit.
