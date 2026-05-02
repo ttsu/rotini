@@ -8,15 +8,18 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/contexts/auth';
+import { usePushToken } from '@/features/notifications/usePushToken';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const queryClient = new QueryClient();
 
 function AuthGate() {
-  const { status } = useAuth();
+  const { status, session } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
+
+  usePushToken(status === 'authenticated' ? session?.user.id : null);
 
   useEffect(() => {
     if (!navigationState?.key || status === 'loading') return;

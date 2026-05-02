@@ -31,6 +31,15 @@
       "expo-router",
       "expo-apple-authentication",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#0a7ea4",
+          "sounds": [],
+          "iosDisplayInForeground": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",

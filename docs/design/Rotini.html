@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rotini — Mobile Prototype</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111827;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .scene {
+      display: flex;
+      align-items: flex-start;
+      gap: 48px;
+    }
+    .label {
+      color: rgba(255,255,255,0.35);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+      margin-top: 20px;
+      font-weight: 500;
+    }
+    /* slide transitions */
+    .slide-enter { animation: slideIn 0.28s cubic-bezier(0.36, 0.66, 0.04, 1) forwards; }
+    .slide-exit  { animation: slideOut 0.28s cubic-bezier(0.36, 0.66, 0.04, 1) forwards; }
+    @keyframes slideIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    @keyframes slideOut { from { transform: translateX(0); } to { transform: translateX(-30%); opacity: 0; } }
+    .sheet-enter { animation: sheetIn 0.32s cubic-bezier(0.36, 0.66, 0.04, 1) forwards; }
+    @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    /* custom scrollbar */
+    ::-webkit-scrollbar { display: none; }
+    button { border: none; background: none; cursor: pointer; font: inherit; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+// ─── Design tokens ────────────────────────────────────────────
+const C = {
+  bg: '#F2F2F7',
+  card: '#FFFFFF',
+  accent: '#0a7ea4',
+  green: '#34C759',
+  amber: '#FF9F0A',
+  red: '#FF3B30',
+  text: '#000000',
+  textSec: '#636366',
+  textTer: '#AEAEB2',
+  border: 'rgba(60,60,67,0.12)',
+  sep: 'rgba(60,60,67,0.1)',
+};
+
+// ─── Mock data ────────────────────────────────────────────────
+const ME = { id: 'u1', name: 'Jordan' };
+
+const ROTAS = [
+  {
+    id: 'r1', name: 'Kitchen Duty',
+    description: 'Weekly kitchen clean-up',
+    tz: 'Europe/London', durationLabel: '4 hours', assignment: 'Round-robin',
+    status: 'active',
+    current: { assignee: ME, endsAt: '3:30 PM', endsIn: '2h 15m', isMe: true },
+    // My next turn (home screen shows only this)
+    myTurn: { isActive: true, label: 'Ends at 3:30 PM', countdown: '2h 15m', countdownLabel: 'remaining' },
+    myRole: 'owner',
+    members: [
+      { id: 'u1', name: 'Jordan', role: 'owner', pos: 1 },
+      { id: 'u2', name: 'Sam',    role: 'member', pos: 2 },
+      { id: 'u3', name: 'Alex',   role: 'member', pos: 3 },
+      { id: 'u4', name: 'Priya',  role: 'viewer', pos: null },
+    ],
+    occurrences: [
+      { id: 'o1', assignee: 'Jordan', date: 'Today',      time: '9:00 AM', endsAt: '3:30 PM',    isActive: true,  isMe: true  },
+      { id: 'o2', assignee: 'Sam',    date: 'Thu 8 May',  time: '9:00 AM', endsAt: '1:00 PM',    isActive: false, isMe: false },
+      { id: 'o3', assignee: 'Alex',   date: 'Thu 15 May', time: '9:00 AM', endsAt: '1:00 PM',    isActive: false, isMe: false },
+      { id: 'o4', assignee: 'Jordan', date: 'Thu 22 May', time: '9:00 AM', endsAt: '1:00 PM',    isActive: false, isMe: true  },
+    ],
+  },
+  {
+    id: 'r2', name: 'On-Call Engineering',
+    description: null,
+    tz: 'Europe/London', durationLabel: '1 week', assignment: 'Round-robin',
+    status: 'upcoming',
+    current: { assignee: { id: 'u3', name: 'Alex' }, startsAt: 'Thu 2 May, 9:00 AM', startsIn: '3d 5h', isMe: false },
+    myTurn: { isActive: false, label: 'Thu 9 May · 9:00 AM', countdown: '9d 5h', countdownLabel: 'to go' },
+    myRole: 'member',
+    members: [
+      { id: 'u3', name: 'Alex',   role: 'owner',  pos: 1 },
+      { id: 'u1', name: 'Jordan', role: 'member', pos: 2 },
+      { id: 'u5', name: 'Maya',   role: 'member', pos: 3 },
+    ],
+    occurrences: [
+      { id: 'o5', assignee: 'Alex',   date: 'Thu 2 May',  time: '9:00 AM', endsAt: 'Thu 9 May',  isActive: false, isMe: false },
+      { id: 'o6', assignee: 'Jordan', date: 'Thu 9 May',  time: '9:00 AM', endsAt: 'Thu 16 May', isActive: false, isMe: true  },
+      { id: 'o7', assignee: 'Maya',   date: 'Thu 16 May', time: '9:00 AM', endsAt: 'Thu 23 May', isActive: false, isMe: false },
+    ],
+  },
+  {
+    id: 'r3', name: 'Trash & Recycling',
+    description: 'Put bins out Wednesday evening',
+    tz: 'Europe/London', durationLabel: '1 day', assignment: 'Round-robin',
+    status: 'upcoming',
+    current: { assignee: ME, startsAt: 'Wed 1 May, 6:00 PM', startsIn: '1d 8h', isMe: true },
+    myTurn: { isActive: false, label: 'Wed 1 May · 6:00 PM', countdown: '1d 8h', countdownLabel: 'to go' },
+    myRole: 'owner',
+    members: [
+      { id: 'u1', name: 'Jordan', role: 'owner',  pos: 1 },
+      { id: 'u2', name: 'Sam',    role: 'member', pos: 2 },
+    ],
+    occurrences: [
+      { id: 'o8', assignee: 'Jordan', date: 'Wed 1 May', time: '6:00 PM', endsAt: 'Thu 2 May', isActive: false, isMe: true  },
+      { id: 'o9', assignee: 'Sam',    date: 'Wed 8 May', time: '6:00 PM', endsAt: 'Thu 9 May', isActive: false, isMe: false },
+    ],
+  },
+];
+
+const SWAP_REQUESTS = [
+  {
+    id: 'sw1', fromName: 'Sam', rotaId: 'r1', rotaName: 'Kitchen Duty',
+    occurrenceId: 'o2', date: 'Thu 8 May', time: '9:00 AM – 1:00 PM',
+    message: 'Going on holiday, can you cover?',
+  },
+];
+
+// ─── Shared primitives ────────────────────────────────────────
+function Pill({ label, color, dot }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      background: color + '18', borderRadius: 99,
+      padding: '3px 10px 3px 8px',
+    }}>
+      {dot && <div style={{ width: 7, height: 7, borderRadius: 99, background: color, flexShrink: 0 }} />}
+      <span style={{ fontSize: 12, fontWeight: 600, color, letterSpacing: 0.1 }}>{label}</span>
+    </div>
+  );
+}
+
+function NavBar({ title, onBack, right }) {
+  return (
+    <div style={{
+      background: C.card, borderBottom: `0.5px solid ${C.sep}`,
+      padding: '12px 16px 10px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      position: 'sticky', top: 0, zIndex: 10,
+    }}>
+      {onBack ? (
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.accent, fontSize: 17, padding: '4px 0' }}>
+          <svg width="10" height="17" viewBox="0 0 10 17" fill="none">
+            <path d="M9 1.5L1.5 8.5L9 15.5" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back
+        </button>
+      ) : <div style={{ width: 60 }} />}
+      <span style={{ fontSize: 17, fontWeight: 600, color: C.text }}>{title}</span>
+      <div style={{ width: 60, display: 'flex', justifyContent: 'flex-end' }}>{right}</div>
+    </div>
+  );
+}
+
+function LargeTitle({ title, right }) {
+  return (
+    <div style={{ padding: '16px 20px 8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <h1 style={{ fontSize: 32, fontWeight: 700, color: C.text, lineHeight: 1.1, letterSpacing: -0.5 }}>{title}</h1>
+      {right}
+    </div>
+  );
+}
+
+function SectionHeader({ label }) {
+  return (
+    <div style={{ padding: '20px 20px 6px', fontSize: 13, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      {label}
+    </div>
+  );
+}
+
+function Card({ children, style, onPress }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <div
+      onClick={onPress}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{
+        background: C.card, borderRadius: 18,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        transition: 'transform 0.1s, opacity 0.1s',
+        transform: pressed && onPress ? 'scale(0.97)' : 'scale(1)',
+        opacity: pressed && onPress ? 0.85 : 1,
+        cursor: onPress ? 'pointer' : 'default',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Btn({ label, color = C.accent, outline, onPress, small }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button
+      onClick={onPress}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{
+        background: outline ? 'transparent' : color,
+        border: outline ? `1.5px solid ${color}` : 'none',
+        borderRadius: 10, padding: small ? '7px 14px' : '12px 20px',
+        fontSize: small ? 14 : 16, fontWeight: 600,
+        color: outline ? color : '#fff',
+        transform: pressed ? 'scale(0.96)' : 'scale(1)',
+        transition: 'transform 0.1s',
+        cursor: 'pointer',
+      }}
+    >{label}</button>
+  );
+}
+
+// ─── Home Screen ──────────────────────────────────────────────
+function HomeScreen({ onOpenRota }) {
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      {/* Greeting */}
+      <div style={{ padding: '8px 20px 4px' }}>
+        <div style={{ fontSize: 13, color: C.textSec, fontWeight: 500 }}>Wednesday, 30 April</div>
+        <LargeTitle title="Good morning, Jordan" />
+      </div>
+
+      {/* Pending swap requests */}
+      {SWAP_REQUESTS.length > 0 && (
+        <>
+          <SectionHeader label="Awaiting your reply" />
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {SWAP_REQUESTS.map(sw => (
+              <Card key={sw.id} style={{ padding: 16, borderLeft: `4px solid ${C.amber}` }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.amber, marginBottom: 3 }}>Swap request · {sw.rotaName}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{sw.fromName} wants you to cover</div>
+                  <div style={{ fontSize: 13, color: C.textSec, marginTop: 1 }}>{sw.date} · {sw.time}</div>
+                  {sw.message && (
+                    <div style={{ fontSize: 13, color: C.textSec, marginTop: 6, fontStyle: 'italic' }}>"{sw.message}"</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <Btn label="Decline" outline color={C.red} small />
+                  <Btn label="Accept" color={C.amber} small />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Shift cards — only my turns */}
+      <SectionHeader label="Your shifts" />
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {ROTAS.map(rota => {
+          const t = rota.myTurn;
+          const statusColor = t.isActive ? C.green : C.accent;
+          return (
+            <Card key={rota.id} onPress={() => onOpenRota(rota.id)} style={{ overflow: 'hidden' }}>
+              <div style={{ height: 3, background: statusColor, borderRadius: '18px 18px 0 0' }} />
+              <div style={{ padding: '14px 16px 16px' }}>
+                {/* Top row: name + pill */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{rota.name}</span>
+                  <Pill label={t.isActive ? 'On now' : 'Your turn'} color={statusColor} dot={t.isActive} />
+                </div>
+                {/* Bottom row: time label + countdown */}
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>
+                    {t.label}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: statusColor, letterSpacing: -0.5 }}>
+                      {t.countdown}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textTer, marginTop: 1 }}>{t.countdownLabel}</div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Rotas Screen ─────────────────────────────────────────────
+function RotasScreen({ onOpenRota, onNew }) {
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      <div style={{ padding: '8px 0 0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 20px 0' }}>
+          <LargeTitle title="Shifts" />
+          <button onClick={onNew} style={{ color: C.accent, fontSize: 28, fontWeight: 300, paddingBottom: 6, lineHeight: 1 }}>+</button>
+        </div>
+      </div>
+
+      <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ background: C.card, borderRadius: 18, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          {ROTAS.map((rota, i) => {
+            const isActive = rota.status === 'active';
+            const c = rota.current;
+            const statusColor = isActive ? C.green : C.accent;
+            return (
+              <div
+                key={rota.id}
+                onClick={() => onOpenRota(rota.id)}
+                style={{
+                  padding: '14px 16px',
+                  borderBottom: i < ROTAS.length - 1 ? `0.5px solid ${C.sep}` : 'none',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 14,
+                }}
+              >
+                {/* Status dot */}
+                <div style={{
+                  width: 10, height: 10, borderRadius: 99,
+                  background: statusColor, flexShrink: 0,
+                  boxShadow: isActive ? `0 0 0 3px ${C.green}30` : 'none',
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{rota.name}</span>
+                    <span style={{
+                      fontSize: 11, color: C.textTer,
+                      border: `1px solid ${C.border}`, borderRadius: 4,
+                      padding: '1px 5px', fontWeight: 500, textTransform: 'capitalize',
+                    }}>{rota.myRole}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: C.textSec }}>
+                    {isActive
+                      ? `${c.isMe ? 'You' : c.assignee.name} on now · ends at ${c.endsAt}`
+                      : `Up next: ${c.isMe ? 'You' : c.assignee.name} · ${c.startsIn}`}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textTer, marginTop: 2 }}>
+                    {rota.durationLabel} · {rota.assignment}
+                  </div>
+                </div>
+                <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+                  <path d="M1 1.5L6.5 7L1 12.5" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Rota Detail Screen ───────────────────────────────────────
+function RotaDetailScreen({ rotaId, onBack, onViewOccurrence }) {
+  const rota = ROTAS.find(r => r.id === rotaId);
+  if (!rota) return null;
+  const isActive = rota.status === 'active';
+  const c = rota.current;
+  const statusColor = isActive ? C.green : C.accent;
+
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <NavBar title={rota.name} onBack={onBack} right={
+        rota.myRole === 'owner' &&
+        <button style={{ color: C.accent, fontSize: 14, fontWeight: 600 }}>Edit</button>
+      } />
+
+      {/* Status banner */}
+      <div style={{
+        margin: 16, borderRadius: 20, overflow: 'hidden',
+        background: `linear-gradient(135deg, ${statusColor}22 0%, ${statusColor}10 100%)`,
+        border: `1px solid ${statusColor}30`,
+        padding: 20,
+      }}>
+        <div style={{ marginBottom: 8 }}>
+          <Pill label={isActive ? 'On now' : 'Up next'} color={statusColor} dot={isActive} />
+        </div>
+        <div style={{ fontSize: 30, fontWeight: 700, color: C.text, letterSpacing: -0.5, marginBottom: 4 }}>
+          {c.isMe ? 'You' : c.assignee.name}
+        </div>
+        <div style={{ fontSize: 14, color: C.textSec, marginBottom: 14 }}>
+          {isActive
+            ? `On now · ends at ${c.endsAt}`
+            : `Starts ${c.startsAt}`}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{ fontSize: 36, fontWeight: 700, color: statusColor, letterSpacing: -1 }}>
+            {isActive ? c.endsIn : c.startsIn}
+          </div>
+          <div style={{ fontSize: 13, color: C.textTer }}>{isActive ? 'remaining' : 'to go'}</div>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div style={{ padding: '0 16px', marginBottom: 16 }}>
+        <div style={{ background: C.card, borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          {[
+            { label: 'Duration', value: rota.durationLabel },
+            { label: 'Assignment', value: rota.assignment },
+          ].map((row, i, arr) => (
+            <div key={row.label} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 16px',
+              borderBottom: i < arr.length - 1 ? `0.5px solid ${C.sep}` : 'none',
+            }}>
+              <span style={{ fontSize: 14, color: C.textSec }}>{row.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upcoming occurrences */}
+      <SectionHeader label="Schedule" />
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        {rota.occurrences.map(occ => (
+          <div
+            key={occ.id}
+            onClick={() => onViewOccurrence(rota.id, occ.id)}
+            style={{
+              background: C.card, borderRadius: 14,
+              padding: '12px 16px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 12,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              border: occ.isActive ? `1.5px solid ${C.green}` : `1px solid transparent`,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 3 }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: occ.isMe ? C.accent : C.text }}>
+                  {occ.isMe ? 'You' : occ.assignee}
+                </span>
+                {occ.isActive && <Pill label="Active" color={C.green} dot />}
+              </div>
+              <div style={{ fontSize: 13, color: C.textSec }}>{occ.date} · {occ.time} – {occ.endsAt}</div>
+            </div>
+            <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+              <path d="M1 1.5L6.5 7L1 12.5" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        ))}
+      </div>
+
+      {/* Members */}
+      <SectionHeader label={`Members (${rota.members.length})`} />
+      <div style={{ padding: '0 16px', marginBottom: 16 }}>
+        <div style={{ background: C.card, borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          {rota.members.map((m, i) => (
+            <div key={m.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '13px 16px',
+              borderBottom: i < rota.members.length - 1 ? `0.5px solid ${C.sep}` : 'none',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Avatar */}
+                <div style={{
+                  width: 34, height: 34, borderRadius: 99,
+                  background: m.id === 'u1' ? C.accent : C.textTer + '44',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 700,
+                  color: m.id === 'u1' ? '#fff' : C.textSec,
+                }}>
+                  {m.name[0]}
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: C.text }}>
+                    {m.name}{m.id === 'u1' ? ' (you)' : ''}
+                  </div>
+                  {m.pos !== null && <div style={{ fontSize: 12, color: C.textTer }}>Position {m.pos}</div>}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 12, color: C.textTer, textTransform: 'capitalize',
+                border: `1px solid ${C.border}`, borderRadius: 5, padding: '2px 7px', fontWeight: 500,
+              }}>{m.role}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Owner actions */}
+      {rota.myRole === 'owner' && (
+        <div style={{ padding: '0 16px', display: 'flex', gap: 10 }}>
+          <Btn label="+ Invite member" color={C.accent} small />
+          <Btn label="+ Viewer" outline color={C.accent} small />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Occurrence Detail Screen ──────────────────────────────────
+function OccurrenceDetailScreen({ rotaId, occurrenceId, onBack, onSwap }) {
+  const rota = ROTAS.find(r => r.id === rotaId);
+  const occ = rota?.occurrences.find(o => o.id === occurrenceId);
+  if (!rota || !occ) return null;
+
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <NavBar title="Occurrence" onBack={onBack} />
+
+      {/* Status card */}
+      <div style={{ padding: 16 }}>
+        <div style={{
+          background: occ.isActive
+            ? `linear-gradient(135deg, ${C.green}20, ${C.green}08)`
+            : `linear-gradient(135deg, ${C.accent}15, ${C.accent}05)`,
+          border: `1px solid ${occ.isActive ? C.green : C.accent}30`,
+          borderRadius: 20, padding: 20,
+        }}>
+          <div style={{ marginBottom: 10 }}>
+            <Pill label={occ.isActive ? 'Active now' : 'Scheduled'} color={occ.isActive ? C.green : C.textTer} dot={occ.isActive} />
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+            {occ.isMe ? 'Your turn' : `${occ.assignee}'s turn`}
+          </div>
+          <div style={{ fontSize: 14, color: C.textSec }}>
+            {occ.date} · {occ.time} – {occ.endsAt}
+          </div>
+          {occ.isActive && (
+            <div style={{ marginTop: 14, fontSize: 32, fontWeight: 700, color: C.green, letterSpacing: -0.8 }}>
+              2h 15m <span style={{ fontSize: 14, fontWeight: 400, color: C.textSec }}>remaining</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Rota context */}
+      <div style={{ padding: '0 16px', marginBottom: 16 }}>
+        <div style={{ background: C.card, borderRadius: 16, padding: '14px 16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: 13, color: C.textTer, marginBottom: 4 }}>Shift</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{rota.name}</div>
+          <div style={{ fontSize: 13, color: C.textSec, marginTop: 2 }}>{rota.durationLabel}</div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <SectionHeader label="Actions" />
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {occ.isMe && (
+          <>
+            <button
+              onClick={onSwap}
+              style={{
+                background: C.card, border: 'none', borderRadius: 16,
+                padding: '16px 20px', cursor: 'pointer', textAlign: 'left', width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: C.text }}>Request a swap</div>
+                <div style={{ fontSize: 13, color: C.textSec, marginTop: 2 }}>Ask a member to take this occurrence</div>
+              </div>
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+                <path d="M1 1.5L6.5 7L1 12.5" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {occ.isActive && (
+              <button style={{
+                background: C.green + '15', border: `1.5px solid ${C.green}40`,
+                borderRadius: 16, padding: '16px 20px', cursor: 'pointer', textAlign: 'left', width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: C.green }}>Mark as done</div>
+                  <div style={{ fontSize: 13, color: C.textSec, marginTop: 2 }}>Record this occurrence as complete</div>
+                </div>
+              </button>
+            )}
+          </>
+        )}
+        {rota.myRole === 'owner' && !occ.isMe && (
+          <button style={{
+            background: C.card, border: 'none', borderRadius: 16,
+            padding: '16px 20px', cursor: 'pointer', textAlign: 'left', width: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: C.amber }}>Override assignment</div>
+              <div style={{ fontSize: 13, color: C.textSec, marginTop: 2 }}>Reassign this occurrence to someone else</div>
+            </div>
+            <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+              <path d="M1 1.5L6.5 7L1 12.5" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Swap Request Sheet ───────────────────────────────────────
+function SwapSheet({ rotaId, occurrenceId, onClose }) {
+  const rota = ROTAS.find(r => r.id === rotaId);
+  const occ = rota?.occurrences.find(o => o.id === occurrenceId);
+  const [selected, setSelected] = useState(null);
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState(false);
+  const targets = rota?.members.filter(m => m.role !== 'viewer' && m.id !== 'u1') ?? [];
+
+  if (sent) {
+    return (
+      <div style={{ padding: '32px 24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: 99, background: C.green + '20',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+        }}>
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M5 14l7 7L23 7" stroke={C.green} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>Request sent</div>
+        <div style={{ fontSize: 14, color: C.textSec, textAlign: 'center' }}>
+          {targets.find(t => t.id === selected)?.name} will be notified and can accept or decline.
+        </div>
+        <Btn label="Done" color={C.accent} onPress={onClose} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '24px 20px 48px' }}>
+      {/* Handle */}
+      <div style={{ width: 36, height: 4, background: C.border, borderRadius: 99, margin: '0 auto 20px' }} />
+      <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>Request a swap</div>
+      <div style={{ fontSize: 14, color: C.textSec, marginBottom: 20 }}>
+        {rota?.name} · {occ?.date}, {occ?.time}
+      </div>
+
+      <div style={{ fontSize: 13, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+        Ask
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {targets.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setSelected(t.id)}
+            style={{
+              padding: '10px 18px', borderRadius: 99, fontWeight: 600, fontSize: 15,
+              background: selected === t.id ? C.accent : C.card,
+              color: selected === t.id ? '#fff' : C.text,
+              border: selected === t.id ? 'none' : `1.5px solid ${C.border}`,
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+          >{t.name}</button>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 13, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+        Message (optional)
+      </div>
+      <textarea
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        placeholder="e.g. Away on a trip, can you cover?"
+        style={{
+          width: '100%', borderRadius: 12, border: `1.5px solid ${C.border}`,
+          padding: '12px 14px', fontSize: 15, color: C.text, background: C.card,
+          resize: 'none', height: 80, outline: 'none', marginBottom: 20,
+          fontFamily: '-apple-system, system-ui',
+        }}
+      />
+
+      <Btn
+        label="Send request"
+        color={selected ? C.accent : C.textTer}
+        onPress={() => selected && setSent(true)}
+        style={{ width: '100%' }}
+      />
+    </div>
+  );
+}
+
+// ─── Settings Screen ──────────────────────────────────────────
+function SettingsScreen() {
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      <div style={{ padding: '8px 0 0' }}>
+        <LargeTitle title="Settings" />
+      </div>
+
+      {/* Profile */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <Card style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: 99, background: C.accent,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22, fontWeight: 700, color: '#fff',
+            }}>J</div>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: C.text }}>Jordan</div>
+              <div style={{ fontSize: 14, color: C.textSec }}>jordan@example.com</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <SectionHeader label="Preferences" />
+      <div style={{ padding: '0 16px', marginBottom: 16 }}>
+        <div style={{ background: C.card, borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          {['Notifications', 'Default time zone'].map((label, i, arr) => (
+            <div key={label} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 16px',
+              borderBottom: i < arr.length - 1 ? `0.5px solid ${C.sep}` : 'none',
+            }}>
+              <span style={{ fontSize: 16, color: C.text }}>{label}</span>
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+                <path d="M1 1.5L6.5 7L1 12.5" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: '0 16px' }}>
+        <button style={{
+          width: '100%', padding: '14px', background: C.card, borderRadius: 16,
+          fontSize: 16, fontWeight: 600, color: C.red, border: 'none', cursor: 'pointer',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}>Sign out</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Create Shift Flow ────────────────────────────────────────
+
+const DURATION_PRESETS = [
+  { label: '1 hour',  minutes: 60 },
+  { label: '4 hours', minutes: 240 },
+  { label: '1 day',   minutes: 1440 },
+  { label: '1 week',  minutes: 10080 },
+];
+
+const DAYS = ['M','T','W','T','F','S','S'];
+const DAY_KEYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+// ─── Occurrence date calculator ───────────────────────────────
+function getNextOccurrences(rec, count) {
+  const dayMap = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
+  const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const today = new Date(2026, 3, 30); // Apr 30 2026
+  const results = [];
+
+  if (rec.type === 'weekly') {
+    const targets = rec.days.map(d => dayMap[d]);
+    const d = new Date(today); d.setDate(d.getDate() + 1);
+    let streak = 0;
+    while (results.length < count && streak < 400) {
+      if (targets.includes(d.getDay())) {
+        results.push(`${DN[d.getDay()]} ${d.getDate()} ${MN[d.getMonth()]}`);
+        d.setDate(d.getDate() + rec.interval * 7);
+      } else { d.setDate(d.getDate() + 1); }
+      streak++;
+    }
+  } else if (rec.type === 'daily') {
+    const d = new Date(today); d.setDate(d.getDate() + 1);
+    for (let i = 0; i < count; i++) {
+      results.push(`${DN[d.getDay()]} ${d.getDate()} ${MN[d.getMonth()]}`);
+      d.setDate(d.getDate() + rec.interval);
+    }
+  } else {
+    const d = new Date(today);
+    for (let i = 0; i < count; i++) {
+      d.setMonth(d.getMonth() + 1); d.setDate(rec.monthDay ?? 1);
+      results.push(`${d.getDate()} ${MN[d.getMonth()]}`);
+    }
+  }
+  return results;
+}
+
+// ─── Scroll-wheel duration picker ─────────────────────────────
+function WheelColumn({ values, selected, onChange, formatFn }) {
+  const ref = useRef(null);
+  const ITEM_H = 42;
+  const timer = useRef(null);
+  const fmt = formatFn || (v => String(v).padStart(2, '0'));
+
+  useEffect(() => {
+    const idx = values.indexOf(selected);
+    if (ref.current && idx >= 0) ref.current.scrollTop = idx * ITEM_H;
+  }, []);  // only on mount
+
+  const handleScroll = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (!ref.current) return;
+      const newIdx = Math.round(ref.current.scrollTop / ITEM_H);
+      const clamped = Math.max(0, Math.min(values.length - 1, newIdx));
+      ref.current.scrollTop = clamped * ITEM_H;
+      if (values[clamped] !== selected) onChange(values[clamped]);
+    }, 80);
+  };
+
+  return (
+    <div style={{ position: 'relative', width: 80, height: ITEM_H * 5, overflow: 'hidden', flexShrink: 0 }}>
+      {/* selection highlight */}
+      <div style={{
+        position: 'absolute', top: ITEM_H * 2, left: 6, right: 6, height: ITEM_H,
+        background: C.bg, borderRadius: 10,
+        borderTop: `0.5px solid ${C.border}`, borderBottom: `0.5px solid ${C.border}`,
+        pointerEvents: 'none', zIndex: 2,
+      }} />
+      <div
+        ref={ref}
+        onScroll={handleScroll}
+        style={{
+          height: '100%', overflowY: 'scroll', scrollbarWidth: 'none',
+          paddingTop: ITEM_H * 2, paddingBottom: ITEM_H * 2,
+        }}
+      >
+        {values.map(v => (
+          <div key={v} style={{ height: ITEM_H, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            onClick={() => { const i = values.indexOf(v); if (ref.current) ref.current.scrollTop = i * ITEM_H; onChange(v); }}>
+            <span style={{ fontSize: 20, fontWeight: v === selected ? 600 : 400, color: v === selected ? C.text : C.textTer, transition: 'color 0.1s, font-weight 0.1s' }}>{fmt(v)}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: ITEM_H * 2, background: `linear-gradient(to bottom, ${C.card} 20%, transparent)`, pointerEvents: 'none', zIndex: 3 }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: ITEM_H * 2, background: `linear-gradient(to top, ${C.card} 20%, transparent)`, pointerEvents: 'none', zIndex: 3 }} />
+    </div>
+  );
+}
+
+function DurationWheelPicker({ value, onChange }) {
+  const d = Math.floor(value / 1440);
+  const h = Math.floor((value % 1440) / 60);
+  const m = value % 60;
+  const dayVals  = Array.from({ length: 31 }, (_, i) => i);
+  const hourVals = Array.from({ length: 24 }, (_, i) => i);
+  const minVals  = [0, 15, 30, 45];
+
+  return (
+    <div style={{ background: C.card, borderRadius: 16, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ position: 'relative' }}>
+        {/* column labels */}
+        <div style={{ display: 'flex', gap: 0 }}>
+          {[['Days', 80], ['Hours', 80], ['Mins', 80]].map(([lbl, w]) => (
+            <div key={lbl} style={{ width: w, fontSize: 11, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center', paddingTop: 10, paddingBottom: 2 }}>{lbl}</div>
+          ))}
+        </div>
+        <div style={{ display: 'flex' }}>
+          <WheelColumn values={dayVals}  selected={d} onChange={v => onChange(v * 1440 + h * 60 + m)} formatFn={v => String(v)} />
+          <WheelColumn values={hourVals} selected={h} onChange={v => onChange(d * 1440 + v * 60 + m)} formatFn={v => String(v)} />
+          <WheelColumn values={minVals}  selected={m} onChange={v => onChange(d * 1440 + h * 60 + v)} formatFn={v => String(v).padStart(2, '0')} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function rruleDescription({ type, days, interval, monthDay, monthMode }) {
+  if (type === 'daily') return interval === 1 ? 'Every day' : `Every ${interval} days`;
+  if (type === 'weekly') {
+    const names = { Mon:'Mon',Tue:'Tue',Wed:'Wed',Thu:'Thu',Fri:'Fri',Sat:'Sat',Sun:'Sun' };
+    const dayStr = days.map(d => names[d]).join(', ');
+    return interval === 1 ? `Every ${dayStr}` : `Every ${interval} weeks on ${dayStr}`;
+  }
+  if (type === 'monthly') {
+    if (monthMode === 'date') return `Monthly on the ${monthDay}${ordinal(monthDay)}`;
+    return `Monthly on the first Thursday`;
+  }
+  return '';
+}
+function ordinal(n) { const s=['th','st','nd','rd']; const v=n%100; return s[(v-20)%10]||s[v]||s[0]; }
+
+function Stepper({ value, onChange, min = 1, max = 52 }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <button
+        onClick={() => onChange(Math.max(min, value - 1))}
+        style={{
+          width: 36, height: 36, borderRadius: 99, background: C.bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontWeight: 300, color: value <= min ? C.textTer : C.accent,
+          cursor: value <= min ? 'default' : 'pointer',
+        }}
+      >−</button>
+      <span style={{ fontSize: 20, fontWeight: 600, color: C.text, minWidth: 24, textAlign: 'center' }}>{value}</span>
+      <button
+        onClick={() => onChange(Math.min(max, value + 1))}
+        style={{
+          width: 36, height: 36, borderRadius: 99, background: C.bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontWeight: 300, color: value >= max ? C.textTer : C.accent,
+          cursor: value >= max ? 'default' : 'pointer',
+        }}
+      >+</button>
+    </div>
+  );
+}
+
+function RecurrenceBuilder({ rec, setRec, onBack }) {
+  const desc = rruleDescription(rec);
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <NavBar title="Schedule" onBack={onBack} />
+
+      {/* Type segmented control */}
+      <div style={{ margin: '16px 16px 0', background: C.bg, borderRadius: 12, padding: 3, display: 'flex', gap: 2 }}>
+        {['daily','weekly','monthly'].map(t => (
+          <button key={t} onClick={() => setRec(r => ({ ...r, type: t }))}
+            style={{
+              flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: rec.type === t ? C.card : 'transparent',
+              boxShadow: rec.type === t ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+              fontSize: 14, fontWeight: 600,
+              color: rec.type === t ? C.text : C.textSec,
+              transition: 'all 0.15s',
+              textTransform: 'capitalize',
+            }}>{t}</button>
+        ))}
+      </div>
+
+      <div style={{ padding: '24px 16px 0' }}>
+        {rec.type === 'weekly' && (
+          <>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>Repeat on</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
+              {DAYS.map((d, i) => {
+                const key = DAY_KEYS[i];
+                const active = rec.days.includes(key);
+                return (
+                  <button key={key + i} onClick={() => setRec(r => ({
+                    ...r,
+                    days: active && r.days.length > 1 ? r.days.filter(x => x !== key) : active ? r.days : [...r.days, key],
+                  }))}
+                    style={{
+                      width: 40, height: 40, borderRadius: 99, border: 'none', cursor: 'pointer',
+                      background: active ? C.accent : C.bg,
+                      color: active ? '#fff' : C.textSec,
+                      fontSize: 13, fontWeight: 700,
+                      transition: 'all 0.12s',
+                    }}
+                  >{d}</button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: C.text }}>Repeat every</div>
+                <div style={{ fontSize: 13, color: C.textSec }}>weeks</div>
+              </div>
+              <Stepper value={rec.interval} onChange={v => setRec(r => ({ ...r, interval: v }))} />
+            </div>
+          </>
+        )}
+
+        {rec.type === 'daily' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 500, color: C.text }}>Repeat every</div>
+              <div style={{ fontSize: 13, color: C.textSec }}>days</div>
+            </div>
+            <Stepper value={rec.interval} onChange={v => setRec(r => ({ ...r, interval: v }))} max={30} />
+          </div>
+        )}
+
+        {rec.type === 'monthly' && (
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              {[['date', 'Day of month'], ['weekday', 'Day of week']].map(([val, label]) => (
+                <button key={val} onClick={() => setRec(r => ({ ...r, monthMode: val }))}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 12, border: `1.5px solid ${rec.monthMode === val ? C.accent : C.border}`,
+                    background: rec.monthMode === val ? C.accent + '15' : C.card,
+                    color: rec.monthMode === val ? C.accent : C.textSec,
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >{label}</button>
+              ))}
+            </div>
+            {rec.monthMode === 'date' ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 16, fontWeight: 500, color: C.text }}>Day of month</div>
+                <Stepper value={rec.monthDay ?? 1} onChange={v => setRec(r => ({ ...r, monthDay: v }))} max={28} />
+              </div>
+            ) : (
+              <div style={{ background: C.bg, borderRadius: 14, padding: '14px 16px' }}>
+                <div style={{ fontSize: 15, color: C.textSec }}>The <strong style={{ color: C.text }}>first Thursday</strong> of each month</div>
+                <div style={{ fontSize: 12, color: C.textTer, marginTop: 4 }}>Full day-of-week picker coming soon</div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Preview */}
+        <div style={{
+          marginTop: 32, background: C.accent + '12', borderRadius: 14,
+          padding: '14px 16px', borderLeft: `3px solid ${C.accent}`,
+        }}>
+          <div style={{ fontSize: 12, color: C.textTer, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>Preview</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: C.accent }}>{desc}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DurationChip({ label, active, onPress }) {
+  return (
+    <button onClick={onPress} style={{
+      padding: '8px 14px', borderRadius: 99,
+      background: active ? C.accent : C.card,
+      border: `1.5px solid ${active ? C.accent : C.border}`,
+      color: active ? '#fff' : C.text,
+      fontSize: 14, fontWeight: 600, cursor: 'pointer',
+      transition: 'all 0.12s',
+    }}>{label}</button>
+  );
+}
+
+function CreateShiftBasics({ form, setForm, onCancel, onSchedule, onNext }) {
+  const recDesc = rruleDescription(form.rec);
+  const durationLabel = DURATION_PRESETS.find(p => p.minutes === form.duration)?.label ?? `${form.duration}m`;
+  const canNext = form.name.trim().length > 0;
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <NavBar
+        title="New Shift"
+        onBack={onCancel}
+        right={
+          <button onClick={onNext} style={{
+            color: canNext ? C.accent : C.textTer,
+            fontSize: 16, fontWeight: 600,
+            cursor: canNext ? 'pointer' : 'default',
+          }}>Next</button>
+        }
+      />
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* Name */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Name</div>
+          <input
+            autoFocus
+            placeholder="e.g. Kitchen cleaning"
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            style={{
+              width: '100%', fontSize: 17, fontWeight: 500, color: C.text,
+              border: 'none', borderBottom: `1.5px solid ${C.border}`,
+              padding: '8px 0', outline: 'none', background: 'transparent',
+              fontFamily: '-apple-system, system-ui',
+            }}
+          />
+          {form.name.length === 0 && <div style={{ fontSize: 12, color: C.red, marginTop: 4, opacity: 0 }}>Required</div>}
+        </div>
+
+        {/* Description */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— optional</span></div>
+          <textarea
+            placeholder="What does this shift involve?"
+            value={form.description}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            style={{
+              width: '100%', fontSize: 15, color: C.text, resize: 'none', height: 60,
+              border: 'none', borderBottom: `1.5px solid ${C.border}`,
+              padding: '8px 0', outline: 'none', background: 'transparent',
+              fontFamily: '-apple-system, system-ui',
+            }}
+          />
+        </div>
+
+        {/* Schedule row — taps into builder */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Schedule</div>
+          <button onClick={onSchedule} style={{
+            width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+            padding: '14px 16px', cursor: 'pointer', textAlign: 'left',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{recDesc}</div>
+              <div style={{ fontSize: 13, color: C.textSec, marginTop: 2 }}>Tap to change</div>
+            </div>
+            <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+              <path d="M1 1.5L6.5 7L1 12.5" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Duration */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Duration per turn</div>
+
+          {/* Back to back toggle */}
+          <button
+            onClick={() => setForm(f => ({ ...f, backToBack: !f.backToBack }))}
+            style={{
+              width: '100%', background: form.backToBack ? C.accent + '15' : C.card,
+              border: `1.5px solid ${form.backToBack ? C.accent : C.border}`,
+              borderRadius: 14, padding: '13px 16px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 12, transition: 'all 0.15s',
+            }}
+          >
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: form.backToBack ? C.accent : C.text }}>Back to back</div>
+              <div style={{ fontSize: 13, color: C.textSec, marginTop: 2 }}>Shift lasts until the next one starts</div>
+            </div>
+            {/* Toggle pill */}
+            <div style={{
+              width: 44, height: 26, borderRadius: 99,
+              background: form.backToBack ? C.accent : C.textTer + '55',
+              position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+            }}>
+              <div style={{
+                position: 'absolute', top: 3,
+                left: form.backToBack ? 21 : 3,
+                width: 20, height: 20, borderRadius: 99,
+                background: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                transition: 'left 0.2s',
+              }} />
+            </div>
+          </button>
+
+          {!form.backToBack && (
+            <>
+              <DurationWheelPicker value={form.duration} onChange={v => setForm(f => ({ ...f, duration: v }))} />
+              <div style={{ fontSize: 12, color: C.textTer, marginTop: 8 }}>Must be shorter than the gap between occurrences.</div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MembersStep({ form, onBack, onCreate }) {
+  const [members, setMembers] = useState([
+    { id: 'me', name: 'Jordan', email: 'jordan@example.com', isMe: true },
+  ]);
+  const [email, setEmail] = useState('');
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
+
+  const occurrences = getNextOccurrences(form.rec, Math.max(members.length, 1));
+
+  function addMember() {
+    const trimmed = email.trim();
+    if (!trimmed.includes('@')) return;
+    const name = trimmed.split('@')[0];
+    setMembers(m => [...m, { id: trimmed, name, email: trimmed, isMe: false }]);
+    setEmail('');
+  }
+
+  function reorder(from, to) {
+    setMembers(list => {
+      const copy = [...list];
+      const [item] = copy.splice(from, 1);
+      copy.splice(to, 0, item);
+      return copy;
+    });
+  }
+
+  // Format duration label
+  const d = Math.floor(form.duration / 1440);
+  const h = Math.floor((form.duration % 1440) / 60);
+  const durLabel = d > 0 ? `${d}d ${h > 0 ? h + 'h' : ''}`.trim() : `${h}h`;
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <NavBar
+        title="Members"
+        onBack={onBack}
+        right={<button onClick={onCreate} style={{ color: C.accent, fontSize: 16, fontWeight: 700 }}>Create</button>}
+      />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 40px' }}>
+
+        {/* Shift summary */}
+        <div style={{
+          background: C.accent + '12', borderRadius: 14,
+          padding: '12px 16px', marginBottom: 20,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{form.name || 'New shift'}</div>
+            <div style={{ fontSize: 13, color: C.textSec, marginTop: 1 }}>{rruleDescription(form.rec)} · {durLabel}</div>
+          </div>
+        </div>
+
+        {/* Rotation order heading */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rotation order</div>
+          <div style={{ fontSize: 12, color: C.textTer }}>Drag to reorder</div>
+        </div>
+
+        {/* Draggable member list */}
+        <div style={{ background: C.card, borderRadius: 16, overflow: 'visible', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          {members.map((m, i) => (
+            <div
+              key={m.id}
+              draggable
+              onDragStart={() => setDragIndex(i)}
+              onDragOver={e => { e.preventDefault(); setDropIndex(i); }}
+              onDrop={() => { if (dragIndex !== null && dragIndex !== i) reorder(dragIndex, i); setDragIndex(null); setDropIndex(null); }}
+              onDragEnd={() => { setDragIndex(null); setDropIndex(null); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '11px 14px',
+                borderBottom: i < members.length - 1 ? `0.5px solid ${C.sep}` : 'none',
+                background: dragIndex === i ? C.bg : dropIndex === i && dragIndex !== i ? C.accent + '08' : 'transparent',
+                borderTop: dropIndex === i && dragIndex !== i ? `2px solid ${C.accent}` : '2px solid transparent',
+                opacity: dragIndex === i ? 0.5 : 1,
+                transition: 'background 0.1s',
+                cursor: 'grab',
+              }}
+            >
+              {/* Drag handle */}
+              <div style={{ color: C.textTer, display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
+                {[0,1,2].map(row => (
+                  <div key={row} style={{ display: 'flex', gap: 3 }}>
+                    {[0,1].map(col => <div key={col} style={{ width: 3, height: 3, borderRadius: 99, background: C.textTer }} />)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Position badge */}
+              <div style={{
+                width: 24, height: 24, borderRadius: 99, flexShrink: 0,
+                background: C.accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 700, color: C.accent,
+              }}>{i + 1}</div>
+
+              {/* Avatar */}
+              <div style={{
+                width: 34, height: 34, borderRadius: 99, flexShrink: 0,
+                background: m.isMe ? C.accent : C.textTer + '33',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 700,
+                color: m.isMe ? '#fff' : C.textSec,
+              }}>{m.name[0].toUpperCase()}</div>
+
+              {/* Name */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 500, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {m.name}{m.isMe ? ' (you)' : ''}
+                </div>
+                <div style={{ fontSize: 12, color: C.textTer, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
+              </div>
+
+              {/* First turn date */}
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, color: C.textTer }}>first turn</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.accent }}>{occurrences[i] ?? '—'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Email invite */}
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.textTer, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Add member</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <input
+            type="email" placeholder="colleague@example.com"
+            value={email} onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addMember()}
+            style={{
+              flex: 1, fontSize: 15, color: C.text, background: C.card,
+              border: `1.5px solid ${C.border}`, borderRadius: 12,
+              padding: '11px 14px', outline: 'none',
+              fontFamily: '-apple-system, system-ui',
+            }}
+          />
+          <button onClick={addMember} style={{
+            background: C.accent, color: '#fff', border: 'none',
+            borderRadius: 12, padding: '0 18px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+          }}>Add</button>
+        </div>
+        <div style={{ fontSize: 12, color: C.textTer, marginBottom: 24 }}>You can also share an invite link after creating.</div>
+
+        <button onClick={onCreate} style={{
+          width: '100%', background: C.accent, color: '#fff', border: 'none',
+          borderRadius: 16, padding: '15px', fontSize: 17, fontWeight: 700, cursor: 'pointer',
+        }}>Create shift</button>
+        <button onClick={onCreate} style={{
+          width: '100%', background: 'transparent', border: 'none',
+          padding: '14px', fontSize: 15, color: C.textSec, cursor: 'pointer',
+        }}>Skip for now</button>
+      </div>
+    </div>
+  );
+}
+
+function CreateShiftFlow({ onCancel, onCreate }) {
+  const [sub, setSub] = useState('basics'); // 'basics' | 'recurrence' | 'members'
+  const [form, setForm] = useState({
+    name: '', description: '', assignment: 'round_robin', duration: 10080,
+    rec: { type: 'weekly', days: ['Thu'], interval: 1, monthMode: 'date', monthDay: 1 },
+  });
+  const [rec, setRec] = useState(form.rec);
+
+  function commitRec() { setForm(f => ({ ...f, rec })); setSub('basics'); }
+
+  if (sub === 'recurrence') return <RecurrenceBuilder rec={rec} setRec={setRec} onBack={commitRec} />;
+  if (sub === 'members') return <MembersStep form={form} onBack={() => setSub('basics')} onCreate={onCreate} />;
+  return (
+    <CreateShiftBasics
+      form={form} setForm={setForm}
+      onCancel={onCancel}
+      onSchedule={() => { setRec(form.rec); setSub('recurrence'); }}
+      onNext={() => setSub('members')}
+    />
+  );
+}
+
+// ─── Tab Bar ──────────────────────────────────────────────────
+function TabBar({ tab, onChange }) {
+  const tabs = [
+    {
+      id: 'home', label: 'Home',
+      icon: (active) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"
+            stroke={active ? C.accent : C.textTer} strokeWidth="1.8" fill={active ? C.accent + '20' : 'none'}
+            strokeLinejoin="round"/>
+          <path d="M9 21V12h6v9" stroke={active ? C.accent : C.textTer} strokeWidth="1.8" strokeLinejoin="round"/>
+        </svg>
+      ),
+    },
+    {
+      id: 'rotas', label: 'Shifts',
+      icon: (active) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="18" height="3" rx="1.5" fill={active ? C.accent : C.textTer}/>
+          <rect x="3" y="10.5" width="18" height="3" rx="1.5" fill={active ? C.accent : C.textTer} opacity={active ? 0.7 : 1}/>
+          <rect x="3" y="16" width="12" height="3" rx="1.5" fill={active ? C.accent : C.textTer} opacity={active ? 0.4 : 1}/>
+        </svg>
+      ),
+    },
+    {
+      id: 'settings', label: 'Settings',
+      icon: (active) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="3" stroke={active ? C.accent : C.textTer} strokeWidth="1.8"/>
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+            stroke={active ? C.accent : C.textTer} strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      ),
+    },
+  ];
+  return (
+    <div style={{
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      background: 'rgba(255,255,255,0.85)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      borderTop: `0.5px solid ${C.sep}`,
+      display: 'flex', justifyContent: 'space-around',
+      padding: '10px 0 28px',
+      zIndex: 30,
+    }}>
+      {tabs.map(t => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer', padding: '0 20px',
+            transition: 'transform 0.1s',
+          }}
+        >
+          {t.icon(tab === t.id)}
+          <span style={{ fontSize: 10, fontWeight: 500, color: tab === t.id ? C.accent : C.textTer }}>
+            {t.label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────
+function RotiniApp() {
+  const [tab, setTab] = useState('home');
+  const [stack, setStack] = useState([]); // [{type, rotaId?, occurrenceId?}]
+  const [sheet, setSheet] = useState(null); // {type, rotaId, occurrenceId} | null
+
+  const push = (screen) => setStack(s => [...s, screen]);
+  const pop = () => setStack(s => s.slice(0, -1));
+
+  const current = stack[stack.length - 1];
+  const showTabs = stack.length === 0;
+
+  const renderContent = () => {
+    if (current?.type === 'occurrenceDetail') {
+      return (
+        <OccurrenceDetailScreen
+          rotaId={current.rotaId}
+          occurrenceId={current.occurrenceId}
+          onBack={pop}
+          onSwap={() => setSheet({ type: 'swap', rotaId: current.rotaId, occurrenceId: current.occurrenceId })}
+        />
+      );
+    }
+    if (current?.type === 'createShift') {
+      return (
+        <CreateShiftFlow
+          onCancel={pop}
+          onCreate={() => { pop(); }}
+        />
+      );
+    }
+    if (current?.type === 'rotaDetail') {
+      return (
+        <RotaDetailScreen
+          rotaId={current.rotaId}
+          onBack={pop}
+          onViewOccurrence={(rotaId, occurrenceId) => push({ type: 'occurrenceDetail', rotaId, occurrenceId })}
+        />
+      );
+    }
+    if (tab === 'home') return (
+      <HomeScreen
+        onOpenRota={(rotaId) => push({ type: 'rotaDetail', rotaId })}
+        onViewOccurrence={(rotaId, occurrenceId) => push({ type: 'occurrenceDetail', rotaId, occurrenceId })}
+      />
+    );
+    if (tab === 'rotas') return (
+      <RotasScreen
+        onOpenRota={(rotaId) => push({ type: 'rotaDetail', rotaId })}
+        onNew={() => push({ type: 'createShift' })}
+      />
+    );
+    return <SettingsScreen />;
+  };
+
+  return (
+    <IOSDevice width={402} height={874}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: C.bg, position: 'relative', overflow: 'hidden' }}>
+        {/* Main scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', paddingTop: 54 }}>
+          {/* Status bar spacer */}
+          {renderContent()}
+        </div>
+
+        {/* Tab bar */}
+        {showTabs && <TabBar tab={tab} onChange={setTab} />}
+
+        {/* Bottom sheet overlay */}
+        {sheet && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 50 }}>
+            {/* Backdrop */}
+            <div
+              onClick={() => setSheet(null)}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }}
+            />
+            {/* Sheet */}
+            <div className="sheet-enter" style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: C.card, borderRadius: '24px 24px 0 0',
+              boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',
+            }}>
+              <SwapSheet
+                rotaId={sheet.rotaId}
+                occurrenceId={sheet.occurrenceId}
+                onClose={() => setSheet(null)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </IOSDevice>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<RotiniApp />);
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#111827"/>
+    <rect x="35" y="10" width="50" height="60" rx="8" fill="#1e293b"/>
+    <rect x="40" y="20" width="40" height="10" rx="3" fill="#0a7ea4" opacity="0.8"/>
+    <rect x="40" y="33" width="30" height="6" rx="2" fill="#374151"/>
+    <rect x="40" y="42" width="35" height="6" rx="2" fill="#374151"/>
+    <rect x="40" y="51" width="20" height="6" rx="2" fill="#374151"/>
+  </svg>
+</template>
+</body>
+</html>
