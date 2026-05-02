@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/contexts/auth';
 import { usePushToken } from '@/features/notifications/usePushToken';
+import { useNotificationNavigation } from '@/features/notifications/useNotificationNavigation';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ function AuthGate() {
   const navigationState = useRootNavigationState();
 
   usePushToken(status === 'authenticated' ? session?.user.id : null);
+  useNotificationNavigation(status === 'authenticated');
 
   useEffect(() => {
     if (!navigationState?.key || status === 'loading') return;
