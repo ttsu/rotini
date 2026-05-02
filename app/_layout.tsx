@@ -1,6 +1,10 @@
 import '../global.css';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as Sentry from '@sentry/react-native';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useRootNavigationState, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,8 +15,31 @@ import { AuthProvider, useAuth } from '@/contexts/auth';
 import { usePushToken } from '@/features/notifications/usePushToken';
 import { useNotificationNavigation } from '@/features/notifications/useNotificationNavigation';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { OfflineBanner } from '@/components/ui/offline-banner';
 
-const queryClient = new QueryClient();
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  debug: false,
+  environment: __DEV__ ? 'development' : 'production',
+  tracesSampleRate: 0.2,
+  enabled: !__DEV__,
+});
+
+const PERSIST_KEYS = new Set(['rotas', 'all-rotas-now', 'rota-now', 'occurrences']);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 24 * 60 * 60 * 1000, // 24 hours — match persister TTL
+    },
+  },
+});
+
+const persister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  throttleTime: 3000,
+  key: 'rotini-query-cache',
+});
 
 function AuthGate() {
   const { status, session } = useAuth();
@@ -45,9 +72,22 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 24 * 60 * 60 * 1000,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === 'string' && PERSIST_KEYS.has(key);
+          },
+        },
+      }}
+    >
       <AuthProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <OfflineBanner />
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
@@ -59,6 +99,6 @@ export default function RootLayout() {
           <StatusBar style="auto" />
         </ThemeProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
