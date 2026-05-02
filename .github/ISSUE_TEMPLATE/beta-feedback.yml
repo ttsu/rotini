@@ -1,0 +1,55 @@
+name: Beta feedback
+description: Report an issue found while testing rotini beta builds.
+title: "[Beta]: "
+labels:
+  - beta
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iOS TestFlight
+        - Android Internal Test Track
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build version
+      description: Copy this from TestFlight, Play Console, or the app details screen.
+      placeholder: "1.0.0 (42)"
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - High - blocks sign-in, rota creation, notifications, or causes data loss
+        - Medium - important flow is broken but a workaround exists
+        - Low - confusing, cosmetic, or nice-to-have
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Include the expected behavior and the actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Add screenshots, Sentry event IDs, device model, OS version, and network state if available.
