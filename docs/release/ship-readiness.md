@@ -2,6 +2,8 @@
 
 Use this checklist for TestFlight, Google Play Internal Test Track, and Sentry verification.
 
+For account provisioning and third-party dashboards (Supabase, Google, Apple, Expo, Sentry, Play Console), see **[External services setup](../setup/external-services.md)** first.
+
 Keep Phase 6 unit 29 unchecked until production EAS builds are uploaded to TestFlight and the Google Play Internal Test Track, and Sentry has received a verified production test event.
 
 ## EAS Environment
