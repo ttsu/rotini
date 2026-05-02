@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      notification_jobs: {
+        Row: {
+          created_at: string
+          fire_at: string
+          id: string
+          occurrence_id: string
+          reminder_id: string
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fire_at: string
+          id?: string
+          occurrence_id: string
+          reminder_id: string
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fire_at?: string
+          id?: string
+          occurrence_id?: string
+          reminder_id?: string
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_jobs_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["active_occurrence_id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["upcoming_occurrence_id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "rota_reminders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       occurrences: {
         Row: {
           assigned_user_id: string | null
@@ -115,6 +184,35 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          expo_token: string
+          last_seen_at: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          expo_token: string
+          last_seen_at?: string
+          platform: string
+          user_id: string
+        }
+        Update: {
+          expo_token?: string
+          last_seen_at?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rota_invites: {
         Row: {
@@ -224,6 +322,39 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      rota_reminders: {
+        Row: {
+          id: string
+          lead_minutes: number
+          rota_id: string
+        }
+        Insert: {
+          id?: string
+          lead_minutes: number
+          rota_id: string
+        }
+        Update: {
+          id?: string
+          lead_minutes?: number
+          rota_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_reminders_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_reminders_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
           },
         ]
       }
@@ -406,12 +537,6 @@ export type Database = {
           rota_id: string
           user_id: string
         }
-        SetofOptions: {
-          from: "*"
-          to: "rota_members"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
       change_member_role: {
@@ -422,12 +547,6 @@ export type Database = {
           role: string
           rota_id: string
           user_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "rota_members"
-          isOneToOne: true
-          isSetofReturn: false
         }
       }
       create_invite: {
@@ -442,12 +561,6 @@ export type Database = {
           invited_by: string
           role: string
           rota_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "rota_invites"
-          isOneToOne: true
-          isSetofReturn: false
         }
       }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
@@ -490,12 +603,6 @@ export type Database = {
           status: string
           swap_request_id: string | null
         }
-        SetofOptions: {
-          from: "*"
-          to: "occurrences"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
@@ -517,12 +624,6 @@ export type Database = {
           status: string
           target_user_id: string
         }
-        SetofOptions: {
-          from: "*"
-          to: "swap_requests"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       respond_swap: {
         Args: { p_accept: boolean; p_swap_request_id: string }
@@ -539,12 +640,6 @@ export type Database = {
           scheduled_local_date: string
           status: string
           swap_request_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "occurrences"
-          isOneToOne: true
-          isSetofReturn: false
         }
       }
       transfer_ownership: {
