@@ -12,6 +12,7 @@ export default function RotasStackLayout() {
       <Stack.Screen name="index" options={{ title: 'Rotas' }} />
       <Stack.Screen name="new" options={{ title: 'New Rota' }} />
       <Stack.Screen name="[id]" options={{ title: '' }} />
+      <Stack.Screen name="occurrence/[id]" options={{ title: 'Occurrence' }} />
     </Stack>
   );
 }

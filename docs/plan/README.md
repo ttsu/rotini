@@ -41,7 +41,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 12. `materialize-rota` edge function + DB function
 - [x] 13. `pg_cron` daily top-up
 - [x] 14. `v_rota_now` view + `useRotaNow` hook
-- [ ] 15. Rota detail — status header + upcoming list/calendar
+- [x] 15. Rota detail — status header + upcoming list/calendar
 - [ ] 16. Home cards driven by `useRotaNow`
 
 ### Phase 4 — Swaps & overrides

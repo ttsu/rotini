@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fromZonedTime } from 'date-fns-tz';
+import { addDays } from 'date-fns';
 
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
@@ -267,5 +268,51 @@ export function useTransferOwnership(rotaId: string) {
       queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
       queryClient.invalidateQueries({ queryKey: ['rotas'] });
     },
+  });
+}
+
+export type OccurrenceRow = {
+  id: string;
+  rota_id: string;
+  scheduled_at: string;
+  ends_at: string;
+  scheduled_local_date: string;
+  assigned_user_id: string | null;
+  status: string;
+};
+
+export function useRotaOccurrences(rotaId: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!rotaId) return;
+    const channel = supabase
+      .channel(`occurrences-list:${rotaId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'occurrences', filter: `rota_id=eq.${rotaId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['occurrences', rotaId] })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [rotaId, queryClient]);
+
+  return useQuery({
+    queryKey: ['occurrences', rotaId],
+    queryFn: async () => {
+      const now = new Date();
+      const windowEnd = addDays(now, 30);
+      const { data, error } = await supabase
+        .from('occurrences')
+        .select('id, rota_id, scheduled_at, ends_at, scheduled_local_date, status, assigned_user_id')
+        .eq('rota_id', rotaId)
+        .gte('ends_at', now.toISOString())
+        .lte('scheduled_at', windowEnd.toISOString())
+        .order('scheduled_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as OccurrenceRow[];
+    },
+    enabled: !!session && !!rotaId,
   });
 }
