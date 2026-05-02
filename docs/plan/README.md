@@ -21,21 +21,25 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 ## Progress
 
 ### Phase 0 — Foundations
+
 - [x] 1. Bootstrap Expo + TypeScript + Expo Router + tooling
 - [x] 2. Supabase project setup + typed client
 - [x] 3. Migration 0001 — `profiles` + auth trigger
 
 ### Phase 1 — Auth & shell
+
 - [x] 4. Auth flow (magic link / Apple / Google)
 - [x] 5. Onboarding (display name)
 - [x] 6. App shell — tab nav, auth gate, sign-out
 
 ### Phase 2 — Rotas (no scheduling)
+
 - [x] 7. Migration 0002 — `rotas`, `rota_members`, `rota_invites` + RLS
 - [x] 8. Rotas list + create form (name, tz, duration, assignment mode)
 - [x] 9. Member management — invites, roles, role changes
 
 ### Phase 3 — Recurrence engine
+
 - [x] 10. Migration 0003 — `occurrences` + indices
 - [x] 11. RRULE builder UI + duration validator
 - [x] 12. `materialize-rota` edge function + DB function
@@ -45,11 +49,13 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 16. Home cards driven by `useRotaNow`
 
 ### Phase 4 — Swaps & overrides
+
 - [x] 17. Migration 0004 — `swap_requests` + RPCs
 - [x] 18. Swap UI
 - [x] 19. Owner override UI
 
 ### Phase 5 — Notifications
+
 - [x] 20. Migration 0005 — `rota_reminders`, `push_tokens`, `notification_jobs`
 - [x] 21. Push token registration
 - [x] 22. Reminder configuration UI
@@ -58,6 +64,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 25. Notification tap → deep link
 
 ### Phase 6 — Polish & ship-ready
+
 - [x] 26. Realtime subscriptions
 - [x] 27. Offline read cache
 - [x] 28. Empty states / errors / a11y
