@@ -2,6 +2,8 @@
 
 Use this checklist for TestFlight, Google Play Internal Test Track, and Sentry verification.
 
+Keep Phase 6 unit 29 unchecked until production EAS builds are uploaded to TestFlight and the Google Play Internal Test Track, and Sentry has received a verified production test event.
+
 ## EAS Environment
 
 Create these values in EAS for `development`, `preview`, and `production` before building:
