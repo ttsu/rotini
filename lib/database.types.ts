@@ -79,6 +79,13 @@ export type Database = {
             referencedRelation: "rotas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "occurrences_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
+          },
         ]
       }
       profiles: {
@@ -158,72 +165,12 @@ export type Database = {
             referencedRelation: "rotas"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      rota_materialization_errors: {
-        Row: {
-          created_at: string
-          details: Json
-          error_message: string
-          id: string
-          request_id: number | null
-          rota_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          details?: Json
-          error_message: string
-          id?: string
-          request_id?: number | null
-          rota_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          details?: Json
-          error_message?: string
-          id?: string
-          request_id?: number | null
-          rota_id?: string | null
-        }
-        Relationships: [
           {
-            foreignKeyName: "rota_materialization_errors_rota_id_fkey"
+            foreignKeyName: "rota_invites_rota_id_fkey"
             columns: ["rota_id"]
             isOneToOne: false
-            referencedRelation: "rotas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rota_materialization_requests: {
-        Row: {
-          checked_at: string | null
-          id: string
-          request_id: number
-          requested_at: string
-          rota_id: string
-        }
-        Insert: {
-          checked_at?: string | null
-          id?: string
-          request_id: number
-          requested_at?: string
-          rota_id: string
-        }
-        Update: {
-          checked_at?: string | null
-          id?: string
-          request_id?: number
-          requested_at?: string
-          rota_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rota_materialization_requests_rota_id_fkey"
-            columns: ["rota_id"]
-            isOneToOne: false
-            referencedRelation: "rotas"
-            referencedColumns: ["id"]
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
           },
         ]
       }
@@ -256,6 +203,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rotas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_members_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
           },
           {
             foreignKeyName: "rota_members_user_id_fkey"
@@ -334,7 +288,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_rota_now: {
+        Row: {
+          active_assignee_id: string | null
+          active_assignee_name: string | null
+          active_ends_at: string | null
+          active_occurrence_id: string | null
+          active_scheduled_at: string | null
+          rota_id: string | null
+          upcoming_assignee_id: string | null
+          upcoming_assignee_name: string | null
+          upcoming_ends_at: string | null
+          upcoming_occurrence_id: string | null
+          upcoming_scheduled_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "occurrences_assigned_user_id_fkey"
+            columns: ["upcoming_assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "occurrences_assigned_user_id_fkey"
+            columns: ["active_assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invite: {
@@ -400,7 +384,6 @@ export type Database = {
           rota_name: string
         }[]
       }
-      materialize_active_rotas: { Args: never; Returns: Json }
       materialize_rota: { Args: { p_rota_id: string }; Returns: number }
       materialize_rota_apply: {
         Args: {
@@ -410,7 +393,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      record_rota_materialization_http_errors: { Args: never; Returns: number }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
         Returns: undefined
@@ -552,4 +534,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

@@ -40,7 +40,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 11. RRULE builder UI + duration validator
 - [x] 12. `materialize-rota` edge function + DB function
 - [x] 13. `pg_cron` daily top-up
-- [ ] 14. `v_rota_now` view + `useRotaNow` hook
+- [x] 14. `v_rota_now` view + `useRotaNow` hook
 - [ ] 15. Rota detail — status header + upcoming list/calendar
 - [ ] 16. Home cards driven by `useRotaNow`
 
