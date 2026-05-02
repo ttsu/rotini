@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fromZonedTime } from 'date-fns-tz';
 import { addDays } from 'date-fns';
@@ -16,6 +17,7 @@ export type HomeRota = {
     id: string;
     name: string;
     description: string | null;
+    tz: string;
     duration_minutes: number | null;
     back_to_back: boolean;
   };
@@ -31,8 +33,31 @@ export type HomeRota = {
 
 export function useHomeRotas() {
   const { session } = useAuth();
-  return useQuery({
-    queryKey: ['home-rotas'],
+  const queryClient = useQueryClient();
+  const key = ['home-rotas'] as const;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Realtime: invalidate when any occurrence changes (user's own are filtered in queryFn)
+  useEffect(() => {
+    const channel = supabase
+      .channel('home-rotas-occ')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' },
+        () => queryClient.invalidateQueries({ queryKey: key })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  // Re-check when app comes to foreground (iOS timer drift fix)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') queryClient.invalidateQueries({ queryKey: key });
+    });
+    return () => sub.remove();
+  }, [queryClient]);
+
+  const query = useQuery({
+    queryKey: key,
     queryFn: async () => {
       const userId = session!.user.id;
       const now = new Date().toISOString();
@@ -40,7 +65,7 @@ export function useHomeRotas() {
       const [rotasRes, occurrencesRes] = await Promise.all([
         supabase
           .from('rota_members')
-          .select('role, rota:rotas(id, name, description, duration_minutes, back_to_back)')
+          .select('role, rota:rotas(id, name, description, tz, duration_minutes, back_to_back)')
           .eq('user_id', userId)
           .order('joined_at', { ascending: false }),
         supabase
@@ -54,29 +79,56 @@ export function useHomeRotas() {
       if (rotasRes.error) throw rotasRes.error;
       if (occurrencesRes.error) throw occurrencesRes.error;
 
-      // Map: first upcoming occurrence per rota
       const occByRota = new Map<string, typeof occurrencesRes.data[number]>();
       for (const occ of (occurrencesRes.data ?? [])) {
         if (!occByRota.has(occ.rota_id)) occByRota.set(occ.rota_id, occ);
       }
 
       return (rotasRes.data ?? [])
-        .filter((row) => row.rota !== null)
+        .filter((row) => row.rota !== null && occByRota.has((row.rota as any).id))
         .map((row) => {
-          const occ = occByRota.get((row.rota as any).id) ?? null;
-          const isActive = occ
-            ? new Date(occ.scheduled_at) <= new Date() && new Date(occ.ends_at) >= new Date()
-            : false;
+          const occ = occByRota.get((row.rota as any).id)!;
+          const isActive =
+            new Date(occ.scheduled_at) <= new Date() && new Date(occ.ends_at) >= new Date();
           return {
             role: row.role,
             rota: row.rota as HomeRota['rota'],
             nextOccurrence: occ,
             isActive,
           } satisfies HomeRota;
+        })
+        .sort((a, b) => {
+          if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+          const at = a.isActive ? a.nextOccurrence!.ends_at : a.nextOccurrence!.scheduled_at;
+          const bt = b.isActive ? b.nextOccurrence!.ends_at : b.nextOccurrence!.scheduled_at;
+          return at < bt ? -1 : 1;
         });
     },
     enabled: !!session,
   });
+
+  // Boundary timer: re-query at the next occurrence edge across all cards
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const rows = query.data ?? [];
+    const earliest = rows.reduce<string | null>((acc, item) => {
+      const b = item.isActive ? item.nextOccurrence!.ends_at : item.nextOccurrence!.scheduled_at;
+      if (!acc) return b;
+      return b < acc ? b : acc;
+    }, null);
+    if (!earliest) return;
+    const ms = new Date(earliest).getTime() - Date.now();
+    if (ms <= 0) {
+      queryClient.invalidateQueries({ queryKey: key });
+      return;
+    }
+    timerRef.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: key });
+    }, ms);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [query.data, queryClient]);
+
+  return query;
 }
 
 export function useRotas() {

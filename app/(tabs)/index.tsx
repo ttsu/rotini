@@ -5,8 +5,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
-import { useRotas } from '@/features/rotas/hooks';
-import { useAllRotasNow, type RotaNowRow } from '@/features/rotas/useRotaNow';
+import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -24,48 +23,23 @@ function formatCountdown(targetIso: string): string {
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 
-function RotaCard({
-  rotaName,
-  now,
-  tz,
+function ShiftCard({
+  item,
   onPress,
   card,
   textPrimary,
   textSec,
 }: {
-  rotaName: string;
-  now: RotaNowRow;
-  tz: string;
+  item: HomeRota;
   onPress: () => void;
   card: string;
   textPrimary: string;
   textSec: string;
 }) {
-  const isActive = !!now.active_occurrence_id;
+  const { isActive, nextOccurrence: occ, rota } = item;
   const barColor = isActive ? '#34C759' : '#0a7ea4';
-
-  const assigneeName = isActive ? now.active_assignee_name : now.upcoming_assignee_name;
-  const targetIso = isActive ? now.active_ends_at : now.upcoming_scheduled_at;
-
-  let headlineText = '';
-  let subtitleLabel = '';
-  let timeLabel = '';
-
-  if (isActive) {
-    headlineText = `${assigneeName ?? 'Unknown'} is on now`;
-    subtitleLabel = 'Ends';
-    timeLabel = targetIso
-      ? formatInTimeZone(new Date(targetIso), tz, 'EEE d MMM, h:mm a')
-      : '—';
-  } else if (now.upcoming_occurrence_id) {
-    headlineText = `Up next: ${assigneeName ?? 'Unknown'}`;
-    subtitleLabel = 'Starts';
-    timeLabel = targetIso
-      ? formatInTimeZone(new Date(targetIso), tz, 'EEE d MMM, h:mm a')
-      : '—';
-  } else {
-    headlineText = 'No shifts scheduled';
-  }
+  const targetIso = isActive ? occ!.ends_at : occ!.scheduled_at;
+  const timeLabel = formatInTimeZone(new Date(targetIso), rota.tz, 'EEE d MMM, h:mm a');
 
   return (
     <TouchableOpacity
@@ -84,39 +58,33 @@ function RotaCard({
     >
       <View style={{ height: 3, backgroundColor: barColor }} />
       <View style={{ padding: 16 }}>
-        {/* Name + status pill */}
+        {/* Name + pill */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
           <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: textPrimary }} numberOfLines={1}>
-            {rotaName}
+            {rota.name}
           </Text>
           <Pill
-            label={isActive ? 'On now' : now.upcoming_occurrence_id ? 'Upcoming' : 'No shifts'}
+            label={isActive ? 'On now' : 'Your turn'}
             color={isActive ? 'green' : 'teal'}
             dot={isActive}
           />
         </View>
 
-        {/* Assignee + time */}
-        {(isActive || now.upcoming_occurrence_id) && (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: textSec }}>{headlineText}</Text>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: textPrimary, marginTop: 2 }}>
-                {subtitleLabel} {timeLabel}
-              </Text>
-            </View>
-            {targetIso && (
-              <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
-                <Text style={{ fontSize: 11, color: textSec, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                  {isActive ? 'time left' : 'in'}
-                </Text>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: barColor }}>
-                  {formatCountdown(targetIso)}
-                </Text>
-              </View>
-            )}
+        {/* Time info */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <View>
+            <Text style={{ fontSize: 13, color: textSec }}>{isActive ? 'Ends' : 'Starts'}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>{timeLabel}</Text>
           </View>
-        )}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 11, color: textSec, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              {isActive ? 'time left' : 'in'}
+            </Text>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: barColor }}>
+              {formatCountdown(targetIso)}
+            </Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -127,6 +95,7 @@ function RotaCard({
 export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { data, isLoading } = useHomeRotas();
   const scheme = useColorScheme();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
@@ -139,35 +108,6 @@ export default function HomeScreen() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const greetingTitle = displayName ? `${greeting}, ${displayName.split(' ')[0]}` : greeting;
 
-  // useAllRotasNow fetches v_rota_now for all the user's rotas.
-  // useRotas provides rota metadata (name, tz) not in the view.
-  const nowQuery = useAllRotasNow();
-  const rotasQuery = useRotas();
-
-  const isLoading = nowQuery.isLoading || rotasQuery.isLoading;
-
-  // Build a map of rota metadata keyed by rota_id
-  const rotaMeta = new Map(
-    (rotasQuery.data ?? []).map((r) => [r.rota.id, r.rota])
-  );
-
-  // Merge now rows with rota metadata; sort active first then by earliest boundary
-  const rows = (nowQuery.data ?? [])
-    .filter((row) => rotaMeta.has(row.rota_id ?? ''))
-    .sort((a, b) => {
-      const aActive = !!a.active_occurrence_id;
-      const bActive = !!b.active_occurrence_id;
-      if (aActive !== bActive) return aActive ? -1 : 1;
-      // Within active: sort by earliest ends_at
-      // Within upcoming: sort by earliest scheduled_at
-      const aTime = aActive ? a.active_ends_at : a.upcoming_scheduled_at;
-      const bTime = bActive ? b.active_ends_at : b.upcoming_scheduled_at;
-      if (!aTime && !bTime) return 0;
-      if (!aTime) return 1;
-      if (!bTime) return -1;
-      return aTime < bTime ? -1 : 1;
-    });
-
   return (
     <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ paddingBottom: 40 }}>
       {/* Header */}
@@ -178,7 +118,7 @@ export default function HomeScreen() {
       </View>
       <LargeTitle title={greetingTitle} />
 
-      {/* Rotas section */}
+      {/* Your shifts section */}
       <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
         <Text style={{
           fontSize: 13, fontWeight: '600', color: '#AEAEB2',
@@ -192,7 +132,7 @@ export default function HomeScreen() {
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>
             <ActivityIndicator />
           </View>
-        ) : rows.length === 0 ? (
+        ) : !data || data.length === 0 ? (
           <View style={{
             backgroundColor: card, borderRadius: 18, padding: 24, alignItems: 'center',
             shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
@@ -212,21 +152,16 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          rows.map((row) => {
-            const meta = rotaMeta.get(row.rota_id ?? '')!;
-            return (
-              <RotaCard
-                key={row.rota_id}
-                rotaName={meta.name}
-                now={row}
-                tz={meta.tz}
-                onPress={() => router.push(`/(tabs)/rotas/${row.rota_id}` as any)}
-                card={card}
-                textPrimary={textPrimary}
-                textSec={textSec}
-              />
-            );
-          })
+          data.map((item) => (
+            <ShiftCard
+              key={item.rota.id}
+              item={item}
+              onPress={() => router.push(`/(tabs)/rotas/${item.rota.id}` as any)}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+            />
+          ))
         )}
       </View>
     </ScrollView>
