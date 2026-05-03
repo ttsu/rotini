@@ -1,0 +1,28 @@
+appId: com.timtsu.rotini
+---
+- runFlow: ../generated/login-owner.yaml
+- tapOn: "Shifts"
+- extendedWaitUntil:
+    visible: "Shifts"
+    timeout: 10000
+- tapOn: "Create new shift"
+- extendedWaitUntil:
+    visible: "Shift name"
+    timeout: 10000
+- tapOn: "Shift name"
+- inputText: "E2E Created Shift"
+- tapOn: "Shift description"
+- inputText: "Created by Maestro"
+- tapOn: "Edit schedule"
+- assertVisible: "Schedule"
+- assertVisible: "Daily"
+- assertVisible: "Weekly"
+- assertVisible: "Monthly"
+- tapOn: "Done editing schedule"
+- tapOn: "Create shift"
+- extendedWaitUntil:
+    visible: "E2E Created Shift"
+    timeout: 15000
+- assertVisible: "Duration"
+- assertVisible: "Round-robin"
+- assertVisible: "Members (1)"

@@ -420,6 +420,7 @@ export default function OccurrenceDetailScreen() {
                 placeholder="Add a note…"
                 placeholderTextColor={textSec}
                 multiline
+                accessibilityLabel="Swap message"
                 style={{
                   color: textPrimary, fontSize: 15,
                   paddingHorizontal: 16, paddingVertical: 14,
@@ -510,6 +511,7 @@ export default function OccurrenceDetailScreen() {
                 placeholder="Why are you overriding this?"
                 placeholderTextColor={textSec}
                 multiline
+                accessibilityLabel="Override reason"
                 style={{
                   color: textPrimary, fontSize: 15,
                   paddingHorizontal: 16, paddingVertical: 14,

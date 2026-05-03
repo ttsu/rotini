@@ -159,6 +159,7 @@ export default function NewRotaScreen() {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 autoFocus
+                accessibilityLabel="Shift name"
                 returnKeyType="next"
               />
             )}
@@ -188,6 +189,7 @@ export default function NewRotaScreen() {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 multiline
+                accessibilityLabel="Shift description"
                 returnKeyType="next"
               />
             )}
@@ -213,6 +215,8 @@ export default function NewRotaScreen() {
               marginBottom: 4,
             }}
             onPress={() => setScheduleOpen(true)}
+            accessibilityLabel="Edit schedule"
+            accessibilityRole="button"
           >
             <Text style={{ flex: 1, fontSize: 16, color: textPrimary }}>{describeRRule(rrule)}</Text>
             <Text style={{ fontSize: 18, color: '#AEAEB2' }}>›</Text>
@@ -261,6 +265,7 @@ export default function NewRotaScreen() {
               }}
               trackColor={{ false: '#AEAEB2', true: '#0a7ea4' }}
               ios_backgroundColor="#AEAEB2"
+              accessibilityLabel="Back to back"
             />
           </View>
 
@@ -296,6 +301,8 @@ export default function NewRotaScreen() {
             }}
             onPress={handleSubmit(onSubmit)}
             disabled={submitDisabled}
+            accessibilityLabel="Create shift"
+            accessibilityRole="button"
           >
             <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 16 }}>
               {isSubmitting ? 'Creating…' : 'Create Shift'}
@@ -325,7 +332,11 @@ export default function NewRotaScreen() {
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Schedule</Text>
-            <TouchableOpacity onPress={() => setScheduleOpen(false)}>
+            <TouchableOpacity
+              onPress={() => setScheduleOpen(false)}
+              accessibilityLabel="Done editing schedule"
+              accessibilityRole="button"
+            >
               <Text style={{ fontSize: 16, color: '#0a7ea4', fontWeight: '600' }}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -357,6 +368,7 @@ export default function NewRotaScreen() {
                     onChangeText={(text) => onChange(`${text}T${timeStr}`)}
                     onBlur={onBlur}
                     keyboardType="numbers-and-punctuation"
+                    accessibilityLabel="Start date"
                   />
                 );
               }}

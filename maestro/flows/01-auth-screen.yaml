@@ -1,0 +1,11 @@
+appId: com.timtsu.rotini
+---
+- launchApp
+- openLink: "rotini://e2e-auth?action=logout"
+- extendedWaitUntil:
+    visible: "Sign in to continue"
+    timeout: 15000
+- assertVisible: "rotini"
+- assertVisible: "Email address"
+- assertVisible: "Send magic link"
+- assertVisible: "Continue with Google"

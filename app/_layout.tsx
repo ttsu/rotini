@@ -22,6 +22,7 @@ import { AppPreferencesProvider } from '@/contexts/app-preferences';
 initSentry();
 
 const PERSIST_KEYS = new Set(['rotas', 'all-rotas-now', 'rota-now', 'occurrences']);
+const E2E_AUTH_ENABLED = __DEV__ || process.env.EXPO_PUBLIC_E2E === '1';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +64,9 @@ function AuthGate() {
 
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === '(onboarding)';
+    const inE2eAuth = segments[0] === 'e2e-auth' && E2E_AUTH_ENABLED;
+
+    if (inE2eAuth) return;
 
     if (status === 'unauthenticated' && !inAuth) {
       router.replace('/(auth)/sign-in');
@@ -88,6 +92,7 @@ function AppShell() {
           <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+          <Stack.Screen name="e2e-auth" options={{ headerShown: false }} />
           <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
         </Stack>
         <AuthGate />

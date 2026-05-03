@@ -1,0 +1,44 @@
+appId: com.timtsu.rotini
+---
+- runFlow: ../generated/login-owner.yaml
+- runFlow: ../generated/open-swap-occurrence.yaml
+- extendedWaitUntil:
+    visible: "Request swap"
+    timeout: 10000
+- tapOn: "Request swap"
+- assertVisible: "Swap with"
+- assertVisible: "E2E Member"
+- assertNotVisible: "E2E Viewer"
+- tapOn: "E2E Member"
+- tapOn: "Swap message"
+- inputText: "Can you cover this?"
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Swap pending"
+    timeout: 15000
+- assertVisible: "Can you cover this?"
+- runFlow: ../generated/login-member.yaml
+- runFlow: ../generated/open-swap-occurrence.yaml
+- assertVisible: "Swap pending"
+- assertVisible: "Can you cover this?"
+- tapOn: "Accept"
+- extendedWaitUntil:
+    visible: "E2E Member"
+    timeout: 15000
+- runFlow: ../generated/login-owner.yaml
+- runFlow: ../generated/open-override-occurrence.yaml
+- extendedWaitUntil:
+    visible: "Override assignment"
+    timeout: 10000
+- tapOn: "Override assignment"
+- assertVisible: "Assign to"
+- assertVisible: "E2E Member"
+- assertNotVisible: "E2E Viewer"
+- tapOn: "E2E Member"
+- tapOn: "Override reason"
+- inputText: "Owner override from Maestro"
+- tapOn: "Override"
+- extendedWaitUntil:
+    visible: "Overridden"
+    timeout: 15000
+- assertVisible: "Owner override from Maestro"

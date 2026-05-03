@@ -1,0 +1,15 @@
+appId: com.timtsu.rotini
+---
+- runFlow: ../generated/login-owner.yaml
+- assertVisible: "Your shifts"
+- assertVisible: "E2E Kitchen Duty"
+- assertVisible: "On now"
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 10000
+- assertVisible: "E2E Owner"
+- assertVisible: "e2e.owner@rotini.test"
+- assertVisible: "Notifications"
+- assertVisible: "Appearance"
+- assertVisible: "Sign out"
