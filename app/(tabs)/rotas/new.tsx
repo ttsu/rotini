@@ -19,6 +19,8 @@ import {
 import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
 import { useCreateRota } from '@/features/rotas/hooks';
 import { type CreateRotaValues, createRotaSchema } from '@/features/rotas/schemas';
+import { getUserMessage } from '@/lib/errors';
+import { routes } from '@/lib/navigation/routes';
 import { validateDuration } from '@/lib/rrule';
 import { DurationWheelPicker } from '@/components/ui/duration-wheel-picker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -119,9 +121,9 @@ export default function NewRotaScreen() {
     if (durationError) return;
     try {
       const rota = await createRota.mutateAsync(values);
-      router.replace(`/(tabs)/rotas/${rota.id}` as any);
-    } catch {
-      Alert.alert('Error', 'Failed to create shift. Please try again.');
+      router.replace(routes.rotas.detail(rota.id));
+    } catch (e: unknown) {
+      Alert.alert('Error', getUserMessage(e));
     }
   }
 
@@ -261,7 +263,7 @@ export default function NewRotaScreen() {
               onValueChange={(v) => {
                 setValue('back_to_back', v, { shouldValidate: true });
                 if (v) {
-                  setValue('duration_minutes', undefined as any, { shouldValidate: true });
+                  setValue('duration_minutes', undefined, { shouldValidate: true });
                 } else {
                   setValue('duration_minutes', 60, { shouldValidate: true });
                 }

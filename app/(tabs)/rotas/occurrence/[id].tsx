@@ -9,33 +9,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { supabase } from '@/lib/supabase';
 import { useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
 import {
   useSwapRequest, useRequestSwap, useRespondSwap,
   useCancelSwap, useOverrideOccurrence,
 } from '@/features/swaps/hooks';
-
-type OccurrenceDetail = {
-  id: string;
-  rota_id: string;
-  scheduled_at: string;
-  ends_at: string;
-  status: string;
-  assigned_user_id: string | null;
-  original_assignee_id: string | null;
-  override_reason: string | null;
-  swap_request_id: string | null;
-  rota: { name: string; tz: string } | null;
-  assignee: { display_name: string | null } | null;
-};
-
-type RotaMember = {
-  user_id: string;
-  role: string;
-  profile: { id: string; display_name: string | null } | null;
-};
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  parseOccurrenceDetail,
+  parseRotaMemberEmbeds,
+  type RotaMemberEmbed,
+} from '@/lib/api-schemas/occurrence-detail';
+import { getUserMessage } from '@/lib/errors';
+import { supabase } from '@/lib/supabase';
 
 function toTestIdSegment(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -79,7 +65,7 @@ export default function OccurrenceDetailScreen() {
         .eq('id', id)
         .single();
       if (error) throw error;
-      return data as unknown as OccurrenceDetail;
+      return parseOccurrenceDetail(data);
     },
     enabled: !!session && !!id,
   });
@@ -122,7 +108,7 @@ export default function OccurrenceDetailScreen() {
   const isPast   = occ ? new Date(occ.ends_at) <= now : false;
   const isFuture = occ ? new Date(occ.scheduled_at) > now : false;
 
-  const members     = (rotaData?.rota_members as unknown as RotaMember[]) ?? [];
+  const members: RotaMemberEmbed[] = parseRotaMemberEmbeds(rotaData?.rota_members);
   const myRole      = members.find((m) => m.user_id === userId)?.role;
   const isOwner     = myRole === 'owner';
   const isAssignee  = occ?.assigned_user_id === userId;
@@ -148,7 +134,8 @@ export default function OccurrenceDetailScreen() {
           setSelectedTargetId(null);
           setSwapMessage('');
         },
-        onError: (err: any) => Alert.alert('Error', err.message ?? 'Failed to request swap'),
+        onError: (err: unknown) =>
+          Alert.alert('Error', getUserMessage(err) || 'Failed to request swap'),
       }
     );
   }
@@ -163,7 +150,8 @@ export default function OccurrenceDetailScreen() {
           setSelectedAssigneeId(null);
           setOverrideReason('');
         },
-        onError: (err: any) => Alert.alert('Error', err.message ?? 'Failed to override'),
+        onError: (err: unknown) =>
+          Alert.alert('Error', getUserMessage(err) || 'Failed to override'),
       }
     );
   }
@@ -281,7 +269,7 @@ export default function OccurrenceDetailScreen() {
                             text: 'Cancel swap', style: 'destructive',
                             onPress: () => cancelSwap.mutate(
                               { swapId: swapReq.id },
-                              { onError: (e: any) => Alert.alert('Error', e.message) }
+                              { onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)) }
                             ),
                           },
                         ])
@@ -300,7 +288,7 @@ export default function OccurrenceDetailScreen() {
                       <TouchableOpacity
                         onPress={() => respondSwap.mutate(
                           { swapId: swapReq.id, accept: false },
-                          { onError: (e: any) => Alert.alert('Error', e.message) }
+                          { onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)) }
                         )}
                         style={{
                           flex: 1, backgroundColor: 'rgba(255,255,255,0.25)',
@@ -313,7 +301,7 @@ export default function OccurrenceDetailScreen() {
                       <TouchableOpacity
                         onPress={() => respondSwap.mutate(
                           { swapId: swapReq.id, accept: true },
-                          { onError: (e: any) => Alert.alert('Error', e.message) }
+                          { onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)) }
                         )}
                         style={{
                           flex: 1, backgroundColor: '#fff',

@@ -1,0 +1,120 @@
+import { useEffect } from 'react';
+import { AppState } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { addDays } from 'date-fns';
+
+import { useAuth } from '@/contexts/auth';
+import { supabase } from '@/lib/supabase';
+
+export type OccurrenceRow = {
+  id: string;
+  rota_id: string;
+  scheduled_at: string;
+  ends_at: string;
+  scheduled_local_date: string;
+  assigned_user_id: string | null;
+  status: string;
+};
+
+export function useRotas() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const key = ['rotas'] as const;
+
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    const channel = supabase
+      .channel('rotas-members')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rota_members', filter: `user_id=eq.${userId}` },
+        () => queryClient.invalidateQueries({ queryKey: key })
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user.id, queryClient]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') queryClient.invalidateQueries({ queryKey: key });
+    });
+    return () => sub.remove();
+  }, [queryClient]);
+
+  return useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rota_members')
+        .select(
+          `role, rota:rotas(id, name, description, tz, duration_minutes, assignment_mode, created_at)`
+        )
+        .eq('user_id', session!.user.id)
+        .order('joined_at', { ascending: false });
+      if (error) throw error;
+      return data.filter((row) => row.rota !== null) as {
+        role: string;
+        rota: {
+          id: string;
+          name: string;
+          description: string | null;
+          tz: string;
+          duration_minutes: number | null;
+          assignment_mode: string;
+          created_at: string;
+        };
+      }[];
+    },
+    enabled: !!session,
+  });
+}
+
+export function useRotaData(rotaId: string) {
+  const { session } = useAuth();
+
+  return useQuery({
+    queryKey: ['rotas', rotaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rotas')
+        .select(`*, rota_members(*, profile:profiles(id, display_name, avatar_url))`)
+        .eq('id', rotaId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!session && !!rotaId,
+  });
+}
+
+/** @deprecated Prefer `useRotaData`; rota member realtime is owned by `RotaRealtimeRoot`. */
+export function useRota(rotaId: string) {
+  return useRotaData(rotaId);
+}
+
+export function useRotaOccurrences(rotaId: string) {
+  const { session } = useAuth();
+
+  return useQuery({
+    queryKey: ['occurrences', rotaId],
+    queryFn: async () => {
+      const now = new Date();
+      const windowEnd = addDays(now, 30);
+      const { data, error } = await supabase
+        .from('occurrences')
+        .select(
+          'id, rota_id, scheduled_at, ends_at, scheduled_local_date, status, assigned_user_id'
+        )
+        .eq('rota_id', rotaId)
+        .gte('ends_at', now.toISOString())
+        .lte('scheduled_at', windowEnd.toISOString())
+        .order('scheduled_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as OccurrenceRow[];
+    },
+    enabled: !!session && !!rotaId,
+  });
+}

@@ -2,52 +2,33 @@ import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
+import {
+  pendingSwapForMeSchema,
+  rpcOccurrenceRefSchema,
+  swapRequestDetailSchema,
+  type PendingSwapForMe,
+  type SwapRequestDetail,
+} from '@/lib/api-schemas/swaps';
 import { supabase } from '@/lib/supabase';
 
-export type SwapRequestDetail = {
-  id: string;
-  occurrence_id: string;
-  requester_id: string;
-  target_user_id: string;
-  message: string | null;
-  status: string;
-  created_at: string;
-  decided_at: string | null;
-  requester: { display_name: string | null } | null;
-  target: { display_name: string | null } | null;
-};
-
-export type PendingSwapForMe = {
-  id: string;
-  occurrence_id: string;
-  requester_id: string;
-  message: string | null;
-  created_at: string;
-  requester: { display_name: string | null } | null;
-  occurrence: {
-    scheduled_at: string;
-    ends_at: string;
-    rota_id: string;
-    rota: { name: string; tz: string } | null;
-  } | null;
-};
+export type { PendingSwapForMe, SwapRequestDetail };
 
 export function useSwapRequest(swapId: string | null | undefined) {
   const { session } = useAuth();
   return useQuery({
     queryKey: ['swap-request', swapId],
-    queryFn: async () => {
+    queryFn: async (): Promise<SwapRequestDetail> => {
       const { data, error } = await supabase
         .from('swap_requests')
         .select(
           'id, occurrence_id, requester_id, target_user_id, message, status, created_at, decided_at,' +
-          'requester:profiles!swap_requests_requester_id_fkey(display_name),' +
-          'target:profiles!swap_requests_target_user_id_fkey(display_name)'
+            'requester:profiles!swap_requests_requester_id_fkey(display_name),' +
+            'target:profiles!swap_requests_target_user_id_fkey(display_name)'
         )
         .eq('id', swapId!)
         .single();
       if (error) throw error;
-      return data as unknown as SwapRequestDetail;
+      return swapRequestDetailSchema.parse(data);
     },
     enabled: !!session && !!swapId,
   });
@@ -65,29 +46,43 @@ export function usePendingSwapsForMe() {
       .channel('swap-inbox')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'swap_requests',
-          filter: `target_user_id=eq.${uid}` },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'swap_requests',
+          filter: `target_user_id=eq.${uid}`,
+        },
         () => queryClient.invalidateQueries({ queryKey: key })
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session?.user.id, queryClient]);
 
   return useQuery({
     queryKey: key,
-    queryFn: async () => {
+    queryFn: async (): Promise<PendingSwapForMe[]> => {
       const { data, error } = await supabase
         .from('swap_requests')
         .select(
           'id, occurrence_id, requester_id, message, created_at,' +
-          'requester:profiles!swap_requests_requester_id_fkey(display_name),' +
-          'occurrence:occurrences(scheduled_at, ends_at, rota_id, rota:rotas(name, tz))'
+            'requester:profiles!swap_requests_requester_id_fkey(display_name),' +
+            'occurrence:occurrences(scheduled_at, ends_at, rota_id, rota:rotas(name, tz))'
         )
         .eq('target_user_id', session!.user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as PendingSwapForMe[];
+      const rows = data ?? [];
+      return rows.map((row, i) => {
+        const r = pendingSwapForMeSchema.safeParse(row);
+        if (!r.success) {
+          if (__DEV__) console.warn('[pending-swaps] row', i, r.error.flatten());
+          throw new Error('Invalid swap inbox shape from server.');
+        }
+        return r.data;
+      });
     },
     enabled: !!session,
   });
@@ -129,12 +124,13 @@ export function useRespondSwap() {
         p_accept: accept,
       });
       if (error) throw error;
-      return data as any;
+      return data;
     },
-    onSuccess: (occ, { swapId }) => {
-      const row = occ as any;
-      if (row?.id) queryClient.invalidateQueries({ queryKey: ['occurrence', row.id] });
-      if (row?.rota_id) queryClient.invalidateQueries({ queryKey: ['occurrences', row.rota_id] });
+    onSuccess: (data, { swapId }) => {
+      const row = rpcOccurrenceRefSchema.safeParse(data);
+      const occ = row.success ? row.data : null;
+      if (occ?.id) queryClient.invalidateQueries({ queryKey: ['occurrence', occ.id] });
+      if (occ?.rota_id) queryClient.invalidateQueries({ queryKey: ['occurrences', occ.rota_id] });
       queryClient.invalidateQueries({ queryKey: ['swap-request', swapId] });
       queryClient.invalidateQueries({ queryKey: ['home-rotas'] });
       queryClient.invalidateQueries({ queryKey: ['pending-swaps-for-me'] });
@@ -177,12 +173,13 @@ export function useOverrideOccurrence() {
         p_reason: reason ?? undefined,
       });
       if (error) throw error;
-      return data as any;
+      return data;
     },
-    onSuccess: (occ, { occurrenceId }) => {
-      const row = occ as any;
+    onSuccess: (data, { occurrenceId }) => {
+      const row = rpcOccurrenceRefSchema.safeParse(data);
+      const occ = row.success ? row.data : null;
       queryClient.invalidateQueries({ queryKey: ['occurrence', occurrenceId] });
-      if (row?.rota_id) queryClient.invalidateQueries({ queryKey: ['occurrences', row.rota_id] });
+      if (occ?.rota_id) queryClient.invalidateQueries({ queryKey: ['occurrences', occ.rota_id] });
       queryClient.invalidateQueries({ queryKey: ['home-rotas'] });
       queryClient.invalidateQueries({ queryKey: ['pending-swaps-for-me'] });
     },

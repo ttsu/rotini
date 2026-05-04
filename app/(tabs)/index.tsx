@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth';
 import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
 import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { routes } from '@/lib/navigation/routes';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ function SwapInboxCard({
   sep: string;
 }) {
   const occ = item.occurrence;
-  const tz = (occ?.rota as any)?.tz ?? 'UTC';
+  const tz = occ?.rota?.tz ?? 'UTC';
   const timeLabel = occ
     ? formatInTimeZone(new Date(occ.scheduled_at), tz, 'EEE d MMM, h:mm a')
     : '';
@@ -141,7 +142,7 @@ function SwapInboxCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      accessibilityLabel={`Swap request from ${item.requester?.display_name ?? 'someone'} for ${(item.occurrence?.rota as any)?.name ?? 'a rota'}`}
+      accessibilityLabel={`Swap request from ${item.requester?.display_name ?? 'someone'} for ${item.occurrence?.rota?.name ?? 'a rota'}`}
       accessibilityRole="button"
       style={{
         backgroundColor: card,
@@ -162,7 +163,7 @@ function SwapInboxCard({
             style={{ flex: 1, fontSize: 15, fontWeight: '600', color: textPrimary }}
             numberOfLines={1}
           >
-            {(occ?.rota as any)?.name ?? 'Rota'}
+            {occ?.rota?.name ?? 'Rota'}
           </Text>
           <Pill label="Swap request" color="amber" />
         </View>
@@ -235,7 +236,7 @@ export default function HomeScreen() {
             <SwapInboxCard
               key={item.id}
               item={item}
-              onPress={() => router.push(`/(tabs)/rotas/occurrence/${item.occurrence_id}` as any)}
+              onPress={() => router.push(routes.rotas.occurrence(item.occurrence_id))}
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
@@ -310,7 +311,7 @@ export default function HomeScreen() {
             <ShiftCard
               key={item.rota.id}
               item={item}
-              onPress={() => router.push(`/(tabs)/rotas/${item.rota.id}` as any)}
+              onPress={() => router.push(routes.rotas.detail(item.rota.id))}
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}

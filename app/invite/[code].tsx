@@ -4,6 +4,8 @@ import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-na
 
 import { useAuth } from '@/contexts/auth';
 import { useAcceptInvite } from '@/features/rotas/hooks';
+import { getUserMessage } from '@/lib/errors';
+import { routes } from '@/lib/navigation/routes';
 import { supabase } from '@/lib/supabase';
 
 type InviteInfo = {
@@ -39,7 +41,7 @@ export default function InviteAcceptScreen() {
     }
 
     if (status === 'unauthenticated') {
-      router.replace(`/(auth)/sign-in`);
+      router.replace(routes.auth.signIn);
       return;
     }
 
@@ -54,9 +56,9 @@ export default function InviteAcceptScreen() {
   async function handleAccept() {
     try {
       const member = await acceptInvite.mutateAsync(code);
-      router.replace(`/(tabs)/rotas/${member.rota_id}` as any);
-    } catch (err: any) {
-      Alert.alert('Could not join', err?.message ?? 'Please try again.');
+      router.replace(routes.rotas.detail(member.rota_id));
+    } catch (err: unknown) {
+      Alert.alert('Could not join', getUserMessage(err));
     }
   }
 
@@ -75,7 +77,7 @@ export default function InviteAcceptScreen() {
         <Text className="text-gray-500 text-center mb-8">{loadError}</Text>
         <TouchableOpacity
           className="bg-blue-600 rounded-xl px-6 py-3"
-          onPress={() => router.replace('/(tabs)')}
+          onPress={() => router.replace(routes.tabs)}
         >
           <Text className="text-white font-semibold">Go home</Text>
         </TouchableOpacity>
