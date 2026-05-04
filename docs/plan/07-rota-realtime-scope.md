@@ -134,7 +134,7 @@ Commit after **each** numbered unit; tick checkboxes in this file as you go.
 
 **Checklist**
 
-- Unit 6 complete
+- [x] Unit 6 complete
 
 ---
 
