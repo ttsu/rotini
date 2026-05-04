@@ -186,22 +186,8 @@ export function useRotas() {
   });
 }
 
-export function useRota(rotaId: string) {
+export function useRotaData(rotaId: string) {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!rotaId) return;
-    const channel = supabase
-      .channel(`rota_members:${rotaId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'rota_members', filter: `rota_id=eq.${rotaId}` },
-        () => queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] })
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [rotaId, queryClient]);
 
   return useQuery({
     queryKey: ['rotas', rotaId],
@@ -216,6 +202,11 @@ export function useRota(rotaId: string) {
     },
     enabled: !!session && !!rotaId,
   });
+}
+
+/** @deprecated Prefer `useRotaData`; rota member realtime is owned by `RotaRealtimeRoot`. */
+export function useRota(rotaId: string) {
+  return useRotaData(rotaId);
 }
 
 export function useCreateRota() {
