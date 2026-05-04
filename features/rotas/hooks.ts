@@ -351,20 +351,6 @@ export type OccurrenceRow = {
 
 export function useRotaOccurrences(rotaId: string) {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!rotaId) return;
-    const channel = supabase
-      .channel(`occurrences-list:${rotaId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'occurrences', filter: `rota_id=eq.${rotaId}` },
-        () => queryClient.invalidateQueries({ queryKey: ['occurrences', rotaId] })
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [rotaId, queryClient]);
 
   return useQuery({
     queryKey: ['occurrences', rotaId],
