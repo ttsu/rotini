@@ -11,6 +11,7 @@ Per-phase implementation plan. Cross-cutting design lives in [SPEC.md](./SPEC.md
 - [Phase 4 — Swaps & overrides](./04-swaps-overrides.md)
 - [Phase 5 — Notifications](./05-notifications.md)
 - [Phase 6 — Polish & ship-ready](./06-polish.md)
+- [Phase 7 — Centralized rota realtime](./07-rota-realtime-scope.md) (supplementary; run when fixing duplicate-channel errors)
 
 ## Working pattern
 
