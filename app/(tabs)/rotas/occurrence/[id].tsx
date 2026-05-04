@@ -11,7 +11,7 @@ import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
-import { useRota } from '@/features/rotas/hooks';
+import { useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
 import {
   useSwapRequest, useRequestSwap, useRespondSwap,
   useCancelSwap, useOverrideOccurrence,
@@ -99,8 +99,12 @@ export default function OccurrenceDetailScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [id, queryClient]);
 
-  const { data: swapReq }  = useSwapRequest(occ?.swap_request_id);
-  const { data: rotaData } = useRota(occ?.rota_id ?? '');
+  const occRotaId = occ?.rota_id ?? null;
+  useRegisterRotaRealtime(occRotaId);
+
+  const { data: rotaData } = useRotaData(occRotaId ?? '');
+
+  const { data: swapReq } = useSwapRequest(occ?.swap_request_id);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
