@@ -24,9 +24,10 @@ import {
   useCreateInvite,
   useLeaveRota,
   useRemoveMember,
-  useRota,
+  useRotaData,
   useRotaOccurrences,
   useTransferOwnership,
+  useRegisterRotaRealtime,
   type OccurrenceRow,
 } from '@/features/rotas/hooks';
 import { useRotaNow, type RotaNowRow } from '@/features/rotas/useRotaNow';
@@ -634,11 +635,14 @@ function RemindersSection({
 
 export default function RotaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const rotaId = typeof id === 'string' ? id : null;
+  const routeId = rotaId ?? '';
+  useRegisterRotaRealtime(rotaId);
   const router = useRouter();
   const { session } = useAuth();
-  const { data: rota, isLoading, error, refetch } = useRota(id);
-  const rotaNow = useRotaNow(id);
-  const createInvite = useCreateInvite(id);
+  const { data: rota, isLoading, error, refetch } = useRotaData(routeId);
+  const rotaNow = useRotaNow(routeId);
+  const createInvite = useCreateInvite(routeId);
   const leaveRota = useLeaveRota();
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const scheme = useColorScheme();
@@ -693,7 +697,7 @@ export default function RotaDetailScreen() {
       {
         text: 'Leave', style: 'destructive',
         onPress: () =>
-          leaveRota.mutate(id, {
+          leaveRota.mutate(routeId, {
             onSuccess: () => router.replace('/(tabs)/rotas'),
             onError: (err: any) => Alert.alert('Cannot leave', err?.message),
           }),
@@ -738,7 +742,7 @@ export default function RotaDetailScreen() {
 
           {/* Upcoming list / calendar */}
           <UpcomingSection
-            rotaId={id}
+            rotaId={routeId}
             tz={rota.tz}
             activeOccId={rotaNow.data?.active_occurrence_id}
             membersById={membersById}
@@ -763,7 +767,7 @@ export default function RotaDetailScreen() {
                 member={m}
                 isOwner={isOwner}
                 isMe={m.user_id === myId}
-                rotaId={id}
+                rotaId={routeId}
                 textPrimary={textPrimary}
                 sep={sep}
                 showSep={i < members.length - 1}
@@ -827,7 +831,7 @@ export default function RotaDetailScreen() {
 
           {/* Reminders */}
           <RemindersSection
-            rotaId={id}
+            rotaId={routeId}
             isOwner={isOwner}
             card={card}
             textPrimary={textPrimary}

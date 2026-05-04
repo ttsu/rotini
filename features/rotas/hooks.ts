@@ -9,6 +9,8 @@ import { supabase } from '@/lib/supabase';
 
 import type { CreateRotaValues } from './schemas';
 
+export { RotaRealtimeRoot, useRegisterRotaRealtime } from './rota-realtime-root';
+
 type MemberRole = 'owner' | 'member' | 'viewer';
 
 export type HomeRota = {
