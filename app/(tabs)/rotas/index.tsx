@@ -5,6 +5,7 @@ import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
 import { ErrorState } from '@/components/ui/error-state';
 import { useRotas } from '@/features/rotas/hooks';
+import { routes } from '@/lib/navigation/routes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function formatDuration(minutes: number | null): string {
@@ -126,7 +127,7 @@ export default function RotasListScreen() {
               borderBottomWidth: index < data.length - 1 ? 0.5 : 0,
               borderBottomColor: sep,
             }}
-            onPress={() => router.push(`/(tabs)/rotas/${item.rota.id}` as any)}
+            onPress={() => router.push(routes.rotas.detail(item.rota.id))}
             accessibilityLabel={`${item.rota.name}, ${item.role}`}
             accessibilityRole="button"
           >

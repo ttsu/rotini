@@ -64,11 +64,18 @@ function AuthGate() {
 
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === '(onboarding)';
+    const inAuthCallback = segments[0] === 'auth-callback';
+    const inProfileRetry = inAuth && segments[1] === 'profile-retry';
     const inE2eAuth = segments[0] === 'e2e-auth' && E2E_AUTH_ENABLED;
 
     if (inE2eAuth) return;
 
-    if (status === 'unauthenticated' && !inAuth) {
+    if (status === 'profile_error' && !inProfileRetry) {
+      router.replace('/(auth)/profile-retry');
+      return;
+    }
+
+    if (status === 'unauthenticated' && !inAuth && !inAuthCallback) {
       router.replace('/(auth)/sign-in');
     } else if (status === 'onboarding' && !inOnboarding) {
       router.replace('/(onboarding)/profile');

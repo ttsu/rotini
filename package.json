@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "e2e:prepare": "node ./maestro/support/prepare-local.js",
     "e2e:start": "node ./maestro/support/with-e2e-env.js expo start --clear",
     "e2e:android": "node ./maestro/support/with-e2e-env.js expo run:android",
@@ -74,7 +75,8 @@
     "eslint-config-expo": "~10.0.0",
     "prettier": "^3.8.3",
     "tailwindcss": "^3.4.19",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
   },
   "private": true
 }

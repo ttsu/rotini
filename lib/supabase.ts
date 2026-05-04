@@ -12,9 +12,21 @@ type SupabaseExtra = {
 };
 
 const supabaseExtra = Constants.expoConfig?.extra as SupabaseExtra | undefined;
-export const supabaseUrl = supabaseExtra?.supabase?.url ?? process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey =
-  supabaseExtra?.supabase?.anonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+const resolvedUrl = (supabaseExtra?.supabase?.url ?? process.env.EXPO_PUBLIC_SUPABASE_URL)?.trim();
+const resolvedAnonKey = (
+  supabaseExtra?.supabase?.anonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+)?.trim();
+
+if (!resolvedUrl || !resolvedAnonKey) {
+  throw new Error(
+    'Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY ' +
+      '(or embed via app.config.js extra.supabase). See .env.example.'
+  );
+}
+
+export const supabaseUrl = resolvedUrl;
+const supabaseAnonKey = resolvedAnonKey;
 
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
