@@ -143,11 +143,13 @@ export function useRegisterRotaRealtime(rotaId: string | null) {
     throw new Error('useRegisterRotaRealtime must be used within RotaRealtimeRoot');
   }
 
+  const { register, unregister } = ctx;
+
   useEffect(() => {
     if (!rotaId) return;
-    ctx.register(rotaId);
+    register(rotaId);
     return () => {
-      ctx.unregister(rotaId);
+      unregister(rotaId);
     };
-  }, [rotaId, ctx]);
+  }, [rotaId, register, unregister]);
 }
