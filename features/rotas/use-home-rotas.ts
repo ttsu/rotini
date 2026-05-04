@@ -62,7 +62,9 @@ export function useHomeRotas() {
       const [rotasRes, occurrencesRes] = await Promise.all([
         supabase
           .from('rota_members')
-          .select('role, rota:rotas(id, name, description, tz, duration_minutes, back_to_back)')
+          .select(
+            'role, rota:rotas!rota_members_rota_id_fkey(id, name, description, tz, duration_minutes, back_to_back)'
+          )
           .eq('user_id', userId)
           .order('joined_at', { ascending: false }),
         supabase

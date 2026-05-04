@@ -68,7 +68,7 @@ export function usePendingSwapsForMe() {
         .select(
           'id, occurrence_id, requester_id, message, created_at,' +
             'requester:profiles!swap_requests_requester_id_fkey(display_name),' +
-            'occurrence:occurrences(scheduled_at, ends_at, rota_id, rota:rotas(name, tz))'
+            'occurrence:occurrences(scheduled_at, ends_at, rota_id, rota:rotas!occurrences_rota_id_fkey(name, tz))'
         )
         .eq('target_user_id', session!.user.id)
         .eq('status', 'pending')

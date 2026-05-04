@@ -50,7 +50,7 @@ export function useRotas() {
       const { data, error } = await supabase
         .from('rota_members')
         .select(
-          `role, rota:rotas(id, name, description, tz, duration_minutes, assignment_mode, created_at)`
+          'role, rota:rotas!rota_members_rota_id_fkey(id, name, description, tz, duration_minutes, assignment_mode, created_at)'
         )
         .eq('user_id', session!.user.id)
         .order('joined_at', { ascending: false });
