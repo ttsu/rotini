@@ -96,6 +96,9 @@ module.exports = ({ config }) => {
       supportsTablet: true,
       usesAppleSignIn: true,
       bundleIdentifier: appIdentifier,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
     },
     android: {
       package: appIdentifier,
@@ -115,6 +118,7 @@ module.exports = ({ config }) => {
     plugins: [
       'expo-router',
       'expo-apple-authentication',
+      'expo-secure-store',
       [
         'expo-notifications',
         {
