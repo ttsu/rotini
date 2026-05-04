@@ -153,7 +153,7 @@ Commit after **each** numbered unit; tick checkboxes in this file as you go.
 
 **Checklist**
 
-- Unit 7 complete
+- [x] Unit 7 complete
 
 ---
 
