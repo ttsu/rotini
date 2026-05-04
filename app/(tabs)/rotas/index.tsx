@@ -18,6 +18,10 @@ function formatDuration(minutes: number | null): string {
   return `${Math.round(minutes / 10080)} weeks`;
 }
 
+function toTestIdSegment(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export default function RotasListScreen() {
   const router = useRouter();
   const { data, isLoading, error, refetch } = useRotas();
@@ -31,6 +35,7 @@ export default function RotasListScreen() {
 
   const PlusButton = () => (
     <TouchableOpacity
+      testID="create-new-shift-button"
       hitSlop={8}
       onPress={() => router.push('/(tabs)/rotas/new')}
       accessibilityLabel="Create new shift"
@@ -51,7 +56,7 @@ export default function RotasListScreen() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: bg }}>
-        <LargeTitle title="Shifts" right={<PlusButton />} />
+        <LargeTitle title="Shifts" right={<PlusButton />} testID="shifts-title" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ErrorState message="Failed to load shifts." onRetry={refetch} textSec={textSec} />
         </View>
@@ -62,7 +67,7 @@ export default function RotasListScreen() {
   if (!data || data.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: bg }}>
-        <LargeTitle title="Shifts" right={<PlusButton />} />
+        <LargeTitle title="Shifts" right={<PlusButton />} testID="shifts-title" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 22, fontWeight: '700', color: textPrimary, marginBottom: 8 }}>
             No shifts yet
@@ -71,6 +76,7 @@ export default function RotasListScreen() {
             Create a shift to start managing recurring duties.
           </Text>
           <TouchableOpacity
+            testID="empty-shifts-create-button"
             style={{
               backgroundColor: '#0a7ea4',
               borderRadius: 10,
@@ -90,10 +96,11 @@ export default function RotasListScreen() {
 
   return (
     <ScrollView
+      testID="shifts-screen"
       style={{ flex: 1, backgroundColor: bg }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
-      <LargeTitle title="Shifts" right={<PlusButton />} />
+      <LargeTitle title="Shifts" right={<PlusButton />} testID="shifts-title" />
 
       {/* Grouped card */}
       <View
@@ -112,6 +119,7 @@ export default function RotasListScreen() {
         {data.map((item, index) => (
           <TouchableOpacity
             key={item.rota.id}
+            testID={`shifts-rota-row-${toTestIdSegment(item.rota.name)}`}
             style={{
               paddingHorizontal: 16,
               paddingVertical: 14,

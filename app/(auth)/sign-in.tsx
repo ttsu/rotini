@@ -77,11 +77,16 @@ export default function SignInScreen() {
   const busy = loading !== null;
 
   return (
-    <View className="flex-1 justify-center px-6 bg-white dark:bg-black">
-      <Text className="text-4xl font-bold mb-2 text-black dark:text-white">rotini</Text>
-      <Text className="text-base text-gray-500 mb-10">Sign in to continue</Text>
+    <View testID="sign-in-screen" className="flex-1 justify-center px-6 bg-white dark:bg-black">
+      <Text testID="sign-in-title" className="text-4xl font-bold mb-2 text-black dark:text-white">
+        rotini
+      </Text>
+      <Text testID="sign-in-subtitle" className="text-base text-gray-500 mb-10">
+        Sign in to continue
+      </Text>
 
       <TextInput
+        testID="sign-in-email-input"
         className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-3 text-base text-black dark:text-white"
         placeholder="Email address"
         placeholderTextColor="#9ca3af"
@@ -94,6 +99,7 @@ export default function SignInScreen() {
       />
 
       <TouchableOpacity
+        testID="sign-in-magic-link-button"
         className="bg-[#0a7ea4] rounded-xl py-3 mb-6 items-center"
         onPress={signInWithMagicLink}
         disabled={busy}
@@ -122,6 +128,7 @@ export default function SignInScreen() {
       )}
 
       <TouchableOpacity
+        testID="sign-in-google-button"
         className="border border-gray-300 dark:border-gray-700 rounded-xl py-3 items-center"
         onPress={signInWithGoogle}
         disabled={busy}

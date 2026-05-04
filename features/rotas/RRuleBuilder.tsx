@@ -140,10 +140,11 @@ export function RRuleBuilder({ value, dtstart, tz, onChangeRRule }: Props) {
   return (
     <View>
       {/* Frequency tabs */}
-      <View className="flex-row gap-2 mb-4">
+      <View testID="rrule-frequency-tabs" className="flex-row gap-2 mb-4">
         {FREQ_TABS.map((tab) => (
           <TouchableOpacity
             key={tab.value}
+            testID={`rrule-frequency-${tab.value.toLowerCase()}`}
             className={`flex-1 py-2 rounded-xl border items-center ${
               freq === tab.value ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-700'
             }`}

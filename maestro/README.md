@@ -21,6 +21,14 @@ SUPABASE_SERVICE_ROLE_KEY=<local service role key>
 
 Run `supabase status -o env` to get the local keys. The seed script refuses to reset data on non-local Supabase URLs unless you set `E2E_ALLOW_REMOTE=1`.
 
+Stop any existing Expo or Metro server. Then start Expo through the e2e wrapper so Metro bundles the same Supabase values from `.env.e2e`. The e2e wrapper disables Expo's normal dotenv loading for that process so `.env.local` cannot override the e2e values.
+
+```bash
+npm run e2e:start
+```
+
+Use `npm run e2e:android` or `npm run e2e:ios` when you need to rebuild the native app. If `setSession` fails with an `unrecognized JWT kid` error, stop every running Metro process and restart with the e2e wrapper; that error means the app is using a different Supabase project than `e2e:prepare`. The `[e2e-auth] setting session` log shows the Supabase URL that the client is using.
+
 ## Run
 
 ```bash
@@ -28,6 +36,6 @@ npm run e2e:prepare
 npm run e2e:test
 ```
 
-`e2e:prepare` resets only records and users with the `E2E` test prefix/emails, creates deterministic fixtures, signs in the test users, and writes generated Maestro subflows under `maestro/generated/`.
+`e2e:prepare` resets only records and users with the `E2E` test prefix/emails, creates deterministic fixtures, and writes generated Maestro subflows under `maestro/generated/`.
 
-The generated files contain short-lived Supabase session tokens and are ignored by Git.
+The generated files contain the disposable e2e user password and are ignored by Git.

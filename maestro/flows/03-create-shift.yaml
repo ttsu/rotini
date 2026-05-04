@@ -1,28 +1,45 @@
 appId: com.timtsu.rotini
 ---
 - runFlow: ../generated/login-owner.yaml
-- tapOn: "Shifts"
+- tapOn:
+    id: "tab-shifts"
 - extendedWaitUntil:
-    visible: "Shifts"
+    visible:
+      id: "shifts-screen"
     timeout: 10000
-- tapOn: "Create new shift"
+- tapOn:
+    id: "create-new-shift-button"
 - extendedWaitUntil:
-    visible: "Shift name"
+    visible:
+      id: "shift-name-input"
     timeout: 10000
-- tapOn: "Shift name"
+- tapOn:
+    id: "shift-name-input"
 - inputText: "E2E Created Shift"
-- tapOn: "Shift description"
+- tapOn:
+    id: "shift-description-input"
 - inputText: "Created by Maestro"
-- tapOn: "Edit schedule"
-- assertVisible: "Schedule"
-- assertVisible: "Daily"
-- assertVisible: "Weekly"
-- assertVisible: "Monthly"
-- tapOn: "Done editing schedule"
-- tapOn: "Create shift"
+- tapOn:
+    id: "edit-schedule-button"
+- assertVisible:
+    id: "schedule-modal"
+- assertVisible:
+    id: "rrule-frequency-daily"
+- assertVisible:
+    id: "rrule-frequency-weekly"
+- assertVisible:
+    id: "rrule-frequency-monthly"
+- tapOn:
+    id: "done-editing-schedule-button"
+- tapOn:
+    id: "create-shift-button"
 - extendedWaitUntil:
-    visible: "E2E Created Shift"
+    visible:
+      id: "rota-detail-screen"
     timeout: 15000
-- assertVisible: "Duration"
-- assertVisible: "Round-robin"
-- assertVisible: "Members (1)"
+- assertVisible:
+    id: "rota-detail-duration-row"
+- assertVisible:
+    id: "rota-detail-assignment-row"
+- assertVisible:
+    id: "rota-members-section"

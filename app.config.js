@@ -1,12 +1,15 @@
 const { version } = require('./package.json');
 
 const appIdentifier = 'com.timtsu.rotini';
-const easCommitHash = process.env.EAS_BUILD_GIT_COMMIT_HASH ?? process.env.GIT_COMMIT_SHA ?? 'local';
+const easCommitHash =
+  process.env.EAS_BUILD_GIT_COMMIT_HASH ?? process.env.GIT_COMMIT_SHA ?? 'local';
 const easBuildId = process.env.EAS_BUILD_ID ?? 'local';
 const buildProfile = process.env.EAS_BUILD_PROFILE ?? process.env.APP_ENV ?? 'development';
 const sentryEnvironment = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT ?? buildProfile;
 const sentryRelease =
-  easCommitHash === 'local' ? `rotini@${version}+local` : `rotini@${version}+${easCommitHash.slice(0, 12)}`;
+  easCommitHash === 'local'
+    ? `rotini@${version}+local`
+    : `rotini@${version}+${easCommitHash.slice(0, 12)}`;
 
 /**
  * Builds optional Sentry plugin settings from EAS secrets.
@@ -48,8 +51,35 @@ function getEasExtra(existingEasConfig) {
   };
 }
 
+/**
+ * Builds Supabase config for runtime code.
+ *
+ * @returns {{ url?: string, anonKey?: string } | undefined}
+ */
+function getSupabaseExtra() {
+  if (process.env.ROTINI_E2E_ENV === '1') {
+    return {
+      url: process.env.ROTINI_E2E_SUPABASE_URL,
+      anonKey: process.env.ROTINI_E2E_SUPABASE_ANON_KEY,
+    };
+  }
+
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url && !anonKey) {
+    return undefined;
+  }
+
+  return {
+    url,
+    anonKey,
+  };
+}
+
 module.exports = ({ config }) => {
   const easExtra = getEasExtra(config.extra?.eas);
+  const supabaseExtra = getSupabaseExtra();
 
   return {
     ...config,
@@ -108,7 +138,7 @@ module.exports = ({ config }) => {
           },
         },
       ],
-      ['@sentry/react-native', getSentryPluginConfig()],
+      ['@sentry/react-native/expo', getSentryPluginConfig()],
     ],
     experiments: {
       typedRoutes: true,
@@ -117,6 +147,7 @@ module.exports = ({ config }) => {
     extra: {
       ...(config.extra ?? {}),
       ...(easExtra ? { eas: easExtra } : {}),
+      ...(supabaseExtra ? { supabase: supabaseExtra } : {}),
       sentry: {
         release: sentryRelease,
         dist: easBuildId,

@@ -37,6 +37,10 @@ type RotaMember = {
   profile: { id: string; display_name: string | null } | null;
 };
 
+function toTestIdSegment(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export default function OccurrenceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
@@ -126,6 +130,7 @@ export default function OccurrenceDetailScreen() {
 
   const swapTargets      = members.filter((m) => m.role !== 'viewer' && m.user_id !== userId);
   const overrideTargets  = members.filter((m) => m.role !== 'viewer');
+  const assigneeTestId = toTestIdSegment(occ?.assignee?.display_name ?? 'unassigned');
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -183,6 +188,7 @@ export default function OccurrenceDetailScreen() {
       <Stack.Screen options={{ title: occ?.rota?.name ?? 'Occurrence' }} />
 
       <ScrollView
+        testID="occurrence-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
       >
@@ -201,7 +207,10 @@ export default function OccurrenceDetailScreen() {
               }} />
               <View style={{ padding: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: textPrimary, flex: 1 }}>
+                  <Text
+                    testID={`occurrence-assignee-${assigneeTestId}`}
+                    style={{ fontSize: 20, fontWeight: '700', color: textPrimary, flex: 1 }}
+                  >
                     {occ.assignee?.display_name ?? 'Unassigned'}
                   </Text>
                   <Pill
@@ -239,13 +248,13 @@ export default function OccurrenceDetailScreen() {
             {occ.override_reason ? (
               <View style={{ ...cardStyle, padding: 16 }}>
                 <Text style={{ fontSize: 13, color: textSec, marginBottom: 4 }}>Override reason</Text>
-                <Text style={{ fontSize: 15, color: textPrimary }}>{occ.override_reason}</Text>
+                <Text testID="override-reason-text" style={{ fontSize: 15, color: textPrimary }}>{occ.override_reason}</Text>
               </View>
             ) : null}
 
             {/* ── Pending swap banner ───────────────────────────────────── */}
             {hasPendingSwap && swapReq?.status === 'pending' ? (
-              <View style={{
+              <View testID="swap-pending-banner" style={{
                 backgroundColor: '#FF9F0A', borderRadius: 18, padding: 16, marginBottom: 12,
                 shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
               }}>
@@ -254,7 +263,7 @@ export default function OccurrenceDetailScreen() {
                   {swapReq.requester?.display_name ?? '—'} → {swapReq.target?.display_name ?? '—'}
                 </Text>
                 {swapReq.message ? (
-                  <Text style={{ fontSize: 14, color: '#fff', opacity: 0.9, marginBottom: 12 }}>
+                  <Text testID="swap-pending-message" style={{ fontSize: 14, color: '#fff', opacity: 0.9, marginBottom: 12 }}>
                     {`"${swapReq.message}"`}
                   </Text>
                 ) : null}
@@ -277,6 +286,7 @@ export default function OccurrenceDetailScreen() {
                         flex: 1, backgroundColor: 'rgba(255,255,255,0.25)',
                         borderRadius: 10, paddingVertical: 10, alignItems: 'center',
                       }}
+                      testID="cancel-swap-button"
                     >
                       <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
                     </TouchableOpacity>
@@ -292,6 +302,7 @@ export default function OccurrenceDetailScreen() {
                           flex: 1, backgroundColor: 'rgba(255,255,255,0.25)',
                           borderRadius: 10, paddingVertical: 10, alignItems: 'center',
                         }}
+                        testID="decline-swap-button"
                       >
                         <Text style={{ color: '#fff', fontWeight: '600' }}>Decline</Text>
                       </TouchableOpacity>
@@ -304,6 +315,7 @@ export default function OccurrenceDetailScreen() {
                           flex: 1, backgroundColor: '#fff',
                           borderRadius: 10, paddingVertical: 10, alignItems: 'center',
                         }}
+                        testID="accept-swap-button"
                       >
                         <Text style={{ color: '#FF9F0A', fontWeight: '700' }}>Accept</Text>
                       </TouchableOpacity>
@@ -318,6 +330,7 @@ export default function OccurrenceDetailScreen() {
               <View style={cardStyle}>
                 {canRequestSwap && (
                   <TouchableOpacity
+                    testID="request-swap-button"
                     onPress={() => setShowSwapModal(true)}
                     style={{
                       ...rowStyle,
@@ -332,6 +345,7 @@ export default function OccurrenceDetailScreen() {
                 )}
                 {isOwner && (
                   <TouchableOpacity
+                    testID="override-assignment-button"
                     onPress={() => setShowOverrideModal(true)}
                     style={{ ...rowStyle, borderBottomWidth: 0 }}
                     accessibilityLabel="Override assignment"
@@ -348,7 +362,7 @@ export default function OccurrenceDetailScreen() {
 
       {/* ── Swap request modal ──────────────────────────────────────────────── */}
       <Modal visible={showSwapModal} animationType="slide" presentationStyle="pageSheet">
-        <View style={{ flex: 1, backgroundColor: bg }}>
+        <View testID="swap-request-modal" style={{ flex: 1, backgroundColor: bg }}>
           {/* Header */}
           <View style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -362,6 +376,7 @@ export default function OccurrenceDetailScreen() {
             </TouchableOpacity>
             <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Request swap</Text>
             <TouchableOpacity
+              testID="send-swap-request-button"
               onPress={submitSwapRequest}
               disabled={!selectedTargetId || requestSwap.isPending}
             >
@@ -389,6 +404,7 @@ export default function OccurrenceDetailScreen() {
               ) : swapTargets.map((m, idx) => (
                 <TouchableOpacity
                   key={m.user_id}
+                  testID={`swap-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id)}`}
                   onPress={() => setSelectedTargetId(m.user_id)}
                   style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -415,6 +431,7 @@ export default function OccurrenceDetailScreen() {
             </Text>
             <View style={cardStyle}>
               <TextInput
+                testID="swap-message-input"
                 value={swapMessage}
                 onChangeText={(t) => setSwapMessage(t.slice(0, 200))}
                 placeholder="Add a note…"
@@ -439,7 +456,7 @@ export default function OccurrenceDetailScreen() {
 
       {/* ── Override modal ──────────────────────────────────────────────────── */}
       <Modal visible={showOverrideModal} animationType="slide" presentationStyle="pageSheet">
-        <View style={{ flex: 1, backgroundColor: bg }}>
+        <View testID="override-assignment-modal" style={{ flex: 1, backgroundColor: bg }}>
           {/* Header */}
           <View style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -453,6 +470,7 @@ export default function OccurrenceDetailScreen() {
             </TouchableOpacity>
             <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Override assignment</Text>
             <TouchableOpacity
+              testID="submit-override-button"
               onPress={submitOverride}
               disabled={!selectedAssigneeId || overrideOccurrence.isPending}
             >
@@ -480,6 +498,7 @@ export default function OccurrenceDetailScreen() {
               ) : overrideTargets.map((m, idx) => (
                 <TouchableOpacity
                   key={m.user_id}
+                  testID={`override-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id)}`}
                   onPress={() => setSelectedAssigneeId(m.user_id)}
                   style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -506,6 +525,7 @@ export default function OccurrenceDetailScreen() {
             </Text>
             <View style={cardStyle}>
               <TextInput
+                testID="override-reason-input"
                 value={overrideReason}
                 onChangeText={setOverrideReason}
                 placeholder="Why are you overriding this?"

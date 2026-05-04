@@ -22,6 +22,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
+          tabBarButtonTestID: 'tab-home',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
@@ -29,6 +30,7 @@ export default function TabLayout() {
         name="rotas"
         options={{
           title: 'Shifts',
+          tabBarButtonTestID: 'tab-shifts',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />
@@ -36,6 +38,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          tabBarButtonTestID: 'tab-settings',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
