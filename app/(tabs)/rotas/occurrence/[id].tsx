@@ -59,7 +59,7 @@ export default function OccurrenceDetailScreen() {
         .select(
           'id, rota_id, scheduled_at, ends_at, status,' +
           'assigned_user_id, original_assignee_id, override_reason, swap_request_id,' +
-          'rota:rotas(name, tz),' +
+          'rota:rotas!occurrences_rota_id_fkey(name, tz),' +
           'assignee:profiles!occurrences_assigned_user_id_fkey(display_name)'
         )
         .eq('id', id)
