@@ -38,16 +38,14 @@ function getSentryPluginConfig() {
  * @param {Record<string, unknown> | undefined} existingEasConfig
  * @returns {Record<string, unknown> | undefined}
  */
-function getEasExtra(existingEasConfig) {
-  const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+const DEFAULT_EAS_PROJECT_ID = 'e27d5c34-a3da-49d3-a95b-5c70fbd65297';
 
-  if (!projectId && !existingEasConfig) {
-    return undefined;
-  }
+function getEasExtra(existingEasConfig) {
+  const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? DEFAULT_EAS_PROJECT_ID;
 
   return {
     ...(existingEasConfig ?? {}),
-    ...(projectId ? { projectId } : {}),
+    projectId,
   };
 }
 
@@ -143,6 +141,9 @@ module.exports = ({ config }) => {
     experiments: {
       typedRoutes: true,
       reactCompiler: true,
+    },
+    updates: {
+      url: 'https://u.expo.dev/e27d5c34-a3da-49d3-a95b-5c70fbd65297',
     },
     extra: {
       ...(config.extra ?? {}),
