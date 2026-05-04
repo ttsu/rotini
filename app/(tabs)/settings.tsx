@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LargeTitle } from '@/components/ui/large-title';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -40,6 +41,7 @@ function RowChevron() {
 }
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { themePreference, setThemePreference } = useAppPreferences();
   const scheme = useColorScheme();
@@ -78,7 +80,7 @@ export default function SettingsScreen() {
     <ScrollView
       testID="settings-screen"
       style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 40 }}
     >
       <LargeTitle title="Settings" testID="settings-title" />
 
