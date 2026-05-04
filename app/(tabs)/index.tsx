@@ -1,6 +1,7 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ErrorState } from '@/components/ui/error-state';
 import { LargeTitle } from '@/components/ui/large-title';
@@ -187,6 +188,7 @@ function SwapInboxCard({
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { data, isLoading, error, refetch } = useHomeRotas();
   const { data: pendingSwaps } = usePendingSwapsForMe();
@@ -207,14 +209,8 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 40 }}
     >
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 4 }}>
-        <Text style={{ fontSize: 13, color: textSec }}>
-          {new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </Text>
-      </View>
       <LargeTitle title={greetingTitle} />
       {/* Swap requests inbox */}
       {pendingSwaps && pendingSwaps.length > 0 && (
