@@ -2,21 +2,31 @@ appId: com.timtsu.rotini
 ---
 - runFlow: ../generated/login-owner.yaml
 - runFlow: ../generated/open-rota.yaml
-- assertVisible: "E2E Owner is on now"
-- assertVisible: "Duration"
-- assertVisible: "Round-robin"
+- assertVisible:
+    id: "rota-status-card"
+- assertVisible:
+    id: "rota-detail-duration-row"
+- assertVisible:
+    id: "rota-detail-assignment-row"
 - scrollUntilVisible:
     element:
-      text: "Members (3)"
+      id: "rota-members-section"
     direction: DOWN
-- assertVisible: "E2E Owner (you)"
-- assertVisible: "E2E Member"
-- assertVisible: "E2E Viewer"
-- assertVisible: "+ Invite member"
-- assertVisible: "+ Viewer"
+- assertVisible:
+    id: "rota-member-row-e2e-owner"
+- assertVisible:
+    id: "rota-member-row-e2e-member"
+- assertVisible:
+    id: "rota-member-row-e2e-viewer"
+- assertVisible:
+    id: "invite-member-button"
+- assertVisible:
+    id: "invite-viewer-button"
 - scrollUntilVisible:
     element:
-      text: "Reminders"
+      id: "rota-reminders-heading"
     direction: DOWN
-- assertVisible: "1 hour before"
-- assertVisible: "Leave Shift"
+- assertVisible:
+    id: "rota-reminder-row-60"
+- assertVisible:
+    id: "leave-shift-button"

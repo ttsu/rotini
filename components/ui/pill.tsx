@@ -13,14 +13,17 @@ export function Pill({
   label,
   color = 'teal',
   dot = false,
+  testID,
 }: {
   label: string;
   color?: PillColor;
   dot?: boolean;
+  testID?: string;
 }) {
   const c = COLORS[color];
   return (
     <View
+      testID={testID}
       style={{
         flexDirection: 'row',
         alignItems: 'center',

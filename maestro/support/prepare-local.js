@@ -3,6 +3,8 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
 
+const { loadEnvFile } = require('./env');
+
 const ROOT = path.resolve(__dirname, '../..');
 const GENERATED_DIR = path.join(ROOT, 'maestro/generated');
 const APP_ID = process.env.MAESTRO_APP_ID ?? 'com.timtsu.rotini';
@@ -10,26 +12,6 @@ const OWNER_EMAIL = 'e2e.owner@rotini.test';
 const MEMBER_EMAIL = 'e2e.member@rotini.test';
 const VIEWER_EMAIL = 'e2e.viewer@rotini.test';
 const PASSWORD = process.env.E2E_USER_PASSWORD ?? 'Rotini-e2e-password-1';
-
-function loadEnvFile(fileName) {
-  const filePath = path.join(ROOT, fileName);
-  if (!fs.existsSync(filePath)) return;
-
-  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    const separatorIndex = trimmed.indexOf('=');
-    if (separatorIndex === -1) continue;
-
-    const key = trimmed.slice(0, separatorIndex).trim();
-    const rawValue = trimmed.slice(separatorIndex + 1).trim();
-    const value = rawValue.replace(/^['"]|['"]$/g, '');
-
-    if (!process.env[key]) process.env[key] = value;
-  }
-}
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -98,22 +80,6 @@ async function createUser(admin, email, displayName) {
   return data.user;
 }
 
-async function createSession(url, anonKey, email) {
-  const client = createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { data, error } = await client.auth.signInWithPassword({
-    email,
-    password: PASSWORD,
-  });
-
-  if (error) throw error;
-  if (!data.session) throw new Error(`Supabase did not return a session for ${email}.`);
-
-  return data.session;
-}
-
 function writeFlow(fileName, lines) {
   fs.writeFileSync(
     path.join(GENERATED_DIR, fileName),
@@ -121,38 +87,40 @@ function writeFlow(fileName, lines) {
   );
 }
 
-function writeLoginFlow(fileName, session) {
+function writeLoginFlow(fileName, email) {
   const link = new URL('rotini://e2e-auth');
   link.searchParams.set('action', 'login');
-  link.searchParams.set('access_token', session.access_token);
-  link.searchParams.set('refresh_token', session.refresh_token);
+  link.searchParams.set('email', email);
+  link.searchParams.set('password', PASSWORD);
   link.searchParams.set('redirect', '/(tabs)');
 
   writeFlow(fileName, [
     '- launchApp',
     `- openLink: ${JSON.stringify(link.toString())}`,
     '- extendedWaitUntil:',
-    '    visible: "Your shifts"',
+    '    visible:',
+    '      id: "home-your-shifts-section"',
     '    timeout: 15000',
   ]);
 }
 
-function writeOpenFlow(fileName, link, waitFor) {
+function writeOpenFlow(fileName, link, waitForId) {
   writeFlow(fileName, [
     `- openLink: ${JSON.stringify(link)}`,
     '- extendedWaitUntil:',
-    `    visible: ${JSON.stringify(waitFor)}`,
+    '    visible:',
+    `      id: ${JSON.stringify(waitForId)}`,
     '    timeout: 15000',
   ]);
 }
 
 async function main() {
-  loadEnvFile('.env.e2e');
-  loadEnvFile('.env.local');
-  loadEnvFile('.env');
+  loadEnvFile(path.join(ROOT, '.env.e2e'), { override: true });
+  loadEnvFile(path.join(ROOT, '.env.local'));
+  loadEnvFile(path.join(ROOT, '.env'));
 
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
-  const anonKey = requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
   const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 
   assertLocalOrExplicit(url);
@@ -263,23 +231,18 @@ async function main() {
 
   if (reminderError) throw reminderError;
 
-  const [ownerSession, memberSession] = await Promise.all([
-    createSession(url, anonKey, OWNER_EMAIL),
-    createSession(url, anonKey, MEMBER_EMAIL),
-  ]);
-
-  writeLoginFlow('login-owner.yaml', ownerSession);
-  writeLoginFlow('login-member.yaml', memberSession);
-  writeOpenFlow('open-rota.yaml', `rotini://rotas/${rota.id}`, 'Duration');
+  writeLoginFlow('login-owner.yaml', OWNER_EMAIL);
+  writeLoginFlow('login-member.yaml', MEMBER_EMAIL);
+  writeOpenFlow('open-rota.yaml', `rotini://rotas/${rota.id}`, 'rota-detail-screen');
   writeOpenFlow(
     'open-swap-occurrence.yaml',
     `rotini://rotas/occurrence/${swapOccurrenceId}`,
-    'Starts',
+    'occurrence-detail-screen',
   );
   writeOpenFlow(
     'open-override-occurrence.yaml',
     `rotini://rotas/occurrence/${overrideOccurrenceId}`,
-    'Starts',
+    'occurrence-detail-screen',
   );
 
   fs.writeFileSync(
@@ -300,7 +263,7 @@ async function main() {
     )}\n`,
   );
 
-  console.log(`Prepared Maestro E2E data for ${APP_ID}.`);
+  console.log(`Prepared Maestro E2E data for ${APP_ID} against ${url}.`);
 }
 
 main().catch((error) => {

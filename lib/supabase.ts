@@ -1,10 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
 import type { Database } from './database.types';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+type SupabaseExtra = {
+  supabase?: {
+    url?: string;
+    anonKey?: string;
+  };
+};
+
+const supabaseExtra = Constants.expoConfig?.extra as SupabaseExtra | undefined;
+export const supabaseUrl = supabaseExtra?.supabase?.url ?? process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey =
+  supabaseExtra?.supabase?.anonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),

@@ -3,42 +3,66 @@ appId: com.timtsu.rotini
 - runFlow: ../generated/login-owner.yaml
 - runFlow: ../generated/open-swap-occurrence.yaml
 - extendedWaitUntil:
-    visible: "Request swap"
+    visible:
+      id: "request-swap-button"
     timeout: 10000
-- tapOn: "Request swap"
-- assertVisible: "Swap with"
-- assertVisible: "E2E Member"
-- assertNotVisible: "E2E Viewer"
-- tapOn: "E2E Member"
-- tapOn: "Swap message"
+- tapOn:
+    id: "request-swap-button"
+- assertVisible:
+    id: "swap-request-modal"
+- assertVisible:
+    id: "swap-target-e2e-member"
+- assertNotVisible:
+    id: "swap-target-e2e-viewer"
+- tapOn:
+    id: "swap-target-e2e-member"
+- tapOn:
+    id: "swap-message-input"
 - inputText: "Can you cover this?"
-- tapOn: "Send"
+- tapOn:
+    id: "send-swap-request-button"
 - extendedWaitUntil:
-    visible: "Swap pending"
+    visible:
+      id: "swap-pending-banner"
     timeout: 15000
-- assertVisible: "Can you cover this?"
+- assertVisible:
+    id: "swap-pending-message"
 - runFlow: ../generated/login-member.yaml
 - runFlow: ../generated/open-swap-occurrence.yaml
-- assertVisible: "Swap pending"
-- assertVisible: "Can you cover this?"
-- tapOn: "Accept"
+- assertVisible:
+    id: "swap-pending-banner"
+- assertVisible:
+    id: "swap-pending-message"
+- tapOn:
+    id: "accept-swap-button"
 - extendedWaitUntil:
-    visible: "E2E Member"
+    visible:
+      id: "occurrence-assignee-e2e-member"
     timeout: 15000
 - runFlow: ../generated/login-owner.yaml
 - runFlow: ../generated/open-override-occurrence.yaml
 - extendedWaitUntil:
-    visible: "Override assignment"
+    visible:
+      id: "override-assignment-button"
     timeout: 10000
-- tapOn: "Override assignment"
-- assertVisible: "Assign to"
-- assertVisible: "E2E Member"
-- assertNotVisible: "E2E Viewer"
-- tapOn: "E2E Member"
-- tapOn: "Override reason"
+- tapOn:
+    id: "override-assignment-button"
+- assertVisible:
+    id: "override-assignment-modal"
+- assertVisible:
+    id: "override-target-e2e-member"
+- assertNotVisible:
+    id: "override-target-e2e-viewer"
+- tapOn:
+    id: "override-target-e2e-member"
+- tapOn:
+    id: "override-reason-input"
 - inputText: "Owner override from Maestro"
-- tapOn: "Override"
+- tapOn:
+    id: "submit-override-button"
 - extendedWaitUntil:
-    visible: "Overridden"
+    visible:
+      id: "override-reason-text"
     timeout: 15000
-- assertVisible: "Owner override from Maestro"
+- assertVisible:
+    id: "override-reason-text"

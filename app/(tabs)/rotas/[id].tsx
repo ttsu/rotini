@@ -62,6 +62,10 @@ function formatCountdown(targetIso: string): string {
   return 'soon';
 }
 
+function toTestIdSegment(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 // ── Status header ─────────────────────────────────────────────────────────────
 
 function StatusCard({
@@ -109,7 +113,7 @@ function StatusCard({
   }
 
   return (
-    <View style={{
+    <View testID="rota-status-card" style={{
       backgroundColor: card, borderRadius: 18, overflow: 'hidden', marginBottom: 12,
       shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
@@ -123,7 +127,7 @@ function StatusCard({
               backgroundColor: '#34C759', marginRight: 8,
             }} />
           )}
-          <Text style={{ fontSize: 22, fontWeight: '700', color: textPrimary }}>
+          <Text testID="rota-status-headline" style={{ fontSize: 22, fontWeight: '700', color: textPrimary }}>
             {headlineText}
           </Text>
         </View>
@@ -422,7 +426,7 @@ function MemberRow({
   }
 
   return (
-    <View style={{
+    <View testID={`rota-member-row-${toTestIdSegment(name)}`} style={{
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 16, paddingVertical: 12,
       borderBottomWidth: showSep ? 0.5 : 0, borderBottomColor: sep,
@@ -451,13 +455,13 @@ function MemberRow({
 // ── Detail row ────────────────────────────────────────────────────────────────
 
 function DetailRow({
-  label, value, sep, textPrimary, textSec, isLast = false,
+  label, value, sep, textPrimary, textSec, isLast = false, testID,
 }: {
   label: string; value: string; sep: string;
-  textPrimary: string; textSec: string; isLast?: boolean;
+  textPrimary: string; textSec: string; isLast?: boolean; testID?: string;
 }) {
   return (
-    <View style={{
+    <View testID={testID} style={{
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 14,
       borderBottomWidth: isLast ? 0 : 0.5, borderBottomColor: sep,
@@ -568,7 +572,7 @@ function RemindersSection({
 
   return (
     <>
-      <SectionHeader label="Reminders" />
+      <SectionHeader label="Reminders" testID="rota-reminders-heading" />
       <View style={{
         backgroundColor: card, borderRadius: 18, overflow: 'hidden', marginHorizontal: 16,
         marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
@@ -582,6 +586,7 @@ function RemindersSection({
         {rows.map((r, i) => (
           <View
             key={r.id}
+            testID={`rota-reminder-row-${r.lead_minutes}`}
             style={{
               flexDirection: 'row', alignItems: 'center',
               paddingHorizontal: 16, paddingVertical: 13,
@@ -606,6 +611,7 @@ function RemindersSection({
         ))}
         {isOwner && (
           <TouchableOpacity
+            testID="add-reminder-button"
             style={{
               paddingHorizontal: 16, paddingVertical: 13,
               borderTopWidth: rows.length > 0 ? 0.5 : 0,
@@ -714,7 +720,11 @@ export default function RotaDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: rota.name }} />
-      <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        testID="rota-detail-screen"
+        style={{ flex: 1, backgroundColor: bg }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
 
           {/* Status header */}
@@ -740,13 +750,13 @@ export default function RotaDetailScreen() {
 
           {/* Details card */}
           <View style={[cardStyle, { marginBottom: 12 }]}>
-            <DetailRow label="Duration" value={formatDuration(rota.duration_minutes, rota.back_to_back)} sep={sep} textPrimary={textPrimary} textSec={textSec} />
-            <DetailRow label="Assignment" value="Round-robin" sep={sep} textPrimary={textPrimary} textSec={textSec} isLast />
+            <DetailRow label="Duration" value={formatDuration(rota.duration_minutes, rota.back_to_back)} sep={sep} textPrimary={textPrimary} textSec={textSec} testID="rota-detail-duration-row" />
+            <DetailRow label="Assignment" value="Round-robin" sep={sep} textPrimary={textPrimary} textSec={textSec} isLast testID="rota-detail-assignment-row" />
           </View>
 
           {/* Members section */}
-          <SectionHeader label={`Members (${members.length})`} />
-          <View style={[cardStyle, { marginBottom: 12 }]}>
+          <SectionHeader label={`Members (${members.length})`} testID="rota-members-heading" />
+          <View testID="rota-members-section" style={[cardStyle, { marginBottom: 12 }]}>
             {members.map((m, i) => (
               <MemberRow
                 key={m.user_id}
@@ -765,6 +775,7 @@ export default function RotaDetailScreen() {
           {isOwner && (
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
               <TouchableOpacity
+                testID="invite-member-button"
                 style={{
                   flex: 1, backgroundColor: '#0a7ea4',
                   borderRadius: 10, paddingVertical: 12, alignItems: 'center',
@@ -777,6 +788,7 @@ export default function RotaDetailScreen() {
                 <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>+ Invite member</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                testID="invite-viewer-button"
                 style={{
                   flex: 1, borderWidth: 1.5, borderColor: '#0a7ea4',
                   borderRadius: 10, paddingVertical: 12, alignItems: 'center',
@@ -794,6 +806,7 @@ export default function RotaDetailScreen() {
           {/* Last invite link */}
           {inviteLink && (
             <TouchableOpacity
+              testID="last-invite-link-button"
               style={{
                 borderWidth: 1, borderColor: 'rgba(10,126,164,0.25)',
                 borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12,
@@ -825,6 +838,7 @@ export default function RotaDetailScreen() {
           {/* Leave */}
           {myMembership && (
             <TouchableOpacity
+              testID="leave-shift-button"
               style={{
                 backgroundColor: card, borderRadius: 14, paddingVertical: 14,
                 alignItems: 'center', shadowColor: '#000',

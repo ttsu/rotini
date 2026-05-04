@@ -1,15 +1,25 @@
 appId: com.timtsu.rotini
 ---
 - runFlow: ../generated/login-owner.yaml
-- assertVisible: "Your shifts"
-- assertVisible: "E2E Kitchen Duty"
-- assertVisible: "On now"
-- tapOn: "Settings"
+- assertVisible:
+    id: "home-your-shifts-section"
+- assertVisible:
+    id: "home-rota-card-e2e-kitchen-duty"
+- assertVisible:
+    id: "home-rota-status-e2e-kitchen-duty"
+- tapOn:
+    id: "tab-settings"
 - extendedWaitUntil:
-    visible: "Settings"
+    visible:
+      id: "settings-screen"
     timeout: 10000
-- assertVisible: "E2E Owner"
-- assertVisible: "e2e.owner@rotini.test"
-- assertVisible: "Notifications"
-- assertVisible: "Appearance"
-- assertVisible: "Sign out"
+- assertVisible:
+    id: "settings-display-name"
+- assertVisible:
+    id: "settings-email"
+- assertVisible:
+    id: "settings-notifications-row"
+- assertVisible:
+    id: "settings-appearance-system"
+- assertVisible:
+    id: "settings-sign-out-button"

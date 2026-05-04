@@ -75,12 +75,17 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ paddingBottom: 40 }}>
-      <LargeTitle title="Settings" />
+    <ScrollView
+      testID="settings-screen"
+      style={{ flex: 1, backgroundColor: bg }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
+      <LargeTitle title="Settings" testID="settings-title" />
 
       {/* Profile card */}
       <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
         <View
+          testID="settings-profile-card"
           style={{
             backgroundColor: card,
             borderRadius: 18,
@@ -96,10 +101,10 @@ export default function SettingsScreen() {
         >
           <ProfileAvatar name={displayName} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>
+            <Text testID="settings-display-name" style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>
               {displayName ?? '—'}
             </Text>
-            <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
+            <Text testID="settings-email" style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
               {session?.user.email ?? '—'}
             </Text>
           </View>
@@ -122,6 +127,7 @@ export default function SettingsScreen() {
           }}
         >
           <TouchableOpacity
+            testID="settings-notifications-row"
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -172,6 +178,7 @@ export default function SettingsScreen() {
                 return (
                   <TouchableOpacity
                     key={option.value}
+                    testID={`settings-appearance-${option.value}`}
                     onPress={() => {
                       void setThemePreference(option.value);
                     }}
@@ -200,6 +207,7 @@ export default function SettingsScreen() {
             </View>
           </View>
           <TouchableOpacity
+            testID="settings-time-zone-row"
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -216,6 +224,7 @@ export default function SettingsScreen() {
       {/* Sign out */}
       <View style={{ marginHorizontal: 16, marginTop: 8 }}>
         <TouchableOpacity
+          testID="settings-sign-out-button"
           style={{
             backgroundColor: card,
             borderRadius: 16,

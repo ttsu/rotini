@@ -145,6 +145,7 @@ export default function NewRotaScreen() {
             name="name"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                testID="shift-name-input"
                 style={{
                   fontSize: 17,
                   color: textPrimary,
@@ -174,6 +175,7 @@ export default function NewRotaScreen() {
             name="description"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                testID="shift-description-input"
                 style={{
                   fontSize: 17,
                   color: textPrimary,
@@ -200,6 +202,7 @@ export default function NewRotaScreen() {
             Schedule
           </Text>
           <TouchableOpacity
+            testID="edit-schedule-button"
             style={{
               backgroundColor: card,
               borderRadius: 14,
@@ -292,6 +295,7 @@ export default function NewRotaScreen() {
 
           {/* Submit */}
           <TouchableOpacity
+            testID="create-shift-button"
             style={{
               marginTop: 32,
               backgroundColor: submitDisabled ? '#AEAEB2' : '#0a7ea4',
@@ -318,7 +322,10 @@ export default function NewRotaScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setScheduleOpen(false)}
       >
-        <View style={{ flex: 1, backgroundColor: scheme === 'dark' ? '#000000' : '#FFFFFF' }}>
+        <View
+          testID="schedule-modal"
+          style={{ flex: 1, backgroundColor: scheme === 'dark' ? '#000000' : '#FFFFFF' }}
+        >
           <View
             style={{
               flexDirection: 'row',
@@ -333,6 +340,7 @@ export default function NewRotaScreen() {
           >
             <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Schedule</Text>
             <TouchableOpacity
+              testID="done-editing-schedule-button"
               onPress={() => setScheduleOpen(false)}
               accessibilityLabel="Done editing schedule"
               accessibilityRole="button"

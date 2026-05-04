@@ -2,8 +2,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import type { AuthError } from '@supabase/supabase-js';
+
 import { useAuth } from '@/contexts/auth';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl } from '@/lib/supabase';
 
 const isE2eAuthEnabled = __DEV__ || process.env.EXPO_PUBLIC_E2E === '1';
 
@@ -15,6 +17,8 @@ export default function E2eAuthScreen() {
   const params = useLocalSearchParams<{
     action?: string;
     access_token?: string;
+    email?: string;
+    password?: string;
     refresh_token?: string;
     redirect?: string;
   }>();
@@ -39,20 +43,39 @@ export default function E2eAuthScreen() {
       }
 
       const accessToken = getParam(params.access_token);
+      const email = getParam(params.email);
+      const password = getParam(params.password);
       const refreshToken = getParam(params.refresh_token);
 
-      if (action !== 'login' || !accessToken || !refreshToken) {
+      if (action !== 'login') {
         router.replace('/(auth)/sign-in');
         return;
       }
 
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
+      console.info('[e2e-auth] setting session', {
+        supabaseUrl,
       });
 
+      let error: AuthError | Error | null = null;
+
+      if (email && password) {
+        ({ error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        }));
+      } else if (accessToken && refreshToken) {
+        ({ error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }));
+      } else {
+        error = new Error('Missing E2E login credentials.');
+      }
+
       if (error) {
-        console.error('[e2e-auth] setSession failed:', error);
+        console.error('[e2e-auth] login failed:', error, {
+          supabaseUrl,
+        });
         router.replace('/(auth)/sign-in');
         return;
       }
@@ -61,7 +84,15 @@ export default function E2eAuthScreen() {
     }
 
     void updateSession();
-  }, [params.access_token, params.action, params.redirect, params.refresh_token, router]);
+  }, [
+    params.access_token,
+    params.action,
+    params.email,
+    params.password,
+    params.redirect,
+    params.refresh_token,
+    router,
+  ]);
 
   useEffect(() => {
     if (!nextRedirect) return;

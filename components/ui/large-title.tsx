@@ -3,11 +3,20 @@ import { Text, View } from 'react-native';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export function LargeTitle({ title, right }: { title: string; right?: React.ReactNode }) {
+export function LargeTitle({
+  title,
+  right,
+  testID,
+}: {
+  title: string;
+  right?: React.ReactNode;
+  testID?: string;
+}) {
   const scheme = useColorScheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
       <Text
+        testID={testID}
         style={{
           flex: 1,
           fontSize: 32,
