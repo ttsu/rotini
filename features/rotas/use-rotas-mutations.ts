@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fromZonedTime } from 'date-fns-tz';
 
@@ -23,7 +24,7 @@ export function useCreateRota() {
           dtstart: dtstartUtc,
           rrule: values.rrule,
           back_to_back: values.back_to_back,
-          duration_minutes: values.back_to_back ? null : values.duration_minutes ?? null,
+          duration_minutes: values.back_to_back ? null : (values.duration_minutes ?? null),
           assignment_mode: values.assignment_mode,
           owner_id: session!.user.id,
         })
@@ -46,14 +47,71 @@ export function useCreateRota() {
 
 export function useCreateInvite(rotaId: string) {
   return useMutation({
-    mutationFn: async ({ role, email }: { role: MemberRole; email?: string }) => {
+    mutationFn: async ({
+      role,
+      email,
+      phone,
+    }: {
+      role: MemberRole;
+      email?: string | null;
+      phone?: string | null;
+    }) => {
       const { data, error } = await supabase.rpc('create_invite', {
         p_rota_id: rotaId,
         p_role: role,
-        p_email: email ?? undefined,
+        ...(email != null && email !== '' ? { p_email: email } : {}),
+        ...(phone != null && phone !== '' ? { p_phone: phone } : {}),
       });
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export type NotifyInviteResult = {
+  email: string;
+  sms: string;
+  push: string;
+  code?: 'sms_daily_limit';
+  limit?: number;
+  resetsAt?: string;
+};
+
+/**
+ * Creates a targeted invite (email or phone, not both) and dispatches notify-invite (SMS, email, push).
+ */
+export function useSendTargetedInvite(rotaId: string) {
+  return useMutation({
+    mutationFn: async (params: { role: MemberRole; email?: string; phoneE164?: string }) => {
+      const { data: invite, error } = await supabase.rpc('create_invite', {
+        p_rota_id: rotaId,
+        p_role: params.role,
+        ...(params.email != null ? { p_email: params.email } : {}),
+        ...(params.phoneE164 != null ? { p_phone: params.phoneE164 } : {}),
+      });
+      if (error) throw error;
+
+      const { data: notifyData, error: fnError } = await supabase.functions.invoke(
+        'notify-invite',
+        {
+          body: { invite_id: invite.id },
+        },
+      );
+
+      if (fnError instanceof FunctionsHttpError) {
+        const status = fnError.context.status;
+        if (status === 429) {
+          const notify = (await fnError.context.json()) as NotifyInviteResult;
+          return { invite, notify, smsRateLimited: true as const };
+        }
+      }
+      if (fnError) throw fnError;
+
+      return {
+        invite,
+        notify: notifyData as NotifyInviteResult,
+        smsRateLimited: false as const,
+      };
     },
   });
 }

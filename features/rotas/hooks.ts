@@ -19,5 +19,6 @@ export {
   useCreateRota,
   useLeaveRota,
   useRemoveMember,
+  useSendTargetedInvite,
   useTransferOwnership,
 } from './use-rotas-mutations';

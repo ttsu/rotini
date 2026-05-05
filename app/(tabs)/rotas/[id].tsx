@@ -1,20 +1,14 @@
-import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
-import {
-  useCreateInvite,
-  useLeaveRota,
-  useRotaData,
-  useRegisterRotaRealtime,
-} from '@/features/rotas/hooks';
+import { useLeaveRota, useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
 import { DetailRow } from '@/features/rotas/rota-detail/detail-row';
 import { formatDuration } from '@/features/rotas/rota-detail/formatting';
 import type { Member } from '@/features/rotas/rota-detail/member-rows';
+import { InviteSection } from '@/features/rotas/rota-detail/invite-section';
 import { MemberRow } from '@/features/rotas/rota-detail/member-rows';
 import { RemindersSection } from '@/features/rotas/rota-detail/reminders-section';
 import { StatusCard } from '@/features/rotas/rota-detail/status-card';
@@ -33,9 +27,7 @@ export default function RotaDetailScreen() {
   const { session } = useAuth();
   const { data: rota, isLoading, error, refetch } = useRotaData(routeId);
   const rotaNow = useRotaNow(routeId);
-  const createInvite = useCreateInvite(routeId);
   const leaveRota = useLeaveRota();
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const scheme = useColorScheme();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
@@ -67,25 +59,7 @@ export default function RotaDetailScreen() {
   const isOwner = myMembership?.role === 'owner';
 
   const membersById = new Map<string, string>(
-    members.map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown'])
-  );
-
-  const handleCreateInvite = useCallback(
-    (role: 'member' | 'viewer') => {
-      createInvite.mutate(
-        { role },
-        {
-          onSuccess: (invite) => {
-            const link = `rotini://invite/${invite.code}`;
-            setInviteLink(link);
-            Clipboard.setStringAsync(link);
-            Alert.alert('Invite link copied!', link, [{ text: 'OK' }]);
-          },
-          onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
-        }
-      );
-    },
-    [createInvite]
+    members.map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
   );
 
   function handleLeave() {
@@ -105,7 +79,9 @@ export default function RotaDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}
+      >
         <ActivityIndicator />
       </View>
     );
@@ -113,7 +89,9 @@ export default function RotaDetailScreen() {
 
   if (error || !rota) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}
+      >
         <ErrorState message="Failed to load shift." onRetry={refetch} />
       </View>
     );
@@ -183,69 +161,15 @@ export default function RotaDetailScreen() {
             ))}
           </View>
 
-          {isOwner && (
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
-              <TouchableOpacity
-                testID="invite-member-button"
-                style={{
-                  flex: 1,
-                  backgroundColor: '#0a7ea4',
-                  borderRadius: 10,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                }}
-                onPress={() => handleCreateInvite('member')}
-                disabled={createInvite.isPending}
-                accessibilityLabel="Invite member"
-                accessibilityRole="button"
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
-                  + Invite member
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                testID="invite-viewer-button"
-                style={{
-                  flex: 1,
-                  borderWidth: 1.5,
-                  borderColor: '#0a7ea4',
-                  borderRadius: 10,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                }}
-                onPress={() => handleCreateInvite('viewer')}
-                disabled={createInvite.isPending}
-                accessibilityLabel="Invite viewer"
-                accessibilityRole="button"
-              >
-                <Text style={{ color: '#0a7ea4', fontSize: 15, fontWeight: '600' }}>+ Viewer</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {inviteLink && (
-            <TouchableOpacity
-              testID="last-invite-link-button"
-              style={{
-                borderWidth: 1,
-                borderColor: 'rgba(10,126,164,0.25)',
-                borderRadius: 14,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                marginBottom: 12,
-              }}
-              onPress={() => {
-                Clipboard.setStringAsync(inviteLink);
-                Alert.alert('Copied!', inviteLink);
-              }}
-            >
-              <Text style={{ fontSize: 12, color: '#AEAEB2', marginBottom: 4 }}>
-                Last invite link (tap to copy)
-              </Text>
-              <Text style={{ fontSize: 13, color: '#0a7ea4', fontFamily: 'monospace' }} numberOfLines={1}>
-                {inviteLink}
-              </Text>
-            </TouchableOpacity>
+          {isOwner && myId && (
+            <InviteSection
+              rotaId={routeId}
+              userId={myId}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+              sep={sep}
+            />
           )}
 
           <RemindersSection
