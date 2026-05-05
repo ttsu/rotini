@@ -16,6 +16,8 @@
     "e2e:android": "node ./maestro/support/with-e2e-env.js expo run:android",
     "e2e:ios": "node ./maestro/support/with-e2e-env.js expo run:ios",
     "e2e:test": "npm run e2e:prepare && maestro test maestro/flows",
+    "manual:seed": "node ./scripts/manual-test-seed.js",
+    "manual:seed:reset": "node ./scripts/manual-test-seed.js --reset",
     "format": "prettier --write .",
     "build:production": "npx eas-cli build --platform all --profile production",
     "submit:production": "npx eas-cli submit --platform all --profile production --latest",
