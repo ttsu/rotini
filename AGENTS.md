@@ -16,14 +16,14 @@ This is an Expo SDK 54 / React Native 0.81 mobile app with a Supabase backend (P
 
 ### Key commands
 
-| Task | Command |
-|---|---|
-| Install deps | `npm install` |
-| Lint | `npx expo lint` |
-| Typecheck | `npx tsc --noEmit` |
-| Format | `npx prettier --write .` |
-| Start Metro | `npx expo start` |
-| Start web | `npx expo start --web` |
+| Task              | Command                                           |
+| ----------------- | ------------------------------------------------- |
+| Install deps      | `npm install`                                     |
+| Lint              | `npx expo lint`                                   |
+| Typecheck         | `npx tsc --noEmit`                                |
+| Format            | `npx prettier --write .`                          |
+| Start Metro       | `npx expo start`                                  |
+| Start web         | `npx expo start --web`                            |
 | Generate DB types | `npm run db:types` (requires Supabase CLI linked) |
 
 ### Gotchas
@@ -33,4 +33,4 @@ This is an Expo SDK 54 / React Native 0.81 mobile app with a Supabase backend (P
 - **Sentry disabled in development**: `lib/sentry.ts` disables Sentry when `EXPO_PUBLIC_SENTRY_ENVIRONMENT=development` or DSN is missing. No Sentry config needed for dev.
 - **expo-secure-store version mismatch**: Expo warns that `expo-secure-store@55.0.13` should be `~15.0.8` for best compatibility. This is a known upstream mismatch in the lockfile and does not block dev work.
 - **No automated unit/integration tests**: The project uses Maestro for E2E testing (YAML flows in `maestro/flows/`). There are no Jest/Vitest test suites. `npx expo lint` and `npx tsc --noEmit` are the primary CI-style checks.
-- **Supabase Edge Functions** live under `supabase/functions/` and are written in Deno/TypeScript. They are excluded from the main `tsconfig.json`.
+- **Supabase Edge Functions** live under `supabase/functions/` and are written in Deno/TypeScript. They are excluded from the main `tsconfig.json`. **`notify-invite`** (transactional rota invites) expects these secrets when deployed: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, optional `INVITE_SMS_DAILY_LIMIT` (default 20, per inviter per UTC day), optional `INVITE_PUBLIC_LINK_BASE` (HTTPS prefix for links in email/SMS). Without Twilio/Resend keys the function still returns 200 and skips those channels.

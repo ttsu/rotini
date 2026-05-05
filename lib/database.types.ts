@@ -223,8 +223,10 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          phone_e164: string | null
           role: string
           rota_id: string
+          sms_sent_at: string | null
         }
         Insert: {
           code: string
@@ -234,8 +236,10 @@ export type Database = {
           expires_at: string
           id?: string
           invited_by: string
+          phone_e164?: string | null
           role: string
           rota_id: string
+          sms_sent_at?: string | null
         }
         Update: {
           code?: string
@@ -245,8 +249,10 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string
+          phone_e164?: string | null
           role?: string
           rota_id?: string
+          sms_sent_at?: string | null
         }
         Relationships: [
           {
@@ -562,7 +568,7 @@ export type Database = {
         }
       }
       create_invite: {
-        Args: { p_email?: string; p_role: string; p_rota_id: string }
+        Args: { p_email?: string; p_phone?: string; p_role: string; p_rota_id: string }
         Returns: {
           code: string
           consumed_at: string | null
@@ -571,9 +577,15 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          phone_e164: string | null
           role: string
           rota_id: string
+          sms_sent_at: string | null
         }
+      }
+      lookup_auth_user_id_for_invite: {
+        Args: { p_email: string | null; p_phone: string | null }
+        Returns: string | null
       }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }

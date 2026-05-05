@@ -3,30 +3,34 @@ appId: com.timtsu.rotini
 - runFlow: ../generated/login-owner.yaml
 - runFlow: ../generated/open-rota.yaml
 - assertVisible:
-    id: "rota-status-card"
+    id: 'rota-status-card'
 - assertVisible:
-    id: "rota-detail-duration-row"
+    id: 'rota-detail-duration-row'
 - assertVisible:
-    id: "rota-detail-assignment-row"
+    id: 'rota-detail-assignment-row'
 - scrollUntilVisible:
     element:
-      id: "rota-members-section"
+      id: 'rota-members-section'
     direction: DOWN
 - assertVisible:
-    id: "rota-member-row-e2e-owner"
+    id: 'rota-member-row-e2e-owner'
 - assertVisible:
-    id: "rota-member-row-e2e-member"
+    id: 'rota-member-row-e2e-member'
 - assertVisible:
-    id: "rota-member-row-e2e-viewer"
-- assertVisible:
-    id: "invite-member-button"
-- assertVisible:
-    id: "invite-viewer-button"
+    id: 'rota-member-row-e2e-viewer'
 - scrollUntilVisible:
     element:
-      id: "rota-reminders-heading"
+      id: 'invite-member-button'
     direction: DOWN
 - assertVisible:
-    id: "rota-reminder-row-60"
+    id: 'invite-member-button'
 - assertVisible:
-    id: "leave-shift-button"
+    id: 'invite-viewer-button'
+- scrollUntilVisible:
+    element:
+      id: 'rota-reminders-heading'
+    direction: DOWN
+- assertVisible:
+    id: 'rota-reminder-row-60'
+- assertVisible:
+    id: 'leave-shift-button'
