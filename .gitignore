@@ -51,3 +51,6 @@ supabase/.branches/
 supabase/.temp/
 
 .env.local
+
+# manual Supabase seed harness output (credentials / deep links)
+scripts/.manual-seed-output.json
