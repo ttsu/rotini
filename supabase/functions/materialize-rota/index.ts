@@ -23,10 +23,12 @@ serve(async (req) => {
   const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
   const authHeader = req.headers.get('Authorization') ?? '';
-  // Accept calls from service_role regardless of key format (JWT vs sb_secret_*).
-  // We decode the JWT role claim rather than comparing raw key strings, because
-  // SUPABASE_SERVICE_ROLE_KEY may be in a different format than what callers send.
-  const isServiceRole = jwtRole(authHeader) === 'service_role';
+  const apikeyHeader = req.headers.get('apikey') ?? '';
+  // Service callers: legacy JWT in Authorization (role service_role), or new sb_secret_* / JWT
+  // in apikey matching SUPABASE_SERVICE_ROLE_KEY (Authorization must not be a non-JWT — gateway).
+  const isServiceRole =
+    jwtRole(authHeader) === 'service_role' ||
+    timingSafeEqualString(apikeyHeader, SERVICE_ROLE_KEY);
 
   let rotaId: string;
   try {
@@ -76,6 +78,13 @@ function jwtRole(authHeader: string): string | null {
   } catch {
     return null;
   }
+}
+
+function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 // ─── Core logic ───────────────────────────────────────────────────────────────
