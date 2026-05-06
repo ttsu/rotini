@@ -101,6 +101,7 @@ function AppShell() {
           <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
           <Stack.Screen name="e2e-auth" options={{ headerShown: false }} />
           <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
+          <Stack.Screen name="edit-profile" options={{ title: 'Edit profile', headerShown: true }} />
         </Stack>
         <AuthGate />
         <StatusBar style="auto" />

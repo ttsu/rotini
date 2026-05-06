@@ -5,6 +5,10 @@ import type { Href } from 'expo-router';
  */
 export const routes = {
   tabs: '/(tabs)' as const,
+  profile: {
+    /** Edit display name and avatar */
+    edit: '/edit-profile' as Href,
+  },
   rotas: {
     list: '/(tabs)/rotas' as const,
     /**

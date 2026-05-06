@@ -120,6 +120,12 @@ module.exports = ({ config }) => {
       'expo-apple-authentication',
       'expo-secure-store',
       [
+        'expo-image-picker',
+        {
+          photosPermission: 'Rotini uses your photo library so you can choose a profile picture.',
+        },
+      ],
+      [
         'expo-notifications',
         {
           icon: './assets/images/android-icon-monochrome.png',

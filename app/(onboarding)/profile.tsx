@@ -2,20 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { z } from 'zod';
 
 import { useAuth } from '@/contexts/auth';
+import { displayNameSchema, type DisplayNameFormValues } from '@/features/profile/display-name-schema';
 import { supabase } from '@/lib/supabase';
-
-const schema = z.object({
-  display_name: z
-    .string()
-    .min(1, 'Name is required')
-    .max(60, 'Name must be 60 characters or less')
-    .trim(),
-});
-
-type FormValues = z.infer<typeof schema>;
 
 export default function OnboardingProfileScreen() {
   const { session, refreshProfile } = useAuth();
@@ -25,9 +15,9 @@ export default function OnboardingProfileScreen() {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<DisplayNameFormValues>({ resolver: zodResolver(displayNameSchema) });
 
-  async function onSubmit({ display_name }: FormValues) {
+  async function onSubmit({ display_name }: DisplayNameFormValues) {
     if (!session?.user.id) return;
     const { error } = await supabase
       .from('profiles')

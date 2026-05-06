@@ -1,6 +1,7 @@
 import { ActionSheetIOS, Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 
 import { Pill } from '@/components/ui/pill';
+import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
 import { getUserMessage } from '@/lib/errors';
 
 import {
@@ -15,24 +16,21 @@ export type Member = {
   role: string;
   user_id: string;
   position: number | null;
-  profile: { id: string; display_name: string | null } | null;
+  profile: { id: string; display_name: string | null; avatar_url: string | null } | null;
 };
 
-function MemberAvatar({ name, isMe }: { name: string; isMe: boolean }) {
-  const initial = name.charAt(0).toUpperCase();
+function MemberAvatar({
+  name,
+  avatarUrl,
+  isMe,
+}: {
+  name: string;
+  avatarUrl: string | null | undefined;
+  isMe: boolean;
+}) {
   return (
-    <View
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: isMe ? '#0a7ea4' : '#AEAEB2',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-      }}
-    >
-      <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>{initial}</Text>
+    <View style={{ marginRight: 12 }}>
+      <ProfileAvatarTile avatarUrl={avatarUrl} displayName={name} size={34} accent={isMe} />
     </View>
   );
 }
@@ -61,6 +59,7 @@ export function MemberRow({
   const removeMember = useRemoveMember(rotaId);
   const transferOwnership = useTransferOwnership(rotaId);
   const name = member.profile?.display_name ?? 'Unknown';
+  const avatarUrl = member.profile?.avatar_url;
 
   function showActions() {
     const roles: ('owner' | 'member' | 'viewer')[] = ['owner', 'member', 'viewer'];
@@ -153,7 +152,7 @@ export function MemberRow({
         borderBottomColor: sep,
       }}
     >
-      <MemberAvatar name={name} isMe={isMe} />
+      <MemberAvatar name={name} avatarUrl={avatarUrl} isMe={isMe} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 16, fontWeight: '500', color: textPrimary }}>
           {name}
