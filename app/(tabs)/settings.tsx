@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -8,7 +9,10 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import { type ThemePreference, useAppPreferences } from '@/contexts/app-preferences';
 import { supabase } from '@/lib/supabase';
+import { routes } from '@/lib/navigation/routes';
 import { usePushToken } from '@/features/notifications/usePushToken';
+import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
+import { useMyProfile } from '@/features/profile/use-my-profile';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const THEME_OPTIONS: readonly { readonly value: ThemePreference; readonly label: string }[] = [
@@ -17,52 +21,27 @@ const THEME_OPTIONS: readonly { readonly value: ThemePreference; readonly label:
   { value: 'dark', label: 'Dark' },
 ];
 
-function ProfileAvatar({ name }: { name: string | null }) {
-  const initial = name ? name.charAt(0).toUpperCase() : '?';
-  return (
-    <View
-      style={{
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: '#0a7ea4',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 14,
-      }}
-    >
-      <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }}>{initial}</Text>
-    </View>
-  );
-}
-
 function RowChevron() {
   return <Text style={{ fontSize: 17, color: '#AEAEB2', marginLeft: 8 }}>›</Text>;
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const { data: profile } = useMyProfile();
   const { themePreference, setThemePreference } = useAppPreferences();
   const scheme = useColorScheme();
-  const [displayName, setDisplayName] = useState<string | null>(null);
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
+
+  const displayName = profile?.display_name ?? null;
+  const avatarUrl = profile?.avatar_url ?? null;
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
   const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
-
-  useEffect(() => {
-    if (!session?.user.id) return;
-    supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => setDisplayName(data?.display_name ?? null));
-  }, [session?.user.id]);
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then(({ status }) => setNotifStatus(status));
@@ -86,8 +65,12 @@ export default function SettingsScreen() {
 
       {/* Profile card */}
       <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
-        <View
-          testID="settings-profile-card"
+        <TouchableOpacity
+          testID="settings-edit-profile-row"
+          activeOpacity={0.7}
+          onPress={() => router.push(routes.profile.edit)}
+          accessibilityLabel="Edit profile"
+          accessibilityRole="button"
           style={{
             backgroundColor: card,
             borderRadius: 18,
@@ -101,7 +84,9 @@ export default function SettingsScreen() {
             elevation: 2,
           }}
         >
-          <ProfileAvatar name={displayName} />
+          <View style={{ marginRight: 14 }}>
+            <ProfileAvatarTile avatarUrl={avatarUrl} displayName={displayName} size={52} accent />
+          </View>
           <View style={{ flex: 1 }}>
             <Text testID="settings-display-name" style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>
               {displayName ?? '—'}
@@ -109,8 +94,12 @@ export default function SettingsScreen() {
             <Text testID="settings-email" style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
               {session?.user.email ?? '—'}
             </Text>
+            <Text style={{ fontSize: 13, color: '#0a7ea4', marginTop: 6, fontWeight: '600' }}>
+              Edit profile
+            </Text>
           </View>
-        </View>
+          <RowChevron />
+        </TouchableOpacity>
       </View>
 
       {/* Preferences section */}

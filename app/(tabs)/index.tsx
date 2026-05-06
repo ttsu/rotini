@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
 import { useAuth } from '@/contexts/auth';
+import { useMyProfile } from '@/features/profile/use-my-profile';
 import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
 import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -190,6 +191,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const { data: profile } = useMyProfile();
   const { data, isLoading, error, refetch } = useHomeRotas();
   const { data: pendingSwaps } = usePendingSwapsForMe();
   const scheme = useColorScheme();
@@ -201,7 +203,7 @@ export default function HomeScreen() {
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
 
   const displayName =
-    session?.user.user_metadata?.full_name ?? session?.user.email?.split('@')[0] ?? null;
+    profile?.display_name?.trim() || session?.user.email?.split('@')[0] || null;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const greetingTitle = displayName ? `${greeting}, ${displayName.split(' ')[0]}` : greeting;

@@ -23,3 +23,31 @@ appId: com.timtsu.rotini
     id: "settings-appearance-system"
 - assertVisible:
     id: "settings-sign-out-button"
+- tapOn:
+    id: "settings-edit-profile-row"
+- extendedWaitUntil:
+    visible:
+      id: "edit-profile-screen"
+    timeout: 10000
+- assertVisible:
+    id: "edit-profile-save-button"
+- tapOn:
+    id: "edit-profile-display-name"
+- inputText: "."
+- tapOn:
+    id: "edit-profile-save-button"
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 15000
+- tapOn:
+    id: "settings-edit-profile-row"
+- tapOn:
+    id: "edit-profile-display-name"
+- eraseText: 1
+- tapOn:
+    id: "edit-profile-save-button"
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 15000
