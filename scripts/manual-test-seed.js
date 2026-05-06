@@ -7,6 +7,9 @@
  * Env: EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
  * Remote: MANUAL_SEED_ALLOW_REMOTE=1. Remote reset: MANUAL_SEED_CONFIRM_RESET=1.
  * Password: MANUAL_SEED_PASSWORD (required when not local; optional locally with default).
+ * Optional: MANUAL_SEED_TESTER_USER_ID — `profiles.id` UUID for your real test account. When set,
+ *   the script adds that user as member / owner / viewer on three separate rotas that also
+ *   include the four fixture accounts (owner, member, viewer, outsider).
  *
  * @see maestro/support/prepare-local.js for a related E2E-only flow.
  */
@@ -134,8 +137,54 @@ async function deleteSeedRotas(admin) {
   if (error) throw error;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Reads MANUAL_SEED_TESTER_USER_ID when set; validates UUID, distinct from fixtures, and profile row.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} admin
+ * @param {{ id: string }} owner
+ * @param {{ id: string }} member
+ * @param {{ id: string }} viewer
+ * @param {{ id: string }} outsider
+ * @returns {Promise<string | null>}
+ */
+async function resolveTesterUserId(admin, owner, member, viewer, outsider) {
+  const raw = process.env.MANUAL_SEED_TESTER_USER_ID?.trim();
+  if (!raw) {
+    console.warn(
+      'MANUAL_SEED_TESTER_USER_ID not set — skipping tester on role-matrix rotas (set to profiles.id for your device account).',
+    );
+    return null;
+  }
+  if (!UUID_RE.test(raw)) {
+    throw new Error('MANUAL_SEED_TESTER_USER_ID must be a UUID (profiles.id / auth user id).');
+  }
+  const fixtureIds = new Set([owner.id, member.id, viewer.id, outsider.id]);
+  if (fixtureIds.has(raw)) {
+    throw new Error(
+      'MANUAL_SEED_TESTER_USER_ID must not match a fixture seed user (owner/member/viewer/outsider).',
+    );
+  }
+  const { data: row, error } = await admin.from('profiles').select('id').eq('id', raw).maybeSingle();
+  if (error) throw error;
+  if (!row) {
+    throw new Error(
+      `MANUAL_SEED_TESTER_USER_ID (${raw}) has no row in public.profiles — sign in once in the app or create the profile first.`,
+    );
+  }
+  return raw;
+}
+
+function looksLikeJwt(value) {
+  return typeof value === 'string' && value.startsWith('eyJ');
+}
+
 /**
  * Invokes the deployed materialize-rota edge function (same logic as pg_cron / app).
+ * New Supabase `sb_secret_*` keys are not JWTs — send them only in `apikey`, never as Bearer
+ * (see https://supabase.com/docs/guides/functions/auth). Requires `verify_jwt = false` on the
+ * function and the edge handler accepting `apikey === SUPABASE_SERVICE_ROLE_KEY`.
  *
  * @param {string} supabaseUrl
  * @param {string} serviceRoleKey
@@ -143,13 +192,18 @@ async function deleteSeedRotas(admin) {
  */
 async function invokeMaterializeRota(supabaseUrl, serviceRoleKey, rotaId) {
   const base = supabaseUrl.replace(/\/$/, '');
+  /** @type {Record<string, string>} */
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: serviceRoleKey,
+  };
+  if (looksLikeJwt(serviceRoleKey)) {
+    headers.Authorization = `Bearer ${serviceRoleKey}`;
+  }
+
   const res = await fetch(`${base}/functions/v1/materialize-rota`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${serviceRoleKey}`,
-      apikey: serviceRoleKey,
-    },
+    headers,
     body: JSON.stringify({ rota_id: rotaId }),
   });
 
@@ -162,9 +216,12 @@ async function invokeMaterializeRota(supabaseUrl, serviceRoleKey, rotaId) {
   }
 
   if (!res.ok) {
+    const detail = body.message ?? body.error ?? body.code ?? text;
     throw new Error(
-      `materialize-rota failed (${res.status}): ${body.error ?? text} — ` +
-        'Ensure the edge function is deployed (`supabase functions deploy materialize-rota`).',
+      `materialize-rota failed (${res.status}): ${detail} — ` +
+        'Deploy the updated function (`supabase functions deploy materialize-rota`). ' +
+        'If you use a non-JWT `sb_secret_*` service key, the project must ship `verify_jwt = false` ' +
+        'for this function (see `supabase/config.toml` [functions.materialize-rota]).',
     );
   }
 
@@ -172,16 +229,20 @@ async function invokeMaterializeRota(supabaseUrl, serviceRoleKey, rotaId) {
 }
 
 /**
+ * Lists occurrences with the service client (no session yet), then signs in as assignee to call
+ * `request_swap` (requires authenticated role).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} admin
  * @param {import('@supabase/supabase-js').SupabaseClient} userClient
  * @param {string} firstRotaId
  * @param {{ id: string }} owner
  * @param {{ id: string }} member
  * @param {string} password
  */
-async function seedOneSwapRequest(userClient, firstRotaId, owner, member, password) {
+async function seedOneSwapRequest(admin, userClient, firstRotaId, owner, member, password) {
   const futureIso = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
 
-  const { data: rows, error: listError } = await userClient
+  const { data: rows, error: listError } = await admin
     .from('occurrences')
     .select('id, assigned_user_id')
     .eq('rota_id', firstRotaId)
@@ -258,6 +319,8 @@ async function main() {
     ensureUser(admin, OUTSIDER_EMAIL, 'Manual Seed Outsider', password),
   ]);
 
+  const testerUserId = await resolveTesterUserId(admin, owner, member, viewer, outsider);
+
   const now = new Date();
   const kitchenDt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   const standupDt = new Date('2025-01-06T15:00:00.000Z');
@@ -266,7 +329,9 @@ async function main() {
     .from('rotas')
     .insert({
       name: `${ROTA_NAME_PREFIX} Kitchen duty`,
-      description: 'Daily cleanup — round robin in Europe/London.',
+      description: testerUserId
+        ? 'Daily cleanup — fixture owner runs rota; tester is a member with all fixture users.'
+        : 'Daily cleanup — round robin in Europe/London.',
       owner_id: owner.id,
       tz: 'Europe/London',
       dtstart: kitchenDt.toISOString(),
@@ -284,15 +349,17 @@ async function main() {
     .from('rotas')
     .insert({
       name: `${ROTA_NAME_PREFIX} Weekly stand-up`,
-      description: 'Mondays — shorter slot in America/New_York.',
-      owner_id: owner.id,
+      description: testerUserId
+        ? 'Mondays — tester owns this rota; fixture users are members/viewers.'
+        : 'Mondays — shorter slot in America/New_York.',
+      owner_id: testerUserId ?? owner.id,
       tz: 'America/New_York',
       dtstart: standupDt.toISOString(),
       rrule: 'FREQ=WEEKLY;BYDAY=MO',
       duration_minutes: 30,
       back_to_back: false,
       assignment_mode: 'round_robin',
-      cursor_user_id: owner.id,
+      cursor_user_id: testerUserId ?? owner.id,
     })
     .select('id')
     .single();
@@ -302,7 +369,9 @@ async function main() {
     .from('rotas')
     .insert({
       name: `${ROTA_NAME_PREFIX} On-call handoff`,
-      description: 'Back-to-back daily pager-style turns (UTC).',
+      description: testerUserId
+        ? 'Back-to-back pager turns — tester is viewer; fixture owner/member rotate.'
+        : 'Back-to-back daily pager-style turns (UTC).',
       owner_id: owner.id,
       tz: 'UTC',
       dtstart: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
@@ -318,33 +387,60 @@ async function main() {
 
   const rotaIds = [kitchenRota.id, standupRota.id, oncallRota.id];
 
-  const { error: membersKitchen } = await admin.from('rota_members').upsert(
-    [
-      { rota_id: kitchenRota.id, user_id: owner.id, role: 'owner', position: 0 },
-      { rota_id: kitchenRota.id, user_id: member.id, role: 'member', position: 1 },
-      { rota_id: kitchenRota.id, user_id: viewer.id, role: 'viewer', position: null },
-    ],
-    { onConflict: 'rota_id,user_id' },
-  );
+  const kitchenRows = testerUserId
+    ? [
+        { rota_id: kitchenRota.id, user_id: owner.id, role: 'owner', position: 0 },
+        { rota_id: kitchenRota.id, user_id: member.id, role: 'member', position: 1 },
+        { rota_id: kitchenRota.id, user_id: outsider.id, role: 'member', position: 2 },
+        { rota_id: kitchenRota.id, user_id: testerUserId, role: 'member', position: 3 },
+        { rota_id: kitchenRota.id, user_id: viewer.id, role: 'viewer', position: null },
+      ]
+    : [
+        { rota_id: kitchenRota.id, user_id: owner.id, role: 'owner', position: 0 },
+        { rota_id: kitchenRota.id, user_id: member.id, role: 'member', position: 1 },
+        { rota_id: kitchenRota.id, user_id: viewer.id, role: 'viewer', position: null },
+      ];
+
+  const { error: membersKitchen } = await admin.from('rota_members').upsert(kitchenRows, {
+    onConflict: 'rota_id,user_id',
+  });
   if (membersKitchen) throw membersKitchen;
 
-  const { error: membersStandup } = await admin.from('rota_members').upsert(
-    [
-      { rota_id: standupRota.id, user_id: owner.id, role: 'owner', position: 0 },
-      { rota_id: standupRota.id, user_id: member.id, role: 'member', position: 1 },
-      { rota_id: standupRota.id, user_id: viewer.id, role: 'viewer', position: null },
-    ],
-    { onConflict: 'rota_id,user_id' },
-  );
+  const standupRows = testerUserId
+    ? [
+        { rota_id: standupRota.id, user_id: testerUserId, role: 'owner', position: 0 },
+        { rota_id: standupRota.id, user_id: owner.id, role: 'member', position: 1 },
+        { rota_id: standupRota.id, user_id: member.id, role: 'member', position: 2 },
+        { rota_id: standupRota.id, user_id: outsider.id, role: 'member', position: 3 },
+        { rota_id: standupRota.id, user_id: viewer.id, role: 'viewer', position: null },
+      ]
+    : [
+        { rota_id: standupRota.id, user_id: owner.id, role: 'owner', position: 0 },
+        { rota_id: standupRota.id, user_id: member.id, role: 'member', position: 1 },
+        { rota_id: standupRota.id, user_id: viewer.id, role: 'viewer', position: null },
+      ];
+
+  const { error: membersStandup } = await admin.from('rota_members').upsert(standupRows, {
+    onConflict: 'rota_id,user_id',
+  });
   if (membersStandup) throw membersStandup;
 
-  const { error: membersOncall } = await admin.from('rota_members').upsert(
-    [
-      { rota_id: oncallRota.id, user_id: owner.id, role: 'owner', position: 0 },
-      { rota_id: oncallRota.id, user_id: member.id, role: 'member', position: 1 },
-    ],
-    { onConflict: 'rota_id,user_id' },
-  );
+  const oncallRows = testerUserId
+    ? [
+        { rota_id: oncallRota.id, user_id: owner.id, role: 'owner', position: 0 },
+        { rota_id: oncallRota.id, user_id: member.id, role: 'member', position: 1 },
+        { rota_id: oncallRota.id, user_id: outsider.id, role: 'member', position: 2 },
+        { rota_id: oncallRota.id, user_id: viewer.id, role: 'viewer', position: null },
+        { rota_id: oncallRota.id, user_id: testerUserId, role: 'viewer', position: null },
+      ]
+    : [
+        { rota_id: oncallRota.id, user_id: owner.id, role: 'owner', position: 0 },
+        { rota_id: oncallRota.id, user_id: member.id, role: 'member', position: 1 },
+      ];
+
+  const { error: membersOncall } = await admin.from('rota_members').upsert(oncallRows, {
+    onConflict: 'rota_id,user_id',
+  });
   if (membersOncall) throw membersOncall;
 
   const { error: reminderError } = await admin
@@ -362,7 +458,7 @@ async function main() {
     const userClient = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    swapSeed = await seedOneSwapRequest(userClient, kitchenRota.id, owner, member, password);
+    swapSeed = await seedOneSwapRequest(admin, userClient, kitchenRota.id, owner, member, password);
   }
 
   const output = {
@@ -372,7 +468,17 @@ async function main() {
     memberEmail: MEMBER_EMAIL,
     viewerEmail: VIEWER_EMAIL,
     outsiderEmail: OUTSIDER_EMAIL,
-    outsiderNote: 'Auth user only; not added to any seeded rota (outsider / invite flows).',
+    testerUserId: testerUserId ?? null,
+    testerRotaRoles: testerUserId
+      ? {
+          kitchenMemberRotaId: kitchenRota.id,
+          standupOwnerRotaId: standupRota.id,
+          oncallViewerRotaId: oncallRota.id,
+        }
+      : null,
+    outsiderNote: testerUserId
+      ? 'Also a member on kitchen/standup and on-call rotas when MANUAL_SEED_TESTER_USER_ID is set (everyone on those rotas for multi-user QA).'
+      : 'Auth user only; not added to any seeded rota (outsider / invite flows).',
     rotaIds: {
       kitchenDuty: kitchenRota.id,
       weeklyStandup: standupRota.id,
@@ -391,6 +497,11 @@ async function main() {
 
   console.log(`Manual seed complete against ${url}.`);
   console.log(`Fixture emails: ${OWNER_EMAIL}, ${MEMBER_EMAIL}, ${VIEWER_EMAIL} (outsider: ${OUTSIDER_EMAIL})`);
+  if (testerUserId) {
+    console.log(
+      `Tester ${testerUserId}: member on kitchen, owner on stand-up, viewer on on-call (each rota includes all fixture users).`,
+    );
+  }
   console.log(`Wrote ${OUTPUT_PATH}`);
   console.log(JSON.stringify(output, null, 2));
 }
