@@ -96,6 +96,7 @@ module.exports = ({ config }) => {
       supportsTablet: true,
       usesAppleSignIn: true,
       bundleIdentifier: appIdentifier,
+      associatedDomains: ['applinks:rotini.timtsu.com'],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -114,6 +115,17 @@ module.exports = ({ config }) => {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            { scheme: 'https', host: 'rotini.timtsu.com', pathPrefix: '/invite' },
+            { scheme: 'https', host: 'rotini.timtsu.com', pathPrefix: '/auth-callback' },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       output: 'static',

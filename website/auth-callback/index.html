@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotini – Signing in</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #fff;
+      color: #111;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.75rem; }
+    p { font-size: 1rem; color: #555; line-height: 1.5; }
+    p + p { margin-top: 0.5rem; }
+
+    a { color: #0a7ea4; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Returning to Rotini&hellip;</h1>
+  <p>This link should open automatically in the app.</p>
+  <p id="fallback" style="display:none">
+    If it didn't open, <a id="open-link" href="#">tap here</a> to try again.
+  </p>
+  <script>
+    // Build the deep-link equivalent using the current URL's query string
+    // so the app can complete the auth flow via the custom scheme.
+    var appUrl = 'rotini://auth-callback' + window.location.search;
+    document.getElementById('open-link').href = appUrl;
+    setTimeout(function () {
+      document.getElementById('fallback').style.display = 'block';
+    }, 2000);
+  </script>
+</body>
+</html>

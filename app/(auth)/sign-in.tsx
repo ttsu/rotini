@@ -38,7 +38,11 @@ export default function SignInScreen() {
     setLoading('magic');
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: makeRedirectUri({ path: '/auth-callback' }) },
+      options: {
+        emailRedirectTo: process.env.EXPO_PUBLIC_APP_BASE_URL
+          ? `${process.env.EXPO_PUBLIC_APP_BASE_URL}/auth-callback`
+          : makeRedirectUri({ path: '/auth-callback' }),
+      },
     });
     setLoading(null);
     if (error) Alert.alert('Try again');
