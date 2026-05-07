@@ -81,7 +81,7 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
-    name: 'rotini',
+    name: 'Rotini',
     slug: 'rotini',
     version,
     orientation: 'portrait',
