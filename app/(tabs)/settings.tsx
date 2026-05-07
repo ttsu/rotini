@@ -59,12 +59,12 @@ export default function SettingsScreen() {
     <ScrollView
       testID="settings-screen"
       style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 40 }}
+      contentContainerStyle={{ paddingTop: insets.top + 45, paddingBottom: 40 }}
     >
       <LargeTitle title="Settings" testID="settings-title" />
 
       {/* Profile card */}
-      <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+      <View style={{ marginHorizontal: 16, marginBottom: 8, marginTop: 16 }}>
         <TouchableOpacity
           testID="settings-edit-profile-row"
           activeOpacity={0.7}

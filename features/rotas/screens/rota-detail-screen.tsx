@@ -125,7 +125,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
       <ScrollView
         testID="rota-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
       >
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           <StatusCard

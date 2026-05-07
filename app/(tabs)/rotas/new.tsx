@@ -136,7 +136,7 @@ export default function NewRotaScreen() {
     >
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
