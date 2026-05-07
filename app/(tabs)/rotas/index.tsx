@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
 import { ErrorState } from '@/components/ui/error-state';
 import { useRotas } from '@/features/rotas/hooks';
@@ -34,18 +33,6 @@ export default function RotasListScreen() {
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
 
-  const PlusButton = () => (
-    <TouchableOpacity
-      testID="create-new-shift-button"
-      hitSlop={8}
-      onPress={() => router.push('/(tabs)/rotas/new')}
-      accessibilityLabel="Create new shift"
-      accessibilityRole="button"
-    >
-      <Text style={{ fontSize: 28, fontWeight: '300', color: '#0a7ea4', lineHeight: 34 }}>+</Text>
-    </TouchableOpacity>
-  );
-
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
@@ -57,7 +44,6 @@ export default function RotasListScreen() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: bg }}>
-        <LargeTitle title="Shifts" right={<PlusButton />} testID="shifts-title" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ErrorState message="Failed to load shifts." onRetry={refetch} textSec={textSec} />
         </View>
@@ -68,7 +54,6 @@ export default function RotasListScreen() {
   if (!data || data.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: bg }}>
-        <LargeTitle title="Shifts" right={<PlusButton />} testID="shifts-title" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 22, fontWeight: '700', color: textPrimary, marginBottom: 8 }}>
             No shifts yet
@@ -99,10 +84,10 @@ export default function RotasListScreen() {
     <ScrollView
       testID="shifts-screen"
       style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustsScrollIndicatorInsets
+      contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
     >
-      <LargeTitle title="Shifts" right={<PlusButton />} testID="shifts-title" />
-
       {/* Grouped card */}
       <View
         style={{

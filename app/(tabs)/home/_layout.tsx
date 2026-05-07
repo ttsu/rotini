@@ -12,7 +12,11 @@ export default function HomeStackLayout() {
   const tint = colorScheme === 'dark' ? '#fff' : '#000';
 
   return (
-    <Stack screenOptions={{ headerStyle: { backgroundColor: bg }, headerTintColor: tint }}>
+    <Stack screenOptions={{
+      headerTintColor: tint,
+      headerTransparent: true,
+      headerBackButtonDisplayMode: 'minimal',
+     }}>
       <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="rotas/[id]" options={{ title: '' }} />
       <Stack.Screen name="rotas/occurrence/[id]" options={{ title: 'Occurrence' }} />

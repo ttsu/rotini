@@ -210,7 +210,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 40 }}
+      contentContainerStyle={{ paddingTop: insets.top + 45, paddingBottom: 40 }}
     >
       <LargeTitle title={greetingTitle} />
       {/* Swap requests inbox */}
