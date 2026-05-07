@@ -85,7 +85,7 @@ module.exports = ({ config }) => {
     slug: 'rotini',
     version,
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: './assets/images/ios-light.png',
     scheme: 'rotini',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -99,14 +99,18 @@ module.exports = ({ config }) => {
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
+      icon: {
+        light: './assets/images/ios-light.png',
+        dark: './assets/images/ios-dark.png',
+        tinted: './assets/images/ios-tinted.png',
+      },
     },
     android: {
       package: appIdentifier,
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
-        foregroundImage: './assets/images/android-icon-foreground.png',
-        backgroundImage: './assets/images/android-icon-background.png',
-        monochromeImage: './assets/images/android-icon-monochrome.png',
+        foregroundImage: './assets/images/android-foreground.png',
+        backgroundImage: './assets/images/android-background.png',
+        monochromeImage: './assets/images/android-monochrome.png',
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
@@ -128,7 +132,7 @@ module.exports = ({ config }) => {
       [
         'expo-notifications',
         {
-          icon: './assets/images/android-icon-monochrome.png',
+          icon: './assets/images/android-monochrome.png',
           color: '#0a7ea4',
           sounds: [],
           iosDisplayInForeground: true,
@@ -137,12 +141,13 @@ module.exports = ({ config }) => {
       [
         'expo-splash-screen',
         {
-          image: './assets/images/splash-icon.png',
+          image: './assets/images/splash-icon-light.png',
           imageWidth: 200,
           resizeMode: 'contain',
           backgroundColor: '#ffffff',
           dark: {
             backgroundColor: '#000000',
+            image: './assets/images/splash-icon-dark.png',
           },
         },
       ],
