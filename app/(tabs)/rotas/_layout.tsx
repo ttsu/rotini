@@ -1,14 +1,12 @@
 import { Stack } from 'expo-router';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useResetStackWhenOtherTabFocused } from '@/lib/navigation/use-reset-stack-when-other-tab-focused';
 
 /**
  * Shifts tab stack. Per-rota realtime is provided by `RotaRealtimeRoot` in the parent
- * tabs layout.
+ * tabs layout. Stack resets when switching tabs via `(tabs)/_layout` blur listeners.
  */
 export default function RotasStackLayout() {
-  useResetStackWhenOtherTabFocused('rotas');
   const colorScheme = useColorScheme();
   const bg = colorScheme === 'dark' ? '#000' : '#fff';
   const tint = colorScheme === 'dark' ? '#fff' : '#000';

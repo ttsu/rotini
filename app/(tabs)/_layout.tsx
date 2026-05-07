@@ -4,6 +4,7 @@ import { FeatureErrorBoundary } from '@/components/feature-error-boundary';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { RotaRealtimeRoot } from '@/features/rotas/rota-realtime-root';
+import { tabBlurPopNestedStackToRoot } from '@/lib/navigation/tab-blur-reset-stack';
 
 export default function TabLayout() {
   return (
@@ -24,6 +25,7 @@ export default function TabLayout() {
         >
           <Tabs.Screen
             name="home"
+            listeners={tabBlurPopNestedStackToRoot('home')}
             options={{
               title: 'Home',
               tabBarButtonTestID: 'tab-home',
@@ -32,6 +34,7 @@ export default function TabLayout() {
           />
           <Tabs.Screen
             name="rotas"
+            listeners={tabBlurPopNestedStackToRoot('rotas')}
             options={{
               title: 'Shifts',
               tabBarButtonTestID: 'tab-shifts',

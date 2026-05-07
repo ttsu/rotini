@@ -1,15 +1,12 @@
 import { Stack } from 'expo-router';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useResetStackWhenOtherTabFocused } from '@/lib/navigation/use-reset-stack-when-other-tab-focused';
 
 /**
  * Home tab stack: root feed plus rota/occurrence detail routes that keep the user
- * on the Home tab. When the user switches to another tab from Home, the stack
- * pops to root so returning to Home always shows the home screen.
+ * on the Home tab. Stack resets when switching tabs via `(tabs)/_layout` blur listeners.
  */
 export default function HomeStackLayout() {
-  useResetStackWhenOtherTabFocused('home');
   const colorScheme = useColorScheme();
   const bg = colorScheme === 'dark' ? '#000' : '#fff';
   const tint = colorScheme === 'dark' ? '#fff' : '#000';
