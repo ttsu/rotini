@@ -1,16 +1,9 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { formatInTimeZone } from 'date-fns-tz';
 
 import { Pill } from '@/components/ui/pill';
-import { routes } from '@/lib/navigation/routes';
 
 import { useRotaOccurrences, type OccurrenceRow } from '../use-rotas-queries';
 
@@ -91,6 +84,7 @@ export function UpcomingSection({
   textPrimary,
   textSec,
   sep,
+  onOccurrencePress,
 }: {
   rotaId: string;
   tz: string;
@@ -100,8 +94,9 @@ export function UpcomingSection({
   textPrimary: string;
   textSec: string;
   sep: string;
+  /** Navigate to occurrence detail in the same tab context as the parent rota detail screen. */
+  onOccurrencePress: (occurrenceId: string) => void;
 }) {
-  const router = useRouter();
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const { data: occurrences, isLoading } = useRotaOccurrences(rotaId);
 
@@ -205,7 +200,7 @@ export function UpcomingSection({
               name={membersById.get(occ.assigned_user_id ?? '') ?? 'Unknown'}
               activeOccId={activeOccId}
               tz={tz}
-              onPress={() => router.push(routes.rotas.occurrence(occ.id))}
+              onPress={() => onOccurrencePress(occ.id)}
               textPrimary={textPrimary}
               textSec={textSec}
               sep={sep}
