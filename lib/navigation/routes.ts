@@ -5,6 +5,20 @@ import type { Href } from 'expo-router';
  */
 export const routes = {
   tabs: '/(tabs)' as const,
+  /** Root of the Home tab stack (`/(tabs)/home`). */
+  home: {
+    root: '/(tabs)/home' as const,
+    rotas: {
+      /**
+       * @param id - Rota primary key
+       */
+      detail: (id: string): Href => `/(tabs)/home/rotas/${id}`,
+      /**
+       * @param occurrenceId - Occurrence primary key
+       */
+      occurrence: (occurrenceId: string): Href => `/(tabs)/home/rotas/occurrence/${occurrenceId}`,
+    },
+  },
   profile: {
     /** Edit display name and avatar */
     edit: '/edit-profile' as Href,

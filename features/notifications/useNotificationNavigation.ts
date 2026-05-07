@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 
+import { routes } from '@/lib/navigation/routes';
+
 function navigateToOccurrence(router: ReturnType<typeof useRouter>, occurrenceId: string) {
-  router.push(`/rotas/occurrence/${occurrenceId}` as never);
+  router.push(routes.rotas.occurrence(occurrenceId));
 }
 
 function navigateToInvite(router: ReturnType<typeof useRouter>, code: string) {
