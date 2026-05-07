@@ -1,7 +1,32 @@
+import { Buffer } from 'buffer';
+import * as FileSystem from 'expo-file-system/legacy';
+
 import { supabase } from '@/lib/supabase';
 
 /** Supabase Storage bucket id for profile photos. */
 export const AVATAR_BUCKET = 'avatars';
+
+/**
+ * Reads a local React Native file URI into raw bytes.
+ */
+async function readLocalFileBytes(fileUri: string): Promise<Uint8Array> {
+  const info = await FileSystem.getInfoAsync(fileUri);
+  if (!info.exists) {
+    throw new Error('Selected image file could not be found.');
+  }
+  if (typeof info.size === 'number' && info.size === 0) {
+    throw new Error('Avatar file is empty after image processing.');
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(fileUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  if (!base64) {
+    throw new Error('Avatar file could not be read from the selected image.');
+  }
+
+  return Uint8Array.from(Buffer.from(base64, 'base64'));
+}
 
 /**
  * Object key for the current user's avatar (JPEG after client processing).
@@ -29,9 +54,11 @@ export function getVersionedAvatarPublicUrl(userId: string): string {
  * @param jpegUri - Local `file://` URI of JPEG
  */
 export async function uploadAvatarJpeg(userId: string, jpegUri: string): Promise<void> {
-  const response = await fetch(jpegUri);
-  const blob = await response.blob();
-  const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(avatarObjectPath(userId), blob, {
+  const bytes = await readLocalFileBytes(jpegUri);
+  if (bytes.byteLength === 0) {
+    throw new Error('Avatar file could not be read from the selected image.');
+  }
+  const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(avatarObjectPath(userId), bytes, {
     upsert: true,
     contentType: 'image/jpeg',
   });

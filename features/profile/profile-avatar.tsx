@@ -48,9 +48,11 @@ export function ProfileAvatarTile({
     >
       {showImage ? (
         <Image
+          key={avatarUrl!.trim()}
           source={{ uri: avatarUrl!.trim() }}
           style={{ width: size, height: size }}
           contentFit="cover"
+          cachePolicy="none"
           onError={() => setImageFailed(true)}
         />
       ) : (

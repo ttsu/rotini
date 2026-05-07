@@ -28,7 +28,11 @@ import { displayNameSchema, type DisplayNameFormValues } from '@/features/profil
 import { invalidateProfileRelatedQueries } from '@/features/profile/invalidate-profile-queries';
 import { prepareAvatarImageFromPicker } from '@/features/profile/prepare-avatar-image';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
-import { useMyProfile } from '@/features/profile/use-my-profile';
+import {
+  profileQueryKey,
+  type MyProfileRow,
+  useMyProfile,
+} from '@/features/profile/use-my-profile';
 import { useAuth } from '@/contexts/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getUserMessage } from '@/lib/errors';
@@ -148,6 +152,7 @@ export default function EditProfileScreen() {
 
     const trimmedName = values.display_name.trim();
     const nameRequested = trimmedName !== (profile?.display_name ?? '').trim();
+    let savedAvatarUrl: string | null | undefined;
 
     setSaving(true);
     setStatusBanner(null);
@@ -176,6 +181,7 @@ export default function EditProfileScreen() {
           await deleteAvatarObject(userId);
           const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', userId);
           if (error) throw error;
+          savedAvatarUrl = null;
         } else if (pickedAsset) {
           const jpegUri = await prepareAvatarImageFromPicker(pickedAsset);
           await uploadAvatarJpeg(userId, jpegUri);
@@ -185,6 +191,7 @@ export default function EditProfileScreen() {
             await deleteAvatarObject(userId).catch(() => {});
             throw error;
           }
+          savedAvatarUrl = publicUrl;
         }
       } catch (e) {
         avatarOk = false;
@@ -202,6 +209,19 @@ export default function EditProfileScreen() {
     const anySuccess =
       (nameRequested && nameOk) || (avatarRequested && avatarOk);
     if (anySuccess) {
+      queryClient.setQueryData<MyProfileRow>(
+        profileQueryKey(userId),
+        (current): MyProfileRow => ({
+          display_name:
+            nameRequested && nameOk
+              ? trimmedName
+              : (current?.display_name ?? profile?.display_name ?? null),
+          avatar_url:
+            avatarRequested && avatarOk && savedAvatarUrl !== undefined
+              ? savedAvatarUrl
+              : (current?.avatar_url ?? profile?.avatar_url ?? null),
+        })
+      );
       await invalidateProfileRelatedQueries(queryClient, userId);
       await refetch();
     }
