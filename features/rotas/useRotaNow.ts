@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/auth';
 
+/** Per-rota `v_rota_now` realtime refresh is handled by `RotaRealtimeRoot` (occurrences + members). */
+
 export type RotaNowRow = {
   rota_id: string;
   active_occurrence_id: string | null;
@@ -19,10 +21,7 @@ export type RotaNowRow = {
   upcoming_assignee_name: string | null;
 };
 
-function useBoundaryTimer(
-  boundary: string | null | undefined,
-  queryKey: unknown[]
-) {
+function useBoundaryTimer(boundary: string | null | undefined, queryKey: unknown[]) {
   const queryClient = useQueryClient();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,20 +56,7 @@ function useAppStateInvalidation(queryKey: unknown[]) {
 
 // Single-rota hook used in rota detail screen.
 export function useRotaNow(rotaId: string) {
-  const queryClient = useQueryClient();
   const key = ['rota-now', rotaId];
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`rota-now-occ:${rotaId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'occurrences', filter: `rota_id=eq.${rotaId}` },
-        () => queryClient.invalidateQueries({ queryKey: key })
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [rotaId, queryClient]);
 
   useAppStateInvalidation(key);
 
@@ -106,13 +92,13 @@ export function useAllRotasNow() {
     if (!userId) return;
     const channel = supabase
       .channel('rota-now-all-occ')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'occurrences' },
-        () => queryClient.invalidateQueries({ queryKey: key })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () =>
+        queryClient.invalidateQueries({ queryKey: key }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session?.user.id, queryClient]);
 
   useAppStateInvalidation(key);
