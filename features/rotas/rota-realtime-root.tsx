@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -27,7 +20,8 @@ const RotaRealtimeContext = createContext<RotaRealtimeContextValue | null>(null)
 /**
  * Owns per-rota Supabase Realtime channels for the rotas navigation subtree so
  * multiple screens never attach duplicate `postgres_changes` handlers to the
- * same channel topic.
+ * same channel topic. Also invalidates `v_rota_now` (`['rota-now', rotaId]`)
+ * from the same occurrence/member filters used on the detail screen.
  */
 export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -49,6 +43,11 @@ export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
     (rotaId: string) => {
       if (!sessionUserId || channels.current.has(rotaId)) return;
 
+      const invalidateRotaQueries = () => {
+        queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+        queryClient.invalidateQueries({ queryKey: ['rota-now', rotaId] });
+      };
+
       const membersCh = supabase
         .channel(`rota_members:${rotaId}`)
         .on(
@@ -59,7 +58,7 @@ export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
             table: 'rota_members',
             filter: `rota_id=eq.${rotaId}`,
           },
-          () => queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] })
+          invalidateRotaQueries,
         )
         .subscribe();
 
@@ -73,13 +72,16 @@ export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
             table: 'occurrences',
             filter: `rota_id=eq.${rotaId}`,
           },
-          () => queryClient.invalidateQueries({ queryKey: ['occurrences', rotaId] })
+          () => {
+            queryClient.invalidateQueries({ queryKey: ['occurrences', rotaId] });
+            queryClient.invalidateQueries({ queryKey: ['rota-now', rotaId] });
+          },
         )
         .subscribe();
 
       channels.current.set(rotaId, { members: membersCh, occurrences: occurrencesCh });
     },
-    [sessionUserId, queryClient]
+    [sessionUserId, queryClient],
   );
 
   const register = useCallback(
@@ -90,7 +92,7 @@ export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
         subscribeRota(rotaId);
       }
     },
-    [sessionUserId, subscribeRota]
+    [sessionUserId, subscribeRota],
   );
 
   const unregister = useCallback(
@@ -104,7 +106,7 @@ export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
         refCounts.current.set(rotaId, next);
       }
     },
-    [teardownRota]
+    [teardownRota],
   );
 
   useEffect(() => {
@@ -123,14 +125,9 @@ export function RotaRealtimeRoot({ children }: { children: React.ReactNode }) {
     }
   }, [sessionUserId, subscribeRota]);
 
-  const value = useMemo(
-    () => ({ register, unregister }),
-    [register, unregister]
-  );
+  const value = useMemo(() => ({ register, unregister }), [register, unregister]);
 
-  return (
-    <RotaRealtimeContext.Provider value={value}>{children}</RotaRealtimeContext.Provider>
-  );
+  return <RotaRealtimeContext.Provider value={value}>{children}</RotaRealtimeContext.Provider>;
 }
 
 /**
