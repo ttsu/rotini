@@ -164,6 +164,7 @@ module.exports = ({ config }) => {
         },
       ],
       ['@sentry/react-native/expo', getSentryPluginConfig()],
+      '@react-native-community/datetimepicker',
     ],
     experiments: {
       typedRoutes: true,
