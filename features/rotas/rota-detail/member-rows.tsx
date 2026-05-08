@@ -14,6 +14,7 @@ import { toTestIdSegment } from './formatting';
 
 export type Member = {
   role: string;
+  notify_scope: string;
   user_id: string;
   position: number | null;
   profile: { id: string; display_name: string | null; avatar_url: string | null } | null;

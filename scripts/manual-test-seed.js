@@ -7,9 +7,9 @@
  * Env: EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
  * Remote: MANUAL_SEED_ALLOW_REMOTE=1. Remote reset: MANUAL_SEED_CONFIRM_RESET=1.
  * Password: MANUAL_SEED_PASSWORD (required when not local; optional locally with default).
- * Optional: MANUAL_SEED_TESTER_USER_ID — `profiles.id` UUID for your real test account. When set,
- *   the script adds that user as member / owner / viewer on three separate rotas that also
- *   include the four fixture accounts (owner, member, viewer, outsider).
+ * Optional: MANUAL_SEED_TESTER_EMAIL — email address for your real test account. When set,
+ *   the script looks up that auth user, then adds them as member / owner / viewer on three
+ *   separate rotas that also include the four fixture accounts (owner, member, viewer, outsider).
  *
  * @see maestro/support/prepare-local.js for a related E2E-only flow.
  */
@@ -137,10 +137,9 @@ async function deleteSeedRotas(admin) {
   if (error) throw error;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
- * Reads MANUAL_SEED_TESTER_USER_ID when set; validates UUID, distinct from fixtures, and profile row.
+ * Reads MANUAL_SEED_TESTER_EMAIL when set; looks up the auth user by email, validates it is
+ * distinct from the fixtures, and confirms a profile row exists.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} admin
  * @param {{ id: string }} owner
@@ -150,30 +149,33 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * @returns {Promise<string | null>}
  */
 async function resolveTesterUserId(admin, owner, member, viewer, outsider) {
-  const raw = process.env.MANUAL_SEED_TESTER_USER_ID?.trim();
-  if (!raw) {
+  const email = process.env.MANUAL_SEED_TESTER_EMAIL?.trim();
+  if (!email) {
     console.warn(
-      'MANUAL_SEED_TESTER_USER_ID not set — skipping tester on role-matrix rotas (set to profiles.id for your device account).',
+      'MANUAL_SEED_TESTER_EMAIL not set — skipping tester on role-matrix rotas (set to your device account email).',
     );
     return null;
   }
-  if (!UUID_RE.test(raw)) {
-    throw new Error('MANUAL_SEED_TESTER_USER_ID must be a UUID (profiles.id / auth user id).');
-  }
-  const fixtureIds = new Set([owner.id, member.id, viewer.id, outsider.id]);
-  if (fixtureIds.has(raw)) {
+  const fixtureEmails = new Set([OWNER_EMAIL, MEMBER_EMAIL, VIEWER_EMAIL, OUTSIDER_EMAIL]);
+  if (fixtureEmails.has(email)) {
     throw new Error(
-      'MANUAL_SEED_TESTER_USER_ID must not match a fixture seed user (owner/member/viewer/outsider).',
+      'MANUAL_SEED_TESTER_EMAIL must not match a fixture seed email (owner/member/viewer/outsider).',
     );
   }
-  const { data: row, error } = await admin.from('profiles').select('id').eq('id', raw).maybeSingle();
+  const user = await findUserByEmail(admin, email);
+  if (!user) {
+    throw new Error(
+      `MANUAL_SEED_TESTER_EMAIL (${email}) has no auth user — sign up or create the account first.`,
+    );
+  }
+  const { data: row, error } = await admin.from('profiles').select('id').eq('id', user.id).maybeSingle();
   if (error) throw error;
   if (!row) {
     throw new Error(
-      `MANUAL_SEED_TESTER_USER_ID (${raw}) has no row in public.profiles — sign in once in the app or create the profile first.`,
+      `MANUAL_SEED_TESTER_EMAIL (${email}) has no row in public.profiles — sign in once in the app to create the profile.`,
     );
   }
-  return raw;
+  return user.id;
 }
 
 function looksLikeJwt(value) {
@@ -443,9 +445,16 @@ async function main() {
   });
   if (membersOncall) throw membersOncall;
 
-  const { error: reminderError } = await admin
-    .from('rota_reminders')
-    .insert({ rota_id: kitchenRota.id, lead_minutes: 45 });
+  // Per-user reminders — kitchen: owner 45 min, member 60 min; standup: owner/tester 15 min
+  const reminderRows = [
+    { rota_id: kitchenRota.id, user_id: owner.id, lead_minutes: 45 },
+    { rota_id: kitchenRota.id, user_id: member.id, lead_minutes: 60 },
+    { rota_id: standupRota.id, user_id: testerUserId ?? owner.id, lead_minutes: 15 },
+  ];
+  if (testerUserId) {
+    reminderRows.push({ rota_id: kitchenRota.id, user_id: testerUserId, lead_minutes: 30 });
+  }
+  const { error: reminderError } = await admin.from('user_rota_reminders').insert(reminderRows);
   if (reminderError) throw reminderError;
 
   const materializeResults = {};
@@ -468,6 +477,7 @@ async function main() {
     memberEmail: MEMBER_EMAIL,
     viewerEmail: VIEWER_EMAIL,
     outsiderEmail: OUTSIDER_EMAIL,
+    testerEmail: process.env.MANUAL_SEED_TESTER_EMAIL?.trim() ?? null,
     testerUserId: testerUserId ?? null,
     testerRotaRoles: testerUserId
       ? {
@@ -484,6 +494,12 @@ async function main() {
       weeklyStandup: standupRota.id,
       onCallHandoff: oncallRota.id,
     },
+    reminders: {
+      kitchenOwner: '45 min',
+      kitchenMember: '60 min',
+      ...(testerUserId ? { kitchenTester: '30 min' } : {}),
+      standupOwnerOrTester: '15 min',
+    },
     materialize: materializeResults,
     swapSeed,
     deepLinks: {
@@ -498,8 +514,9 @@ async function main() {
   console.log(`Manual seed complete against ${url}.`);
   console.log(`Fixture emails: ${OWNER_EMAIL}, ${MEMBER_EMAIL}, ${VIEWER_EMAIL} (outsider: ${OUTSIDER_EMAIL})`);
   if (testerUserId) {
+    const testerEmail = process.env.MANUAL_SEED_TESTER_EMAIL?.trim();
     console.log(
-      `Tester ${testerUserId}: member on kitchen, owner on stand-up, viewer on on-call (each rota includes all fixture users).`,
+      `Tester ${testerEmail} (${testerUserId}): member on kitchen, owner on stand-up, viewer on on-call (each rota includes all fixture users).`,
     );
   }
   console.log(`Wrote ${OUTPUT_PATH}`);

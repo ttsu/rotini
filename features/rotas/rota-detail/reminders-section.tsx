@@ -3,109 +3,82 @@ import { ActionSheetIOS, Alert, Platform, Text, TouchableOpacity, View } from 'r
 import { SectionHeader } from '@/components/ui/section-header';
 import {
   formatLeadMinutes,
-  useAddReminder,
-  useDeleteReminder,
-  useRotaReminders,
+  useMyReminders,
+  useSetMyReminder,
+  useSetNotifyScope,
 } from '@/features/notifications/hooks';
 
-const PRESETS = [
+const PRESETS: { label: string; value: number | null }[] = [
+  { label: 'None', value: null },
+  { label: 'At time of event', value: 0 },
+  { label: '5 min before', value: 5 },
+  { label: '10 min before', value: 10 },
   { label: '15 min before', value: 15 },
+  { label: '30 min before', value: 30 },
   { label: '1 hour before', value: 60 },
-  { label: '4 hours before', value: 240 },
+  { label: '2 hours before', value: 120 },
   { label: '1 day before', value: 1440 },
+  { label: '2 days before', value: 2880 },
   { label: '1 week before', value: 10080 },
 ];
 
-/**
- * Owner-configurable reminder lead times for a rota.
- */
 export function RemindersSection({
   rotaId,
-  isOwner,
+  userRole,
+  notifyScope,
   card,
   textPrimary,
   textSec,
   sep,
 }: {
   rotaId: string;
-  isOwner: boolean;
+  userRole: 'owner' | 'member' | 'viewer';
+  notifyScope: 'own' | 'all';
   card: string;
   textPrimary: string;
   textSec: string;
   sep: string;
 }) {
-  const reminders = useRotaReminders(rotaId);
-  const addReminder = useAddReminder(rotaId);
-  const deleteReminder = useDeleteReminder(rotaId);
-  const existing = new Set((reminders.data ?? []).map((r) => r.lead_minutes));
+  const reminders = useMyReminders(rotaId);
+  const setReminder = useSetMyReminder(rotaId);
+  const setScope = useSetNotifyScope(rotaId);
 
-  function handleAdd() {
-    const available = PRESETS.filter((p) => !existing.has(p.value));
-    const options = [...available.map((p) => p.label), 'Custom (enter minutes)', 'Cancel'];
+  const currentLeadMinutes = reminders.data?.[0]?.lead_minutes ?? null;
+  const currentLabel =
+    currentLeadMinutes === null ? 'None' : formatLeadMinutes(currentLeadMinutes);
+
+  function handleReminderPress() {
+    const options = [...PRESETS.map((p) => p.label), 'Cancel'];
     const cancelIndex = options.length - 1;
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: cancelIndex, title: 'Add reminder' },
+        { options, cancelButtonIndex: cancelIndex, title: 'Reminder' },
         (idx) => {
           if (idx === cancelIndex) return;
-          if (idx < available.length) {
-            addReminder.mutate(available[idx].value);
-          } else {
-            promptCustom();
-          }
+          setReminder.mutate(PRESETS[idx].value);
         }
       );
     } else {
-      Alert.alert('Add reminder', undefined, [
-        ...available.map((p) => ({
+      Alert.alert('Reminder', undefined, [
+        ...PRESETS.map((p) => ({
           text: p.label,
-          onPress: () => addReminder.mutate(p.value),
+          onPress: () => setReminder.mutate(p.value),
         })),
-        { text: 'Custom (enter minutes)', onPress: promptCustom },
         { text: 'Cancel', style: 'cancel' as const },
       ]);
     }
   }
 
-  function promptCustom() {
-    Alert.prompt(
-      'Custom reminder',
-      'Enter lead time in minutes (e.g. 120 for 2 hours)',
-      (text) => {
-        const mins = parseInt(text, 10);
-        if (isNaN(mins) || mins < 0) {
-          Alert.alert('Invalid', 'Enter a positive number of minutes.');
-          return;
-        }
-        if (existing.has(mins)) {
-          Alert.alert('Already added', formatLeadMinutes(mins));
-          return;
-        }
-        addReminder.mutate(mins);
-      },
-      'plain-text',
-      '',
-      'number-pad'
-    );
+  function handleScopeToggle(scope: 'own' | 'all') {
+    if (scope !== notifyScope) {
+      setScope.mutate(scope);
+    }
   }
-
-  function handleDelete(id: string, leadMinutes: number) {
-    Alert.alert('Remove reminder', `Remove "${formatLeadMinutes(leadMinutes)}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => deleteReminder.mutate(id),
-      },
-    ]);
-  }
-
-  const rows = reminders.data ?? [];
 
   return (
     <>
-      <SectionHeader label="Reminders" testID="rota-reminders-heading" />
+      <SectionHeader label="Reminder" testID="rota-reminders-heading" />
       <View
         style={{
           backgroundColor: card,
@@ -120,56 +93,72 @@ export function RemindersSection({
           elevation: 2,
         }}
       >
-        {rows.length === 0 && (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-            <Text style={{ fontSize: 15, color: textSec }}>No reminders set</Text>
-          </View>
-        )}
-        {rows.map((r, i) => (
-          <View
-            key={r.id}
-            testID={`rota-reminder-row-${r.lead_minutes}`}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 13,
-              borderBottomWidth: i < rows.length - 1 ? 0.5 : 0,
-              borderBottomColor: sep,
-            }}
-          >
-            <Text style={{ flex: 1, fontSize: 15, color: textPrimary }}>
-              {formatLeadMinutes(r.lead_minutes)}
-            </Text>
-            {isOwner && (
-              <TouchableOpacity
-                onPress={() => handleDelete(r.id, r.lead_minutes)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel={`Remove ${formatLeadMinutes(r.lead_minutes)} reminder`}
-                accessibilityRole="button"
-              >
-                <Text style={{ fontSize: 20, color: '#FF3B30', lineHeight: 22 }}>−</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
-        {isOwner && (
-          <TouchableOpacity
-            testID="add-reminder-button"
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 13,
-              borderTopWidth: rows.length > 0 ? 0.5 : 0,
-              borderTopColor: sep,
-            }}
-            onPress={handleAdd}
-            disabled={addReminder.isPending}
-            accessibilityLabel="Add reminder"
-            accessibilityRole="button"
-          >
-            <Text style={{ fontSize: 15, color: '#0a7ea4', fontWeight: '500' }}>+ Add reminder</Text>
-          </TouchableOpacity>
-        )}
+        {/* Scope row */}
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingVertical: 13,
+            borderBottomWidth: 0.5,
+            borderBottomColor: sep,
+          }}
+        >
+          {userRole === 'viewer' ? (
+            <Text style={{ fontSize: 15, color: textSec }}>Notified for all shifts</Text>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 15, color: textPrimary, flex: 1 }}>Notify me for</Text>
+              <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: sep }}>
+                {(['own', 'all'] as const).map((scope) => {
+                  const active = notifyScope === scope;
+                  return (
+                    <TouchableOpacity
+                      key={scope}
+                      onPress={() => handleScopeToggle(scope)}
+                      disabled={setScope.isPending}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        backgroundColor: active ? '#0a7ea4' : 'transparent',
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={scope === 'own' ? 'My shifts' : 'All shifts'}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '500',
+                          color: active ? '#fff' : textSec,
+                        }}
+                      >
+                        {scope === 'own' ? 'My shifts' : 'All shifts'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Reminder picker row */}
+        <TouchableOpacity
+          testID="reminder-picker-row"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 13,
+          }}
+          onPress={handleReminderPress}
+          disabled={setReminder.isPending}
+          accessibilityRole="button"
+          accessibilityLabel={`Reminder: ${currentLabel}`}
+        >
+          <Text style={{ flex: 1, fontSize: 15, color: textPrimary }}>Reminder</Text>
+          <Text style={{ fontSize: 15, color: textSec, marginRight: 6 }}>{currentLabel}</Text>
+          <Text style={{ fontSize: 15, color: textSec }}>›</Text>
+        </TouchableOpacity>
       </View>
     </>
   );

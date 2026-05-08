@@ -71,7 +71,7 @@ export type Database = {
             foreignKeyName: "notification_jobs_reminder_id_fkey"
             columns: ["reminder_id"]
             isOneToOne: false
-            referencedRelation: "rota_reminders"
+            referencedRelation: "user_rota_reminders"
             referencedColumns: ["id"]
           },
           {
@@ -285,9 +285,91 @@ export type Database = {
           },
         ]
       }
+      rota_materialization_errors: {
+        Row: {
+          created_at: string
+          details: Json
+          error_message: string
+          id: string
+          request_id: number | null
+          rota_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          error_message: string
+          id?: string
+          request_id?: number | null
+          rota_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          error_message?: string
+          id?: string
+          request_id?: number | null
+          rota_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_materialization_errors_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_materialization_errors_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
+          },
+        ]
+      }
+      rota_materialization_requests: {
+        Row: {
+          checked_at: string | null
+          id: string
+          request_id: number
+          requested_at: string
+          rota_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          id?: string
+          request_id: number
+          requested_at?: string
+          rota_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          id?: string
+          request_id?: number
+          requested_at?: string
+          rota_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_materialization_requests_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_materialization_requests_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
+          },
+        ]
+      }
       rota_members: {
         Row: {
           joined_at: string
+          notify_scope: string
           position: number | null
           role: string
           rota_id: string
@@ -295,6 +377,7 @@ export type Database = {
         }
         Insert: {
           joined_at?: string
+          notify_scope?: string
           position?: number | null
           role: string
           rota_id: string
@@ -302,6 +385,7 @@ export type Database = {
         }
         Update: {
           joined_at?: string
+          notify_scope?: string
           position?: number | null
           role?: string
           rota_id?: string
@@ -328,39 +412,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      rota_reminders: {
-        Row: {
-          id: string
-          lead_minutes: number
-          rota_id: string
-        }
-        Insert: {
-          id?: string
-          lead_minutes: number
-          rota_id: string
-        }
-        Update: {
-          id?: string
-          lead_minutes?: number
-          rota_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rota_reminders_rota_id_fkey"
-            columns: ["rota_id"]
-            isOneToOne: false
-            referencedRelation: "rotas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rota_reminders_rota_id_fkey"
-            columns: ["rota_id"]
-            isOneToOne: false
-            referencedRelation: "v_rota_now"
-            referencedColumns: ["rota_id"]
           },
         ]
       }
@@ -499,6 +550,56 @@ export type Database = {
           },
         ]
       }
+      user_rota_reminders: {
+        Row: {
+          id: string
+          lead_minutes: number
+          rota_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          lead_minutes: number
+          rota_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          lead_minutes?: number
+          rota_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_rota_reminders_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_rota_reminders_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
+          },
+          {
+            foreignKeyName: "user_rota_reminders_rota_id_user_id_fkey"
+            columns: ["rota_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "rota_members"
+            referencedColumns: ["rota_id", "user_id"]
+          },
+          {
+            foreignKeyName: "user_rota_reminders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_rota_now: {
@@ -538,37 +639,58 @@ export type Database = {
         Args: { p_code: string }
         Returns: {
           joined_at: string
+          notify_scope: string
           position: number | null
           role: string
           rota_id: string
           user_id: string
         }
-      }
-      add_rota_reminder: {
-        Args: { p_lead_minutes: number; p_rota_id: string }
-        Returns: {
-          id: string
-          lead_minutes: number
-          rota_id: string
+        SetofOptions: {
+          from: "*"
+          to: "rota_members"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
-      delete_rota_reminder: {
-        Args: { p_reminder_id: string }
-        Returns: undefined
-      }
       change_member_role: {
         Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
         Returns: {
           joined_at: string
+          notify_scope: string
           position: number | null
           role: string
           rota_id: string
           user_id: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "rota_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_notification_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          assignee_name: string
+          expo_token: string
+          fire_at: string
+          id: string
+          lead_minutes: number
+          occurrence_id: string
+          reminder_id: string
+          rota_name: string
+          user_id: string
+        }[]
       }
       create_invite: {
-        Args: { p_email?: string; p_phone?: string; p_role: string; p_rota_id: string }
+        Args: {
+          p_email?: string
+          p_phone?: string
+          p_role: string
+          p_rota_id: string
+        }
         Returns: {
           code: string
           consumed_at: string | null
@@ -582,14 +704,21 @@ export type Database = {
           rota_id: string
           sms_sent_at: string | null
         }
+        SetofOptions: {
+          from: "*"
+          to: "rota_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      lookup_auth_user_id_for_invite: {
-        Args: { p_email: string | null; p_phone: string | null }
-        Returns: string | null
-      }
+      dispatch_notifications: { Args: never; Returns: number }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }
       leave_rota: { Args: { p_rota_id: string }; Returns: undefined }
+      lookup_auth_user_id_for_invite: {
+        Args: { p_email: string; p_phone: string }
+        Returns: string
+      }
       lookup_invite: {
         Args: { p_code: string }
         Returns: {
@@ -598,6 +727,7 @@ export type Database = {
           rota_name: string
         }[]
       }
+      materialize_active_rotas: { Args: never; Returns: Json }
       materialize_rota: { Args: { p_rota_id: string }; Returns: number }
       materialize_rota_apply: {
         Args: {
@@ -627,11 +757,18 @@ export type Database = {
           status: string
           swap_request_id: string | null
         }
+        SetofOptions: {
+          from: "*"
+          to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reconcile_notifications_for_rota: {
         Args: { p_rota_id: string }
         Returns: undefined
       }
+      record_rota_materialization_http_errors: { Args: never; Returns: number }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
         Returns: undefined
@@ -652,6 +789,12 @@ export type Database = {
           status: string
           target_user_id: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "swap_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       respond_swap: {
         Args: { p_accept: boolean; p_swap_request_id: string }
@@ -669,6 +812,20 @@ export type Database = {
           status: string
           swap_request_id: string | null
         }
+        SetofOptions: {
+          from: "*"
+          to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_notify_scope: {
+        Args: { p_rota_id: string; p_scope: string }
+        Returns: undefined
+      }
+      set_user_reminder: {
+        Args: { p_lead_minutes: number | null; p_rota_id: string }
+        Returns: undefined
       }
       transfer_ownership: {
         Args: { p_new_owner_id: string; p_rota_id: string }
