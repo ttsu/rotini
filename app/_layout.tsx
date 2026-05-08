@@ -10,6 +10,7 @@ import { Stack, useRouter, useRootNavigationState, useSegments } from 'expo-rout
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AuthProvider, useAuth } from '@/contexts/auth';
 import { usePushToken } from '@/features/notifications/usePushToken';
@@ -115,6 +116,7 @@ function AppShell() {
 
 function RootLayout() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{
@@ -132,6 +134,7 @@ function RootLayout() {
         <AppShell />
       </AppPreferencesProvider>
     </PersistQueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

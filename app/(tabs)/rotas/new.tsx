@@ -1,5 +1,6 @@
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -223,7 +224,14 @@ export default function NewRotaScreen() {
             accessibilityLabel="Edit schedule"
             accessibilityRole="button"
           >
-            <Text style={{ flex: 1, fontSize: 16, color: textPrimary }}>{describeRRule(rrule)}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, color: textPrimary }}>{describeRRule(rrule)}</Text>
+              {dtstartUtc && (
+                <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
+                  {formatInTimeZone(dtstartUtc, tz, 'd MMM yyyy · HH:mm')}
+                </Text>
+              )}
+            </View>
             <Text style={{ fontSize: 18, color: '#AEAEB2' }}>›</Text>
           </TouchableOpacity>
           {errors.rrule && (
@@ -332,75 +340,111 @@ export default function NewRotaScreen() {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
               paddingHorizontal: 16,
-              paddingTop: 16,
+              paddingTop: 32,
               paddingBottom: 12,
               borderBottomWidth: 0.5,
               borderBottomColor: sep,
             }}
           >
-            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Schedule</Text>
-            <TouchableOpacity
-              testID="done-editing-schedule-button"
-              onPress={() => setScheduleOpen(false)}
-              accessibilityLabel="Done editing schedule"
-              accessibilityRole="button"
-            >
-              <Text style={{ fontSize: 16, color: '#0a7ea4', fontWeight: '600' }}>Done</Text>
-            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary }}>Schedule</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+              <TouchableOpacity
+                testID="done-editing-schedule-button"
+                onPress={() => setScheduleOpen(false)}
+                accessibilityLabel="Done editing schedule"
+                accessibilityRole="button"
+                hitSlop={10}
+              >
+                <Text style={{ fontSize: 16, color: '#0a7ea4', fontWeight: '600' }}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Start date inside the schedule modal */}
+          {/* Start date and time inside the schedule modal */}
           <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-              Start date
-            </Text>
             <Controller
               control={control}
               name="dtstart"
-              render={({ field: { onChange, onBlur, value } }) => {
-                const dateStr = value?.split('T')[0] ?? '';
-                const timeStr = value?.split('T')[1] ?? '09:00';
+              render={({ field: { onChange, value } }) => {
+                const pickerDate = (() => {
+                  if (!value || !tz) return new Date();
+                  try { return fromZonedTime(value, tz); } catch { return new Date(); }
+                })();
+
+                function handleDateChange(_evt: DateTimePickerEvent, date?: Date) {
+                  if (!date) return;
+                  const datePart = formatInTimeZone(date, tz, 'yyyy-MM-dd');
+                  const timePart = value?.split('T')[1] ?? '09:00';
+                  onChange(`${datePart}T${timePart}`);
+                }
+
+                function handleTimeChange(_evt: DateTimePickerEvent, date?: Date) {
+                  if (!date) return;
+                  const datePart = value?.split('T')[0] ?? todayLocalString(tz);
+                  const timePart = formatInTimeZone(date, tz, 'HH:mm');
+                  onChange(`${datePart}T${timePart}`);
+                }
+
                 return (
-                  <TextInput
+                  <View
                     style={{
-                      fontSize: 17,
-                      color: textPrimary,
-                      borderBottomWidth: 1,
-                      borderBottomColor: border,
-                      paddingVertical: 10,
-                      marginBottom: 16,
+                      backgroundColor: card,
+                      borderRadius: 14,
+                      marginBottom: 20,
+                      overflow: 'hidden',
                     }}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#AEAEB2"
-                    value={dateStr}
-                    onChangeText={(text) => onChange(`${text}T${timeStr}`)}
-                    onBlur={onBlur}
-                    keyboardType="numbers-and-punctuation"
-                    accessibilityLabel="Start date"
-                  />
+                  >
+                    {/* Starts row: label + compact date + compact time pills */}
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        borderBottomWidth: 0.5,
+                        borderBottomColor: sep,
+                      }}
+                    >
+                      <Text style={{ flex: 1, fontSize: 16, color: textPrimary }}>Starts</Text>
+                      <DateTimePicker
+                        value={pickerDate}
+                        mode="date"
+                        display="compact"
+                        accentColor="#0a7ea4"
+                        onChange={handleDateChange}
+                        accessibilityLabel="Start date"
+                      />
+                      <DateTimePicker
+                        value={pickerDate}
+                        mode="time"
+                        display="compact"
+                        minuteInterval={5}
+                        accentColor="#0a7ea4"
+                        onChange={handleTimeChange}
+                        style={{ marginLeft: 6 }}
+                        accessibilityLabel="Start time"
+                      />
+                    </View>
+
+                    {/* Timezone */}
+                    <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+                      <Text style={{ fontSize: 13, color: textSec }}>{tz}</Text>
+                    </View>
+                  </View>
                 );
               }}
             />
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-              Recurrence
-            </Text>
-            <View
-              style={{
-                backgroundColor: scheme === 'dark' ? '#1C1C1E' : '#F2F2F7',
-                borderRadius: 14,
-                padding: 12,
-              }}
-            >
-              <RRuleBuilder
-                value={rrule}
-                dtstart={dtstartUtc}
-                tz={tz}
-                onChangeRRule={(r) => setValue('rrule', r, { shouldValidate: true })}
-              />
-            </View>
+            <RRuleBuilder
+              value={rrule}
+              dtstart={dtstartUtc}
+              tz={tz}
+              onChangeRRule={(r) => setValue('rrule', r, { shouldValidate: true })}
+            />
           </ScrollView>
         </View>
       </Modal>
