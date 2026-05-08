@@ -23,8 +23,13 @@ export default function OnboardingProfileScreen() {
       .from('profiles')
       .upsert({ id: session.user.id, display_name });
     if (error) {
-      Alert.alert('Try again');
       console.error('Error updating profile:', error);
+      if (error.code === '23503') {
+        Alert.alert('There was a problem');
+        await supabase.auth.signOut();
+        return;
+      }
+      Alert.alert('Try again');
       return;
     }
     await refreshProfile();

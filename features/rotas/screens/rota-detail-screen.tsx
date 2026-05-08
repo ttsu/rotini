@@ -195,14 +195,17 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             />
           )}
 
-          <RemindersSection
-            rotaId={routeId}
-            isOwner={isOwner}
-            card={card}
-            textPrimary={textPrimary}
-            textSec={textSec}
-            sep={sep}
-          />
+          {myMembership && (
+            <RemindersSection
+              rotaId={routeId}
+              userRole={myMembership.role as 'owner' | 'member' | 'viewer'}
+              notifyScope={(myMembership.notify_scope as 'own' | 'all') ?? 'own'}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+              sep={sep}
+            />
+          )}
 
           {myMembership && (
             <TouchableOpacity
