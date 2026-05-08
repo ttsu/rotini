@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.com.timtsu.rotini"],
+        "appIDs": ["432X6X787C.com.timtsu.rotini"],
         "components": [
           { "/": "/invite/*" },
           { "/": "/auth-callback*" }

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { addMonths } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import { Calendar } from 'react-native-calendars';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { expand, toRRule, type RRuleParams, WEEKDAY_CODES, type WeekdayCode } from '@/lib/rrule';
@@ -199,16 +201,26 @@ export function RRuleBuilder({ value, dtstart, tz, onChangeRRule }: Props) {
     }
   }
 
-  const previewDates = (() => {
-    if (!dtstart || !value || !tz) return [];
+  const [visibleMonth, setVisibleMonth] = useState<Date>(dtstart ?? new Date());
+
+  const markedDates = useMemo(() => {
+    if (!dtstart || !value || !tz) return {};
     try {
       const from = new Date();
-      const to = new Date(from.getTime() + 366 * 24 * 60 * 60 * 1000);
-      return expand(value, dtstart, tz, { from, to }, 5);
+      const to = addMonths(visibleMonth, 2);
+      const dates = expand(value, dtstart, tz, { from, to }, 500);
+      const result: Record<string, { marked: true; dotColor: string }> = {};
+      for (const d of dates) {
+        const localDate = formatInTimeZone(d, tz, 'yyyy-MM-dd');
+        result[localDate] = { marked: true, dotColor: '#0a7ea4' };
+      }
+      return result;
     } catch {
-      return [];
+      return {};
     }
-  })();
+  }, [value, dtstart, tz, visibleMonth]);
+
+  const hasOccurrences = Object.keys(markedDates).length > 0;
 
   const freqUnitLabel = freq === 'DAILY'
     ? (interval === 1 ? 'day' : 'days')
@@ -344,16 +356,29 @@ export function RRuleBuilder({ value, dtstart, tz, onChangeRRule }: Props) {
       </View>
 
       {/* ── Next occurrences (below card) ── */}
-      {previewDates.length > 0 && (
+      {hasOccurrences && (
         <View style={{ marginTop: 20 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: textSec, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 }}>
             Next occurrences
           </Text>
-          {previewDates.map((d, i) => (
-            <Text key={i} style={{ fontSize: 14, color: textPrimary, lineHeight: 22, marginLeft: 4 }}>
-              {formatInTimeZone(d, tz, 'EEE d MMM yyyy, HH:mm')}
-            </Text>
-          ))}
+          <View style={{ backgroundColor: cardBg, borderRadius: 14, overflow: 'hidden' }}>
+            <Calendar
+              current={formatInTimeZone(dtstart ?? new Date(), tz, 'yyyy-MM-dd')}
+              markedDates={markedDates}
+              onMonthChange={(month) => setVisibleMonth(new Date(month.dateString))}
+              theme={{
+                backgroundColor: cardBg,
+                calendarBackground: cardBg,
+                textSectionTitleColor: textSec,
+                todayTextColor: '#0a7ea4',
+                dayTextColor: textPrimary,
+                textDisabledColor: isDark ? '#48484A' : '#C7C7CC',
+                dotColor: '#0a7ea4',
+                arrowColor: '#0a7ea4',
+                monthTextColor: textPrimary,
+              }}
+            />
+          </View>
         </View>
       )}
     </View>
