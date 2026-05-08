@@ -1,6 +1,7 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, AppState, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ErrorState } from '@/components/ui/error-state';
@@ -15,8 +16,8 @@ import { routes } from '@/lib/navigation/routes';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatCountdown(targetIso: string): string {
-  const diff = Math.max(0, new Date(targetIso).getTime() - Date.now());
+function formatCountdown(targetIso: string, now: number): string {
+  const diff = Math.max(0, new Date(targetIso).getTime() - now);
   const totalMins = Math.floor(diff / 60000);
   const days = Math.floor(totalMins / 1440);
   const hours = Math.floor((totalMins % 1440) / 60);
@@ -42,12 +43,14 @@ function ShiftCard({
   card,
   textPrimary,
   textSec,
+  now,
 }: {
   item: HomeRota;
   onPress: () => void;
   card: string;
   textPrimary: string;
   textSec: string;
+  now: number;
 }) {
   const { isActive, nextOccurrence: occ, rota } = item;
   const barColor = isActive ? '#34C759' : '#0a7ea4';
@@ -109,7 +112,7 @@ function ShiftCard({
               {isActive ? 'time left' : 'in'}
             </Text>
             <Text style={{ fontSize: 22, fontWeight: '700', color: barColor }}>
-              {formatCountdown(targetIso)}
+              {formatCountdown(targetIso, now)}
             </Text>
           </View>
         </View>
@@ -195,6 +198,18 @@ export default function HomeScreen() {
   const { data, isLoading, error, refetch } = useHomeRotas();
   const { data: pendingSwaps } = usePendingSwapsForMe();
   const scheme = useColorScheme();
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => sub.remove();
+  }, []);
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
   const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
@@ -312,6 +327,7 @@ export default function HomeScreen() {
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
+              now={now}
             />
           ))
         )}
