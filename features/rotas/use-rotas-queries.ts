@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { addDays } from 'date-fns';
 
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
@@ -102,7 +101,6 @@ export function useRotaOccurrences(rotaId: string) {
     queryKey: ['occurrences', rotaId],
     queryFn: async () => {
       const now = new Date();
-      const windowEnd = addDays(now, 30);
       const { data, error } = await supabase
         .from('occurrences')
         .select(
@@ -110,8 +108,8 @@ export function useRotaOccurrences(rotaId: string) {
         )
         .eq('rota_id', rotaId)
         .gte('ends_at', now.toISOString())
-        .lte('scheduled_at', windowEnd.toISOString())
-        .order('scheduled_at', { ascending: true });
+        .order('scheduled_at', { ascending: true })
+        .limit(5);
       if (error) throw error;
       return (data ?? []) as OccurrenceRow[];
     },

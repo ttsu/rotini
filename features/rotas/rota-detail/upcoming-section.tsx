@@ -144,7 +144,7 @@ export function UpcomingSection({
             letterSpacing: 0.5,
           }}
         >
-          Upcoming — 30 days
+          Next 5 occurrences
         </Text>
         <View
           style={{
@@ -190,7 +190,7 @@ export function UpcomingSection({
           <ActivityIndicator style={{ margin: 24 }} />
         ) : !occurrences || occurrences.length === 0 ? (
           <View style={{ padding: 24, alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, color: textSec }}>No shifts in the next 30 days</Text>
+            <Text style={{ fontSize: 14, color: textSec }}>No upcoming shifts</Text>
           </View>
         ) : view === 'list' ? (
           occurrences.map((occ, i) => (
