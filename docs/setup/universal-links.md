@@ -21,6 +21,7 @@ Commit and push — the CI workflow will deploy it.
 ## 2. Fill in the Android SHA-256 fingerprint
 
 Run:
+
 ```sh
 eas credentials --platform android
 ```
@@ -40,9 +41,9 @@ Commit and push.
 1. Go to **dash.cloudflare.com → Workers & Pages → Create → Pages → Connect to Git**
 2. Select the `rotini` repository
 3. Set:
-   - Framework preset: **None**
-   - Build command: *(leave empty)*
-   - Build output directory: `website`
+  - Framework preset: **None**
+  - Build command: *(leave empty)*
+  - Build output directory: `website`
 4. Click **Save and Deploy**
 
 Note the generated `*.pages.dev` subdomain — you'll need it for DNS.
@@ -61,9 +62,11 @@ Cloudflare will provision HTTPS automatically.
 
 In your DNS provider for `timtsu.com`, add:
 
-| Type | Name | Target |
-|---|---|---|
+
+| Type  | Name     | Target                     |
+| ----- | -------- | -------------------------- |
 | CNAME | `rotini` | `<your-project>.pages.dev` |
+
 
 If `timtsu.com` is already on Cloudflare, this will be proxied automatically.
 
@@ -73,10 +76,12 @@ If `timtsu.com` is already on Cloudflare, this will be proxied automatically.
 
 In the `rotini` GitHub repository: **Settings → Secrets and variables → Actions → New repository secret**
 
-| Secret name | Value |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | API token with **Cloudflare Pages: Edit** permission |
+
+| Secret name             | Value                                                         |
+| ----------------------- | ------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | API token with **Cloudflare Pages: Edit** permission          |
 | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (visible in the dashboard sidebar) |
+
 
 Create the API token at: **dash.cloudflare.com → My Profile → API Tokens → Create Token → Edit Cloudflare Pages**
 
@@ -150,7 +155,9 @@ curl -I https://rotini.timtsu.com/invite/TESTCODE
 **iOS device test:** Open `https://rotini.timtsu.com/invite/TEST` from Notes or Safari — should open Rotini directly to the invite screen.
 
 **Android device test:**
+
 ```sh
 adb shell am start -a android.intent.action.VIEW -d "https://rotini.timtsu.com/invite/TEST"
 ```
+
 Should open Rotini directly.
