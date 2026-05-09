@@ -193,3 +193,17 @@ export function useTransferOwnership(rotaId: string) {
     },
   });
 }
+
+export function useDeleteRota() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rotaId: string) => {
+      const { error } = await supabase.rpc('delete_rota', { p_rota_id: rotaId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+      queryClient.invalidateQueries({ queryKey: ['home-rotas'] });
+    },
+  });
+}

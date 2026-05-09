@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useId, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -32,9 +32,11 @@ export function useHomeRotas() {
   const key = ['home-rotas'] as const;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const id = useId();
+
   useEffect(() => {
     const channel = supabase
-      .channel('home-rotas-occ')
+      .channel(`home-rotas-occ-${id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'occurrences' },

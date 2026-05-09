@@ -17,6 +17,7 @@ export {
   useChangeMemberRole,
   useCreateInvite,
   useCreateRota,
+  useDeleteRota,
   useLeaveRota,
   useRemoveMember,
   useSendTargetedInvite,
