@@ -26,6 +26,8 @@ import {
   useCancelSwap,
   useOverrideOccurrence,
 } from '@/features/swaps/hooks';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   parseOccurrenceDetail,
@@ -56,6 +58,7 @@ export function OccurrenceDetailScreenContent({
   const id = occurrenceId;
   const { session } = useAuth();
   const scheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
@@ -220,7 +223,7 @@ export function OccurrenceDetailScreenContent({
       <ScrollView
         testID="occurrence-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: insets.top + 56, paddingBottom: 40 }}
       >
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} />
