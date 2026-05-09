@@ -711,6 +711,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_rota: { Args: { p_rota_id: string }; Returns: undefined }
       dispatch_notifications: { Args: never; Returns: number }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }

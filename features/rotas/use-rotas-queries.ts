@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useId, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -19,12 +19,13 @@ export function useRotas() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const key = ['rotas'] as const;
+  const id = useId();
 
   useEffect(() => {
     const userId = session?.user.id;
     if (!userId) return;
     const channel = supabase
-      .channel('rotas-members')
+      .channel(`rotas-members-${id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rota_members', filter: `user_id=eq.${userId}` },

@@ -7,7 +7,7 @@ import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } fr
 import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
-import { useLeaveRota, useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
+import { useDeleteRota, useLeaveRota, useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
 import { DetailRow } from '@/features/rotas/rota-detail/detail-row';
 import { formatDuration } from '@/features/rotas/rota-detail/formatting';
 import type { Member } from '@/features/rotas/rota-detail/member-rows';
@@ -41,6 +41,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   const { data: rota, isLoading, error, refetch } = useRotaData(routeId);
   const rotaNow = useRotaNow(routeId);
   const leaveRota = useLeaveRota();
+  const deleteRota = useDeleteRota();
   const scheme = useColorScheme();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
@@ -89,6 +90,26 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
           }),
       },
     ]);
+  }
+
+  function handleDelete() {
+    const afterDelete = detailOrigin === 'home' ? routes.home.root : routes.rotas.list;
+    Alert.alert(
+      'Delete this shift?',
+      'This permanently removes it for all members and cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            deleteRota.mutate(routeId, {
+              onSuccess: () => router.replace(afterDelete),
+              onError: (err: unknown) => Alert.alert('Cannot delete', getUserMessage(err)),
+            }),
+        },
+      ]
+    );
   }
 
   function handleOccurrencePress(occurrenceId: string) {
@@ -226,6 +247,30 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
               accessibilityRole="button"
             >
               <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 16 }}>Leave Shift</Text>
+            </TouchableOpacity>
+          )}
+
+          {isOwner && (
+            <TouchableOpacity
+              testID="delete-shift-button"
+              style={{
+                backgroundColor: card,
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: 'center',
+                marginTop: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.06,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
+              onPress={handleDelete}
+              disabled={deleteRota.isPending}
+              accessibilityLabel="Delete shift"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 16 }}>Delete Shift</Text>
             </TouchableOpacity>
           )}
         </View>
