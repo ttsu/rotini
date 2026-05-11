@@ -4,6 +4,7 @@ import { Appearance, useColorScheme as useRNColorScheme } from 'react-native';
 import { z } from 'zod';
 
 const THEME_PREFERENCE_STORAGE_KEY = 'rotini:theme-preference';
+const DEFAULT_TIMEZONE_STORAGE_KEY = 'rotini:default-timezone';
 
 /** Defines the supported app appearance preferences. */
 export const themePreferenceSchema = z.enum(['system', 'light', 'dark']);
@@ -17,29 +18,34 @@ type AppPreferencesContextValue = {
   readonly themePreference: ThemePreference;
   readonly setThemePreference: (preference: ThemePreference) => Promise<void>;
   readonly resolvedColorScheme: ResolvedColorScheme;
+  readonly defaultTimeZone: string;
+  readonly setDefaultTimeZone: (tz: string) => Promise<void>;
 };
 
 const AppPreferencesContext = createContext<AppPreferencesContextValue | null>(null);
+
+const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /** Provides persisted app preferences to the application tree. */
 export function AppPreferencesProvider({ children }: { readonly children: ReactNode }) {
   const systemColorScheme = useRNColorScheme();
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
+  const [defaultTimeZone, setDefaultTimeZoneState] = useState<string>(deviceTimeZone);
 
   useEffect(() => {
     let isActive = true;
 
-    AsyncStorage.getItem(THEME_PREFERENCE_STORAGE_KEY)
-      .then((storedPreference) => {
-        const parsedPreference = themePreferenceSchema.safeParse(storedPreference);
-
-        if (isActive && parsedPreference.success) {
-          setThemePreferenceState(parsedPreference.data);
-        }
+    Promise.all([
+      AsyncStorage.getItem(THEME_PREFERENCE_STORAGE_KEY),
+      AsyncStorage.getItem(DEFAULT_TIMEZONE_STORAGE_KEY),
+    ])
+      .then(([storedTheme, storedTz]) => {
+        if (!isActive) return;
+        const parsedPreference = themePreferenceSchema.safeParse(storedTheme);
+        if (parsedPreference.success) setThemePreferenceState(parsedPreference.data);
+        if (storedTz) setDefaultTimeZoneState(storedTz);
       })
-      .catch(() => {
-        // Keep the default system preference if storage is unavailable.
-      });
+      .catch(() => {});
 
     return () => {
       isActive = false;
@@ -61,8 +67,13 @@ export function AppPreferencesProvider({ children }: { readonly children: ReactN
         await AsyncStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, preference);
       },
       resolvedColorScheme,
+      defaultTimeZone,
+      setDefaultTimeZone: async (tz) => {
+        setDefaultTimeZoneState(tz);
+        await AsyncStorage.setItem(DEFAULT_TIMEZONE_STORAGE_KEY, tz);
+      },
     }),
-    [resolvedColorScheme, themePreference]
+    [resolvedColorScheme, themePreference, defaultTimeZone]
   );
 
   return <AppPreferencesContext.Provider value={value}>{children}</AppPreferencesContext.Provider>;

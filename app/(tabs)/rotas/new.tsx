@@ -25,8 +25,7 @@ import { routes } from '@/lib/navigation/routes';
 import { validateDuration } from '@/lib/rrule';
 import { DurationWheelPicker } from '@/components/ui/duration-wheel-picker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+import { useAppPreferences } from '@/contexts/app-preferences';
 
 function todayLocalString(tz: string): string {
   const now = new Date();
@@ -72,6 +71,7 @@ function describeRRule(rrule: string): string {
 export default function NewRotaScreen() {
   const router = useRouter();
   const createRota = useCreateRota();
+  const { defaultTimeZone } = useAppPreferences();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const scheme = useColorScheme();
 
@@ -93,8 +93,8 @@ export default function NewRotaScreen() {
     defaultValues: {
       name: '',
       description: '',
-      tz: deviceTz,
-      dtstart: `${todayLocalString(deviceTz)}T09:00`,
+      tz: defaultTimeZone,
+      dtstart: `${todayLocalString(defaultTimeZone)}T09:00`,
       rrule: 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO',
       back_to_back: false,
       duration_minutes: 60,
