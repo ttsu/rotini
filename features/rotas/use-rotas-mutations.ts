@@ -7,6 +7,82 @@ import { supabase } from '@/lib/supabase';
 
 import type { CreateRotaValues } from './schemas';
 
+type OriginalRota = {
+  tz: string;
+  dtstart: string;
+  rrule: string;
+  duration_minutes: number | null;
+  back_to_back: boolean;
+};
+
+type UpdateRotaParams = {
+  rotaId: string;
+  values: CreateRotaValues;
+  original: OriginalRota;
+  resetActive: boolean;
+};
+
+export function useUpdateRota() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rotaId, values, original, resetActive }: UpdateRotaParams) => {
+      const dtstartUtc = fromZonedTime(values.dtstart, values.tz).toISOString();
+
+      const { error } = await supabase
+        .from('rotas')
+        .update({
+          name: values.name,
+          description: values.description || null,
+          tz: values.tz,
+          dtstart: dtstartUtc,
+          rrule: values.rrule,
+          back_to_back: values.back_to_back,
+          duration_minutes: values.back_to_back ? null : (values.duration_minutes ?? null),
+        })
+        .eq('id', rotaId);
+      if (error) throw error;
+
+      const destructive =
+        values.tz !== original.tz ||
+        fromZonedTime(values.dtstart, values.tz).getTime() !== new Date(original.dtstart).getTime() ||
+        values.rrule !== original.rrule ||
+        values.back_to_back !== original.back_to_back ||
+        (!values.back_to_back && (values.duration_minutes ?? null) !== original.duration_minutes);
+
+      if (destructive) {
+        const now = new Date().toISOString();
+
+        if (resetActive) {
+          await supabase
+            .from('occurrences')
+            .update({ ends_at: now, status: 'done' })
+            .eq('rota_id', rotaId)
+            .lte('scheduled_at', now)
+            .gt('ends_at', now);
+        }
+
+        const { error: delErr } = await supabase
+          .from('occurrences')
+          .delete()
+          .eq('rota_id', rotaId)
+          .gt('scheduled_at', now)
+          .eq('generated_from_rule', true);
+        if (delErr) throw delErr;
+
+        const { error: matErr } = await supabase.functions.invoke('materialize-rota', {
+          body: { rota_id: rotaId },
+        });
+        if (matErr) console.error('materialize-rota:', matErr);
+      }
+    },
+    onSuccess: (_data, { rotaId }) => {
+      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+      queryClient.invalidateQueries({ queryKey: ['occurrences', rotaId] });
+    },
+  });
+}
+
 type MemberRole = 'owner' | 'member' | 'viewer';
 
 export function useCreateRota() {
