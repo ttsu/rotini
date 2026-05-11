@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 
 import { routes } from '@/lib/navigation/routes';
+import { useCalendarSyncContext } from '@/contexts/calendar-sync';
 
 function navigateToOccurrence(router: ReturnType<typeof useRouter>, occurrenceId: string) {
   router.push(routes.rotas.occurrence(occurrenceId));
@@ -35,6 +36,7 @@ function routeFromNotificationResponse(response: Notifications.NotificationRespo
 export function useNotificationNavigation(isAuthenticated: boolean) {
   const router = useRouter();
   const handledInitial = useRef(false);
+  const { triggerSync } = useCalendarSyncContext();
 
   // Cold start: if app was opened from a notification tap
   useEffect(() => {
@@ -62,4 +64,13 @@ export function useNotificationNavigation(isAuthenticated: boolean) {
 
     return () => sub.remove();
   }, [isAuthenticated, router]);
+
+  // Re-sync calendar when a notification arrives while the app is in the foreground
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const sub = Notifications.addNotificationReceivedListener(() => {
+      triggerSync();
+    });
+    return () => sub.remove();
+  }, [isAuthenticated, triggerSync]);
 }
