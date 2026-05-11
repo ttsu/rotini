@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActionSheetIOS, Alert, Linking, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,12 +8,19 @@ import { LargeTitle } from '@/components/ui/large-title';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import { type ThemePreference, useAppPreferences } from '@/contexts/app-preferences';
+import { useCalendarSyncContext } from '@/contexts/calendar-sync';
 import { supabase } from '@/lib/supabase';
 import { routes } from '@/lib/navigation/routes';
 import { usePushToken } from '@/features/notifications/usePushToken';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
 import { useMyProfile } from '@/features/profile/use-my-profile';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const SYNC_DAYS_OPTIONS: readonly { readonly value: 30 | 90 | 180; readonly label: string }[] = [
+  { value: 30, label: '1 month' },
+  { value: 90, label: '3 months' },
+  { value: 180, label: '6 months' },
+];
 
 const THEME_OPTIONS: readonly { readonly value: ThemePreference; readonly label: string }[] = [
   { value: 'system', label: 'System' },
@@ -48,6 +55,60 @@ export default function SettingsScreen() {
   }, []);
 
   const { deregisterToken } = usePushToken(session?.user.id);
+  const {
+    status: calendarStatus,
+    syncedCount,
+    isEnabled: calendarEnabled,
+    syncDays,
+    toggleEnabled: toggleCalendarSync,
+    setSyncDays,
+  } = useCalendarSyncContext();
+
+  const calendarSubtitle = (() => {
+    switch (calendarStatus) {
+      case 'permission_denied': return 'Calendar access required';
+      case 'syncing': return 'Syncing…';
+      case 'synced': return `${syncedCount} upcoming ${syncedCount === 1 ? 'shift' : 'shifts'} synced`;
+      case 'error': return 'Sync failed. Try again later.';
+      default: return 'Off';
+    }
+  })();
+
+  const calendarSubtitleColor = (() => {
+    switch (calendarStatus) {
+      case 'permission_denied': return '#FF9500';
+      case 'synced': return '#34C759';
+      case 'error': return '#FF3B30';
+      default: return textSec;
+    }
+  })();
+
+  const syncDaysLabel = SYNC_DAYS_OPTIONS.find((o) => o.value === syncDays)?.label ?? '1 month';
+
+  function showSyncWindowPicker() {
+    const options = [...SYNC_DAYS_OPTIONS.map((o) => o.label), 'Cancel'];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: options.length - 1, title: 'Sync window' },
+        (idx) => {
+          const chosen = SYNC_DAYS_OPTIONS[idx];
+          if (chosen) void setSyncDays(chosen.value);
+        }
+      );
+    } else {
+      Alert.alert(
+        'Sync window',
+        undefined,
+        [
+          ...SYNC_DAYS_OPTIONS.map((o) => ({
+            text: o.label,
+            onPress: () => void setSyncDays(o.value),
+          })),
+          { text: 'Cancel', style: 'cancel' as const },
+        ]
+      );
+    }
+  }
 
   async function handleSignOut() {
     await deregisterToken();
@@ -139,6 +200,58 @@ export default function SettingsScreen() {
             </Text>
             {notifStatus !== 'granted' && <RowChevron />}
           </TouchableOpacity>
+          {Platform.OS !== 'web' && (
+            <>
+              <TouchableOpacity
+                testID="settings-calendar-sync-row"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: sep,
+                }}
+                onPress={calendarStatus === 'permission_denied' ? () => Linking.openSettings() : undefined}
+                accessibilityLabel={`Calendar sync, ${calendarSubtitle}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: calendarEnabled }}
+              >
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <Text style={{ fontSize: 17, color: textPrimary }}>Calendar sync</Text>
+                  <Text style={{ fontSize: 13, color: calendarSubtitleColor, marginTop: 2 }}>
+                    {calendarSubtitle}
+                  </Text>
+                </View>
+                <Switch
+                  value={calendarEnabled}
+                  onValueChange={() => void toggleCalendarSync()}
+                  disabled={calendarStatus === 'syncing'}
+                  trackColor={{ true: '#34C759' }}
+                />
+              </TouchableOpacity>
+              {calendarEnabled && calendarStatus !== 'permission_denied' && (
+                <TouchableOpacity
+                  testID="settings-calendar-sync-window-row"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    borderBottomWidth: 0.5,
+                    borderBottomColor: sep,
+                  }}
+                  onPress={showSyncWindowPicker}
+                  accessibilityLabel={`Sync window, ${syncDaysLabel}`}
+                  accessibilityRole="button"
+                >
+                  <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Sync window</Text>
+                  <Text style={{ fontSize: 15, color: textSec, marginRight: 4 }}>{syncDaysLabel}</Text>
+                  <RowChevron />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
           <View
             style={{
               flexDirection: 'row',

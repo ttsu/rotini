@@ -19,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { initSentry } from '@/lib/sentry';
 import { AppPreferencesProvider } from '@/contexts/app-preferences';
+import { CalendarSyncProvider } from '@/contexts/calendar-sync';
 
 initSentry();
 
@@ -93,23 +94,25 @@ function AppShell() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <OfflineBanner />
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-          <Stack.Screen name="e2e-auth" options={{ headerShown: false }} />
-          <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="edit-profile"
-            options={{ title: 'Edit profile', headerShown: true, headerBackTitle: 'Settings' }}
-          />
-        </Stack>
-        <AuthGate />
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <CalendarSyncProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <OfflineBanner />
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+            <Stack.Screen name="e2e-auth" options={{ headerShown: false }} />
+            <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="edit-profile"
+              options={{ title: 'Edit profile', headerShown: true, headerBackTitle: 'Settings' }}
+            />
+          </Stack>
+          <AuthGate />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </CalendarSyncProvider>
     </AuthProvider>
   );
 }
