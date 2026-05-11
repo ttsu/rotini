@@ -14,6 +14,10 @@ export const routes = {
        */
       detail: (id: string): Href => `/(tabs)/home/rotas/${id}`,
       /**
+       * @param id - Rota primary key
+       */
+      edit: (id: string): Href => `/(tabs)/home/rotas/edit/${id}`,
+      /**
        * @param occurrenceId - Occurrence primary key
        */
       occurrence: (occurrenceId: string): Href => `/(tabs)/home/rotas/occurrence/${occurrenceId}`,
@@ -29,6 +33,10 @@ export const routes = {
      * @param id - Rota primary key
      */
     detail: (id: string): Href => `/(tabs)/rotas/${id}`,
+    /**
+     * @param id - Rota primary key
+     */
+    edit: (id: string): Href => `/(tabs)/rotas/edit/${id}`,
     /**
      * @param occurrenceId - Occurrence primary key
      */

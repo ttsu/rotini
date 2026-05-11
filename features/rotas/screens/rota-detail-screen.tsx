@@ -140,9 +140,29 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
     );
   }
 
+  const editRoute =
+    detailOrigin === 'home' ? routes.home.rotas.edit(routeId) : routes.rotas.edit(routeId);
+
   return (
     <>
-      <Stack.Screen options={{ title: rota.name }} />
+      <Stack.Screen
+        options={{
+          title: rota.name,
+          headerRight: isOwner
+            ? () => (
+                <TouchableOpacity
+                  testID="edit-shift-button"
+                  onPress={() => router.push(editRoute)}
+                  hitSlop={8}
+                  accessibilityLabel="Edit shift"
+                  accessibilityRole="button"
+                >
+                  <Text style={{ fontSize: 16, color: '#0a7ea4' }}>Edit</Text>
+                </TouchableOpacity>
+              )
+            : undefined,
+        }}
+      />
       <ScrollView
         testID="rota-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}

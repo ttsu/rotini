@@ -45,6 +45,7 @@ export default function RotasStackLayout() {
       />
       <Stack.Screen name="new" options={{ title: 'New Rota', headerLargeTitleEnabled: false }} />
       <Stack.Screen name="[id]" options={{ title: '', headerLargeTitleEnabled: false }} />
+      <Stack.Screen name="edit/[id]" options={{ title: 'Edit Shift', headerLargeTitleEnabled: false }} />
       <Stack.Screen name="occurrence/[id]" options={{ title: 'Occurrence', headerLargeTitleEnabled: false }} />
     </Stack>
   );
