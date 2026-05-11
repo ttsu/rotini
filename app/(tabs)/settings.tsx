@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActionSheetIOS, Alert, Linking, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActionSheetIOS, Alert, FlatList, Linking, Modal, Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +28,24 @@ const THEME_OPTIONS: readonly { readonly value: ThemePreference; readonly label:
   { value: 'dark', label: 'Dark' },
 ];
 
+const COMMON_TIMEZONES: readonly string[] = [
+  'Pacific/Midway', 'Pacific/Honolulu', 'America/Anchorage', 'America/Los_Angeles',
+  'America/Denver', 'America/Phoenix', 'America/Chicago', 'America/New_York',
+  'America/Halifax', 'America/St_Johns', 'America/Sao_Paulo', 'America/Argentina/Buenos_Aires',
+  'America/Noronha', 'Atlantic/Cape_Verde', 'Atlantic/Azores', 'Europe/London',
+  'Europe/Lisbon', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
+  'Europe/Amsterdam', 'Europe/Brussels', 'Europe/Warsaw', 'Europe/Stockholm',
+  'Europe/Helsinki', 'Europe/Bucharest', 'Europe/Athens', 'Europe/Istanbul',
+  'Europe/Moscow', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Nairobi',
+  'Asia/Baghdad', 'Asia/Dubai', 'Asia/Kabul', 'Asia/Karachi', 'Asia/Kolkata',
+  'Asia/Colombo', 'Asia/Dhaka', 'Asia/Rangoon', 'Asia/Bangkok', 'Asia/Ho_Chi_Minh',
+  'Asia/Jakarta', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Manila',
+  'Asia/Taipei', 'Asia/Seoul', 'Asia/Tokyo', 'Asia/Yakutsk', 'Asia/Vladivostok',
+  'Asia/Magadan', 'Asia/Kamchatka', 'Australia/Perth', 'Australia/Adelaide',
+  'Australia/Darwin', 'Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne',
+  'Pacific/Noumea', 'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Tongatapu', 'UTC',
+];
+
 function RowChevron() {
   return <Text style={{ fontSize: 17, color: '#AEAEB2', marginLeft: 8 }}>›</Text>;
 }
@@ -37,9 +55,11 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { data: profile } = useMyProfile();
-  const { themePreference, setThemePreference } = useAppPreferences();
+  const { themePreference, setThemePreference, defaultTimeZone, setDefaultTimeZone } = useAppPreferences();
   const scheme = useColorScheme();
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
+  const [tzPickerOpen, setTzPickerOpen] = useState(false);
+  const [tzSearch, setTzSearch] = useState('');
 
   const displayName = profile?.display_name ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
@@ -49,6 +69,12 @@ export default function SettingsScreen() {
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
+
+  const filteredTimezones = useMemo(() => {
+    const q = tzSearch.trim().toLowerCase();
+    if (!q) return COMMON_TIMEZONES;
+    return COMMON_TIMEZONES.filter((tz) => tz.toLowerCase().includes(q));
+  }, [tzSearch]);
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then(({ status }) => setNotifStatus(status));
@@ -318,8 +344,17 @@ export default function SettingsScreen() {
               paddingHorizontal: 16,
               paddingVertical: 14,
             }}
+            onPress={() => {
+              setTzSearch('');
+              setTzPickerOpen(true);
+            }}
+            accessibilityLabel={`Default time zone, ${defaultTimeZone}`}
+            accessibilityRole="button"
           >
             <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Default time zone</Text>
+            <Text style={{ fontSize: 15, color: textSec, marginRight: 4 }} numberOfLines={1}>
+              {defaultTimeZone}
+            </Text>
             <RowChevron />
           </TouchableOpacity>
         </View>
@@ -347,6 +382,85 @@ export default function SettingsScreen() {
           <Text style={{ fontSize: 17, fontWeight: '600', color: '#FF3B30' }}>Sign out</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={tzPickerOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setTzPickerOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: bg }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingTop: 20,
+              paddingBottom: 12,
+              borderBottomWidth: 0.5,
+              borderBottomColor: sep,
+            }}
+          >
+            <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: textPrimary }}>
+              Time zone
+            </Text>
+            <TouchableOpacity onPress={() => setTzPickerOpen(false)} accessibilityLabel="Close" accessibilityRole="button">
+              <Text style={{ fontSize: 17, color: '#0a7ea4' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+            <TextInput
+              value={tzSearch}
+              onChangeText={setTzSearch}
+              placeholder="Search time zones"
+              placeholderTextColor={textSec}
+              style={{
+                backgroundColor: card,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                fontSize: 15,
+                color: textPrimary,
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+          <FlatList
+            data={filteredTimezones}
+            keyExtractor={(item) => item}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const isSelected = item === defaultTimeZone;
+              return (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    borderBottomWidth: 0.5,
+                    borderBottomColor: sep,
+                  }}
+                  onPress={() => {
+                    void setDefaultTimeZone(item);
+                    setTzPickerOpen(false);
+                  }}
+                  accessibilityLabel={item}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>{item}</Text>
+                  {isSelected && (
+                    <Text style={{ fontSize: 17, color: '#0a7ea4', fontWeight: '600' }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
