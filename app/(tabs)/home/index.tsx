@@ -13,27 +13,7 @@ import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
 import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/lib/navigation/routes';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatCountdown(targetIso: string, now: number): string {
-  const diff = Math.max(0, new Date(targetIso).getTime() - now);
-  const totalMins = Math.floor(diff / 60000);
-  const days = Math.floor(totalMins / 1440);
-  const hours = Math.floor((totalMins % 1440) / 60);
-  const mins = totalMins % 60;
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  if (mins > 0) return `${mins}m`;
-  return 'soon';
-}
-
-function toTestIdSegment(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+import { formatCountdown, toTestIdSegment } from '@/lib/formatting';
 
 // ── ShiftCard ─────────────────────────────────────────────────────────────────
 
@@ -43,14 +23,12 @@ function ShiftCard({
   card,
   textPrimary,
   textSec,
-  now,
 }: {
   item: HomeRota;
   onPress: () => void;
   card: string;
   textPrimary: string;
   textSec: string;
-  now: number;
 }) {
   const { isActive, nextOccurrence: occ, rota } = item;
   const barColor = isActive ? '#34C759' : '#0a7ea4';
@@ -112,7 +90,7 @@ function ShiftCard({
               {isActive ? 'time left' : 'in'}
             </Text>
             <Text style={{ fontSize: 22, fontWeight: '700', color: barColor }}>
-              {formatCountdown(targetIso, now)}
+              {formatCountdown(targetIso)}
             </Text>
           </View>
         </View>
@@ -327,7 +305,6 @@ export default function HomeScreen() {
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
-              now={now}
             />
           ))
         )}

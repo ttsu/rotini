@@ -1,19 +1,15 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-/**
- * Refetches UI that shows the current user's profile or peer names/avatars on rotas.
- *
- * @param queryClient - React Query client
- * @param userId - Current auth user id
- */
+import { queryKeys } from '@/features/rotas/query-keys';
+
 export async function invalidateProfileRelatedQueries(
   queryClient: QueryClient,
   userId: string
 ): Promise<void> {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ['profile', userId] }),
-    queryClient.invalidateQueries({ queryKey: ['rotas'] }),
-    queryClient.invalidateQueries({ queryKey: ['home-rotas'] }),
-    queryClient.invalidateQueries({ queryKey: ['pending-swaps-for-me'] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.profile.detail(userId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForMe() }),
   ]);
 }

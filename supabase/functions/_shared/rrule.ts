@@ -1,17 +1,21 @@
-/**
- * Deno-compatible RRULE utilities — mirrors lib/rrule.ts with esm.sh imports.
- * Supports: FREQ=DAILY|WEEKLY|MONTHLY, INTERVAL, BYDAY, BYMONTHDAY, BYSETPOS.
- */
-
+/** AUTO-GENERATED from lib/rrule.ts — run `npm run sync-rrule` to regenerate. */
 // deno-lint-ignore-file no-explicit-any
+
 import { RRule } from 'https://esm.sh/rrule@2';
 import { formatInTimeZone, fromZonedTime } from 'https://esm.sh/date-fns-tz@3';
 
 export { formatInTimeZone };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types & schema ───────────────────────────────────────────────────────────
 
 export type WeekdayCode = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU';
+
+type RRuleParams =
+  | { freq: 'DAILY'; interval: number }
+  | { freq: 'WEEKLY'; interval: number; byday: WeekdayCode[] }
+  | { freq: 'MONTHLY'; interval: number; bymonthday?: number; byday?: WeekdayCode; bysetpos?: number };
+
+// ─── WEEKDAY_CODES → rrule.js Weekday ─────────────────────────────────────────
 
 const WEEKDAY_MAP: Record<WeekdayCode, any> = {
   MO: RRule.MO,
@@ -23,14 +27,9 @@ const WEEKDAY_MAP: Record<WeekdayCode, any> = {
   SU: RRule.SU,
 };
 
-// ─── fromRRule ────────────────────────────────────────────────────────────────
+// ─── toRRule / fromRRule ──────────────────────────────────────────────────────
 
-type RRuleParams =
-  | { freq: 'DAILY'; interval: number }
-  | { freq: 'WEEKLY'; interval: number; byday: WeekdayCode[] }
-  | { freq: 'MONTHLY'; interval: number; bymonthday?: number; byday?: WeekdayCode; bysetpos?: number };
-
-function fromRRule(rruleStr: string): RRuleParams {
+export function fromRRule(rruleStr: string): RRuleParams {
   const kv: Record<string, string> = {};
   for (const part of rruleStr.split(';')) {
     const eq = part.indexOf('=');
@@ -40,9 +39,12 @@ function fromRRule(rruleStr: string): RRuleParams {
   const interval = parseInt(kv['INTERVAL'] ?? '1', 10);
 
   if (freq === 'DAILY') return { freq, interval };
+
   if (freq === 'WEEKLY') {
     return { freq, interval, byday: kv['BYDAY'].split(',') as WeekdayCode[] };
   }
+
+  // MONTHLY
   if (kv['BYMONTHDAY']) {
     return { freq, interval, bymonthday: parseInt(kv['BYMONTHDAY'], 10) };
   }
@@ -54,29 +56,38 @@ function fromRRule(rruleStr: string): RRuleParams {
   };
 }
 
-// ─── Timezone helpers ─────────────────────────────────────────────────────────
+// ─── Timezone-aware expansion ─────────────────────────────────────────────────
 
+// Express a UTC date as a "naive" Date whose UTC value equals local wall-clock time.
+// rrule.js is given these naive dates so it always generates events at the same
+// wall-clock time regardless of DST transitions.
 function toNaive(utcDate: Date, tz: string): Date {
   const localStr = formatInTimeZone(utcDate, tz, "yyyy-MM-dd'T'HH:mm:ss");
   return new Date(localStr + 'Z');
 }
 
+// Inverse of toNaive: treat naive UTC value as a local wall-clock time in tz
+// and return the correct UTC instant.
 function fromNaive(naiveDate: Date, tz: string): Date {
-  const localStr = naiveDate.toISOString().slice(0, 19);
+  // naiveDate.toISOString() looks like "2024-01-15T09:00:00.000Z"
+  const localStr = naiveDate.toISOString().slice(0, 19); // "2024-01-15T09:00:00"
   return fromZonedTime(localStr, tz);
 }
 
 function buildRRule(rruleStr: string, dtstart: Date, tz: string): RRule {
   const params = fromRRule(rruleStr);
   const naiveDtstart = toNaive(dtstart, tz);
+
+  const freqMap = { DAILY: RRule.DAILY, WEEKLY: RRule.WEEKLY, MONTHLY: RRule.MONTHLY };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options: Record<string, any> = {
-    freq: { DAILY: RRule.DAILY, WEEKLY: RRule.WEEKLY, MONTHLY: RRule.MONTHLY }[params.freq],
+    freq: freqMap[params.freq],
     interval: params.interval ?? 1,
     dtstart: naiveDtstart,
   };
 
   if (params.freq === 'WEEKLY') {
-    options.byweekday = params.byday.map((d: WeekdayCode) => WEEKDAY_MAP[d]);
+    options.byweekday = params.byday.map((d) => WEEKDAY_MAP[d]);
   } else if (params.freq === 'MONTHLY') {
     if (params.bymonthday != null) {
       options.bymonthday = [params.bymonthday];
@@ -85,11 +96,14 @@ function buildRRule(rruleStr: string, dtstart: Date, tz: string): RRule {
       options.bysetpos = [params.bysetpos];
     }
   }
+
   return new RRule(options);
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
+/**
+ * Expand an RRULE string into concrete UTC Date instances within [range.from, range.to].
+ * dtstart must be a UTC Date representing the rota's first occurrence start time.
+ */
 export function expand(
   rruleStr: string,
   dtstart: Date,
@@ -101,9 +115,14 @@ export function expand(
   const naiveFrom = toNaive(range.from, tz);
   const naiveTo = toNaive(range.to, tz);
   const naive = rule.between(naiveFrom, naiveTo, true).slice(0, maxCount);
-  return naive.map((d: Date) => fromNaive(d, tz));
+  return naive.map((d) => fromNaive(d, tz));
 }
 
+/**
+ * Returns the smallest gap in minutes between any two consecutive occurrences
+ * among the next `count` expansions from dtstart.
+ * Returns null if fewer than 2 occurrences exist.
+ */
 export function smallestGapMinutes(
   rruleStr: string,
   dtstart: Date,
@@ -111,7 +130,7 @@ export function smallestGapMinutes(
   count = 50,
 ): number | null {
   const rule = buildRRule(rruleStr, dtstart, tz);
-  const dates = rule.all((_: Date, i: number) => i < count);
+  const dates = rule.all((_, i) => i < count);
   if (dates.length < 2) return null;
   let min = Infinity;
   for (let i = 1; i < dates.length; i++) {
@@ -120,3 +139,4 @@ export function smallestGapMinutes(
   }
   return min / 60_000;
 }
+

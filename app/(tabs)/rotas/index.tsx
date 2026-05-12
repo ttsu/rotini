@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useRotas } from '@/features/rotas/hooks';
 import { routes } from '@/lib/navigation/routes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { toTestIdSegment } from '@/lib/formatting';
 
 function formatDuration(minutes: number | null): string {
   if (minutes === null) return '—';
@@ -16,10 +17,6 @@ function formatDuration(minutes: number | null): string {
   if (minutes < 10080) return `${Math.round(minutes / 1440)} days`;
   if (minutes === 10080) return '1 week';
   return `${Math.round(minutes / 10080)} weeks`;
-}
-
-function toTestIdSegment(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 export default function RotasListScreen() {

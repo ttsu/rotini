@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 
 import type { CreateRotaValues } from './schemas';
+import { queryKeys } from './query-keys';
 
 type OriginalRota = {
   tz: string;
@@ -76,9 +77,9 @@ export function useUpdateRota() {
       }
     },
     onSuccess: (_data, { rotaId }) => {
-      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
-      queryClient.invalidateQueries({ queryKey: ['rotas'] });
-      queryClient.invalidateQueries({ queryKey: ['occurrences', rotaId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
     },
   });
 }
@@ -116,7 +117,7 @@ export function useCreateRota() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
     },
   });
 }
@@ -201,7 +202,7 @@ export function useAcceptInvite() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
     },
   });
 }
@@ -219,7 +220,7 @@ export function useChangeMemberRole(rotaId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
     },
   });
 }
@@ -235,7 +236,7 @@ export function useRemoveMember(rotaId: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
     },
   });
 }
@@ -248,7 +249,7 @@ export function useLeaveRota() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
     },
   });
 }
@@ -264,8 +265,8 @@ export function useTransferOwnership(rotaId: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
-      queryClient.invalidateQueries({ queryKey: ['rotas'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
     },
   });
 }
@@ -278,8 +279,8 @@ export function useDeleteRota() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas'] });
-      queryClient.invalidateQueries({ queryKey: ['home-rotas'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
     },
   });
 }

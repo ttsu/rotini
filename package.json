@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "build:production": "npx eas-cli build --platform all --profile production",
     "submit:production": "npx eas-cli submit --platform all --profile production --latest",
-    "db:types": "supabase gen types typescript --project-id hvruvvedzsnlwsotzwqg > lib/database.types.ts"
+    "db:types": "supabase gen types typescript --project-id hvruvvedzsnlwsotzwqg > lib/database.types.ts",
+    "sync-rrule": "node ./scripts/sync-rrule.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

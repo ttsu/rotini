@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/auth';
+import { useScheduledInvalidation } from '@/hooks/use-scheduled-invalidation';
+import { queryKeys } from './query-keys';
 
 /** Per-rota `v_rota_now` realtime refresh is handled by `RotaRealtimeRoot` (occurrences + members). */
 
@@ -21,44 +22,9 @@ export type RotaNowRow = {
   upcoming_assignee_name: string | null;
 };
 
-function useBoundaryTimer(boundary: string | null | undefined, queryKey: unknown[]) {
-  const queryClient = useQueryClient();
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!boundary) return;
-    const ms = new Date(boundary).getTime() - Date.now();
-    if (ms <= 0) {
-      queryClient.invalidateQueries({ queryKey });
-      return;
-    }
-    timerRef.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey });
-    }, ms);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [boundary, queryKey, queryClient]);
-}
-
-function useAppStateInvalidation(queryKey: unknown[]) {
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        queryClient.invalidateQueries({ queryKey });
-      }
-    });
-    return () => sub.remove();
-  }, [queryKey, queryClient]);
-}
-
 // Single-rota hook used in rota detail screen.
 export function useRotaNow(rotaId: string) {
-  const key = ['rota-now', rotaId];
-
-  useAppStateInvalidation(key);
+  const key = queryKeys.rotaNow.forRota(rotaId);
 
   const query = useQuery({
     queryKey: key,
@@ -76,7 +42,7 @@ export function useRotaNow(rotaId: string) {
 
   const d = query.data;
   const boundary = d?.active_occurrence_id ? d.active_ends_at : d?.upcoming_scheduled_at;
-  useBoundaryTimer(boundary, key);
+  useScheduledInvalidation(key, boundary);
 
   return query;
 }
@@ -85,7 +51,7 @@ export function useRotaNow(rotaId: string) {
 export function useAllRotasNow() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const key = ['all-rotas-now'];
+  const key = queryKeys.rotaNow.all();
 
   useEffect(() => {
     const userId = session?.user.id;
@@ -101,8 +67,6 @@ export function useAllRotasNow() {
     };
   }, [session?.user.id, queryClient]);
 
-  useAppStateInvalidation(key);
-
   const query = useQuery({
     queryKey: key,
     queryFn: async () => {
@@ -113,7 +77,6 @@ export function useAllRotasNow() {
     enabled: !!session,
   });
 
-  // Single timer for the earliest boundary across all rotas.
   const rows = query.data ?? [];
   const earliest = rows.reduce<string | null>((acc, row) => {
     const b = row.active_occurrence_id ? row.active_ends_at : row.upcoming_scheduled_at;
@@ -121,7 +84,7 @@ export function useAllRotasNow() {
     if (!acc) return b;
     return b < acc ? b : acc;
   }, null);
-  useBoundaryTimer(earliest, key);
+  useScheduledInvalidation(key, earliest);
 
   return query;
 }

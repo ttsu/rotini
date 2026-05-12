@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
+import { queryKeys } from '@/features/rotas/query-keys';
 
 export type UserReminder = {
   id: string;
@@ -13,7 +14,7 @@ export type UserReminder = {
 export function useMyReminders(rotaId: string | null | undefined) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['my-reminders', rotaId],
+    queryKey: queryKeys.reminders.forRota(rotaId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_rota_reminders')
@@ -54,7 +55,7 @@ export function useSetNotifyScope(rotaId: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rotas', rotaId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
     },
   });
 }

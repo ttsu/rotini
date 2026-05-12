@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCountdown, formatDuration } from './formatting';
+import { formatCountdown } from '../../../lib/formatting';
+import { formatDuration } from './formatting';
 
 describe('formatDuration', () => {
   it('handles back-to-back', () => {
