@@ -1,9 +1,10 @@
 import { useId, useEffect } from 'react';
-import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
+import { useScheduledInvalidation } from '@/hooks/use-scheduled-invalidation';
+import { queryKeys } from './query-keys';
 
 export type OccurrenceRow = {
   id: string;
@@ -18,7 +19,7 @@ export type OccurrenceRow = {
 export function useRotas() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const key = ['rotas'] as const;
+  const key = queryKeys.rotas.all();
   const id = useId();
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export function useRotas() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rota_members', filter: `user_id=eq.${userId}` },
-        () => queryClient.invalidateQueries({ queryKey: key })
+        () => queryClient.invalidateQueries({ queryKey: key }),
       )
       .subscribe();
     return () => {
@@ -37,12 +38,7 @@ export function useRotas() {
     };
   }, [session?.user.id, queryClient]);
 
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') queryClient.invalidateQueries({ queryKey: key });
-    });
-    return () => sub.remove();
-  }, [queryClient]);
+  useScheduledInvalidation(key);
 
   return useQuery({
     queryKey: key,
@@ -50,7 +46,7 @@ export function useRotas() {
       const { data, error } = await supabase
         .from('rota_members')
         .select(
-          'role, rota:rotas!rota_members_rota_id_fkey(id, name, description, tz, duration_minutes, assignment_mode, created_at)'
+          'role, rota:rotas!rota_members_rota_id_fkey(id, name, description, tz, duration_minutes, assignment_mode, created_at)',
         )
         .eq('user_id', session!.user.id)
         .order('joined_at', { ascending: false });
@@ -76,7 +72,7 @@ export function useRotaData(rotaId: string) {
   const { session } = useAuth();
 
   return useQuery({
-    queryKey: ['rotas', rotaId],
+    queryKey: queryKeys.rotas.detail(rotaId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rotas')
@@ -99,13 +95,13 @@ export function useRotaOccurrences(rotaId: string) {
   const { session } = useAuth();
 
   return useQuery({
-    queryKey: ['occurrences', rotaId],
+    queryKey: queryKeys.occurrences.forRota(rotaId),
     queryFn: async () => {
       const now = new Date();
       const { data, error } = await supabase
         .from('occurrences')
         .select(
-          'id, rota_id, scheduled_at, ends_at, scheduled_local_date, status, assigned_user_id'
+          'id, rota_id, scheduled_at, ends_at, scheduled_local_date, status, assigned_user_id',
         )
         .eq('rota_id', rotaId)
         .gte('ends_at', now.toISOString())

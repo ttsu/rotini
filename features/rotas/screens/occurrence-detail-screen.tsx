@@ -35,14 +35,9 @@ import {
   type RotaMemberEmbed,
 } from '@/lib/api-schemas/occurrence-detail';
 import { getUserMessage } from '@/lib/errors';
+import { toTestIdSegment } from '@/lib/formatting';
 import { supabase } from '@/lib/supabase';
-
-function toTestIdSegment(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+import { queryKeys } from '@/features/rotas/query-keys';
 
 export type OccurrenceDetailScreenContentProps = {
   /** Occurrence primary key */
@@ -80,7 +75,7 @@ export function OccurrenceDetailScreenContent({
   // ── Queries ──────────────────────────────────────────────────────────────
 
   const { data: occ, isLoading } = useQuery({
-    queryKey: ['occurrence', id],
+    queryKey: queryKeys.occurrences.detail(id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('occurrences')
@@ -106,12 +101,12 @@ export function OccurrenceDetailScreenContent({
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'occurrences', filter: `id=eq.${id}` },
-        () => queryClient.invalidateQueries({ queryKey: ['occurrence', id] }),
+        () => queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(id) }),
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'swap_requests', filter: `occurrence_id=eq.${id}` },
-        () => queryClient.invalidateQueries({ queryKey: ['occurrence', id] }),
+        () => queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(id) }),
       )
       .subscribe();
     return () => {

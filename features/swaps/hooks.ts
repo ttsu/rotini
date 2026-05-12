@@ -10,13 +10,14 @@ import {
   type SwapRequestDetail,
 } from '@/lib/api-schemas/swaps';
 import { supabase } from '@/lib/supabase';
+import { queryKeys } from '@/features/rotas/query-keys';
 
 export type { PendingSwapForMe, SwapRequestDetail };
 
 export function useSwapRequest(swapId: string | null | undefined) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['swap-request', swapId],
+    queryKey: queryKeys.swaps.detail(swapId),
     queryFn: async (): Promise<SwapRequestDetail> => {
       const { data, error } = await supabase
         .from('swap_requests')
@@ -37,7 +38,7 @@ export function useSwapRequest(swapId: string | null | undefined) {
 export function usePendingSwapsForMe() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const key = ['pending-swaps-for-me'] as const;
+  const key = queryKeys.swaps.pendingForMe();
 
   useEffect(() => {
     if (!session) return;
@@ -109,8 +110,8 @@ export function useRequestSwap() {
       return data;
     },
     onSuccess: (_data, { occurrenceId }) => {
-      queryClient.invalidateQueries({ queryKey: ['occurrence', occurrenceId] });
-      queryClient.invalidateQueries({ queryKey: ['occurrences'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(occurrenceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.all() });
     },
   });
 }
@@ -129,11 +130,11 @@ export function useRespondSwap() {
     onSuccess: (data, { swapId }) => {
       const row = rpcOccurrenceRefSchema.safeParse(data);
       const occ = row.success ? row.data : null;
-      if (occ?.id) queryClient.invalidateQueries({ queryKey: ['occurrence', occ.id] });
-      if (occ?.rota_id) queryClient.invalidateQueries({ queryKey: ['occurrences', occ.rota_id] });
-      queryClient.invalidateQueries({ queryKey: ['swap-request', swapId] });
-      queryClient.invalidateQueries({ queryKey: ['home-rotas'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-swaps-for-me'] });
+      if (occ?.id) queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(occ.id) });
+      if (occ?.rota_id) queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.detail(swapId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForMe() });
     },
   });
 }
@@ -148,9 +149,9 @@ export function useCancelSwap() {
       if (error) throw error;
     },
     onSuccess: (_data, { swapId }) => {
-      queryClient.invalidateQueries({ queryKey: ['swap-request', swapId] });
-      queryClient.invalidateQueries({ queryKey: ['occurrences'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-swaps-for-me'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.detail(swapId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForMe() });
     },
   });
 }
@@ -178,10 +179,10 @@ export function useOverrideOccurrence() {
     onSuccess: (data, { occurrenceId }) => {
       const row = rpcOccurrenceRefSchema.safeParse(data);
       const occ = row.success ? row.data : null;
-      queryClient.invalidateQueries({ queryKey: ['occurrence', occurrenceId] });
-      if (occ?.rota_id) queryClient.invalidateQueries({ queryKey: ['occurrences', occ.rota_id] });
-      queryClient.invalidateQueries({ queryKey: ['home-rotas'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-swaps-for-me'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(occurrenceId) });
+      if (occ?.rota_id) queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForMe() });
     },
   });
 }
