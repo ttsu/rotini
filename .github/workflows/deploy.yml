@@ -184,6 +184,12 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # These mirror the values that app.config.js reads during EAS Build so
+          # the fingerprint computed here matches the fingerprint computed on EAS.
+          APP_ENV: preview
+          EXPO_PUBLIC_SENTRY_ENVIRONMENT: preview
+          GIT_COMMIT_SHA: ${{ github.sha }}
+          EXPO_PUBLIC_SENTRY_DIST: ${{ github.sha }}
         run: |
           eas update \
             --branch preview \

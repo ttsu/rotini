@@ -3,7 +3,6 @@ const { version } = require('./package.json');
 const appIdentifier = 'com.timtsu.rotini';
 const easCommitHash =
   process.env.EAS_BUILD_GIT_COMMIT_HASH ?? process.env.GIT_COMMIT_SHA ?? 'local';
-const easBuildId = process.env.EAS_BUILD_ID ?? 'local';
 const buildProfile = process.env.EAS_BUILD_PROFILE ?? process.env.APP_ENV ?? 'development';
 const sentryEnvironment = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT ?? buildProfile;
 const sentryRelease =
@@ -186,7 +185,6 @@ module.exports = ({ config }) => {
       ...(supabaseExtra ? { supabase: supabaseExtra } : {}),
       sentry: {
         release: sentryRelease,
-        dist: easBuildId,
         environment: sentryEnvironment,
         commit: easCommitHash,
       },

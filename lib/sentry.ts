@@ -12,6 +12,7 @@ type SentryExpoExtra = {
 
 const sentryExtra = (Constants.expoConfig?.extra as SentryExpoExtra | undefined)?.sentry;
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+const sentryDist = process.env.EXPO_PUBLIC_SENTRY_DIST;
 const tracesSampleRate = Number(process.env.EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? '0.2');
 let initialized = false;
 
@@ -31,7 +32,7 @@ export function initSentry() {
     debug: process.env.EXPO_PUBLIC_SENTRY_DEBUG === 'true',
     environment: sentryExtra?.environment ?? (__DEV__ ? 'development' : 'production'),
     release: sentryExtra?.release,
-    dist: sentryExtra?.dist,
+    dist: sentryDist,
     tracesSampleRate: Number.isFinite(tracesSampleRate) ? tracesSampleRate : 0.2,
     sendDefaultPii: false,
   });
@@ -40,7 +41,7 @@ export function initSentry() {
     Sentry.setTag('eas.commit', sentryExtra.commit);
   }
 
-  if (sentryExtra?.dist) {
-    Sentry.setTag('eas.build_id', sentryExtra.dist);
+  if (sentryDist) {
+    Sentry.setTag('eas.build_id', sentryDist);
   }
 }
