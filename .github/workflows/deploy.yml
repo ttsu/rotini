@@ -120,6 +120,8 @@ jobs:
         run: npm ci
 
       - name: Build for preview (iOS)
+        env:
+          GIT_COMMIT_SHA: ${{ github.sha }}
         run: eas build --profile preview --platform ios --non-interactive --wait
 
   deploy-supabase:
