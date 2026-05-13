@@ -1,0 +1,191 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Quality checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+  detect:
+    name: Detect change type
+    runs-on: ubuntu-latest
+    outputs:
+      needs_native_build: ${{ steps.detect.outputs.needs_native_build }}
+      supabase_changed: ${{ steps.detect.outputs.supabase_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect fingerprint and Supabase changes
+        id: detect
+        env:
+          PREV_SHA: ${{ github.event.before }}
+          CURR_SHA: ${{ github.sha }}
+        run: |
+          # Initial push (no previous commit)
+          if [ "$PREV_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "Initial push — treating as native build required"
+            echo "needs_native_build=true" >> "$GITHUB_OUTPUT"
+            echo "supabase_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Compute current fingerprint
+          CURR_FP=$(npx @expo/fingerprint . | jq -r '.hash')
+          echo "Current fingerprint: $CURR_FP"
+
+          # Compute previous commit fingerprint via worktree
+          git worktree add --detach /tmp/prev-build "$PREV_SHA"
+          cd /tmp/prev-build
+          npm ci --prefer-offline --silent
+          PREV_FP=$(npx @expo/fingerprint . | jq -r '.hash')
+          echo "Previous fingerprint: $PREV_FP"
+          cd -
+          git worktree remove /tmp/prev-build --force
+
+          # Compare fingerprints
+          if [ "$CURR_FP" != "$PREV_FP" ]; then
+            echo "Fingerprint changed — native build required"
+            echo "needs_native_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Fingerprint unchanged — EAS Update only"
+            echo "needs_native_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Detect Supabase changes
+          if git diff "$PREV_SHA" "$CURR_SHA" --name-only | grep -qE '^supabase/'; then
+            echo "Supabase files changed"
+            echo "supabase_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No Supabase changes"
+            echo "supabase_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: EAS Build (iOS preview)
+    needs: [quality, detect]
+    if: needs.detect.outputs.needs_native_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for preview (iOS)
+        run: eas build --profile preview --platform ios --non-interactive --wait
+
+  deploy-supabase:
+    name: Deploy Supabase
+    needs: [quality, detect, build]
+    if: |
+      always() &&
+      needs.quality.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      needs.detect.outputs.supabase_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase db push --password ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Deploy edge functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy
+
+  deploy-update:
+    name: EAS Update (preview)
+    needs: [quality, detect, build, deploy-supabase]
+    if: |
+      always() &&
+      needs.quality.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      (needs.deploy-supabase.result == 'success' || needs.deploy-supabase.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish EAS Update
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          eas update \
+            --branch preview \
+            --message "Deploy: ${{ github.event.head_commit.message }}" \
+            --non-interactive

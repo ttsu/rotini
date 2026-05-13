@@ -90,7 +90,7 @@ module.exports = ({ config }) => {
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     runtimeVersion: {
-      policy: 'appVersion',
+      policy: 'fingerprint',
     },
     ios: {
       supportsTablet: true,
