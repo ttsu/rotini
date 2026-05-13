@@ -48,47 +48,50 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
       - name: Install dependencies
         run: npm ci
 
       - name: Detect fingerprint and Supabase changes
         id: detect
         env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           PREV_SHA: ${{ github.event.before }}
           CURR_SHA: ${{ github.sha }}
         run: |
-          # Initial push (no previous commit)
-          if [ "$PREV_SHA" = "0000000000000000000000000000000000000000" ]; then
-            echo "Initial push — treating as native build required"
-            echo "needs_native_build=true" >> "$GITHUB_OUTPUT"
-            echo "supabase_changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           # Compute current fingerprint
           CURR_FP=$(npx @expo/fingerprint . | jq -r '.hash')
           echo "Current fingerprint: $CURR_FP"
 
-          # Compute previous commit fingerprint via worktree
-          git worktree add --detach /tmp/prev-build "$PREV_SHA"
-          cd /tmp/prev-build
-          npm ci --prefer-offline --silent
-          PREV_FP=$(npx @expo/fingerprint . | jq -r '.hash')
-          echo "Previous fingerprint: $PREV_FP"
-          cd -
-          git worktree remove /tmp/prev-build --force
+          # Query last successful preview build from EAS and compare runtime versions.
+          # With the fingerprint policy the runtime version IS the fingerprint hash, so a
+          # match means an existing binary already covers this code — no rebuild needed.
+          LAST_BUILD_JSON=$(eas build:list \
+            --platform ios \
+            --limit 10 \
+            --json \
+            --non-interactive 2>/dev/null || echo "[]")
 
-          # Compare fingerprints
-          if [ "$CURR_FP" != "$PREV_FP" ]; then
-            echo "Fingerprint changed — native build required"
+          LAST_RUNTIME=$(echo "$LAST_BUILD_JSON" | jq -r \
+            '[.[] | select(.buildProfile == "preview" and .status == "FINISHED" and .runtimeVersion != null)] | .[0].runtimeVersion // empty')
+
+          echo "Last successful preview build runtime: ${LAST_RUNTIME:-none}"
+
+          if [ -z "$LAST_RUNTIME" ] || [ "$CURR_FP" != "$LAST_RUNTIME" ]; then
             echo "needs_native_build=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Fingerprint unchanged — EAS Update only"
+            echo "Fingerprint matches last build — EAS Update only"
             echo "needs_native_build=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Detect Supabase changes
-          if git diff "$PREV_SHA" "$CURR_SHA" --name-only | grep -qE '^supabase/'; then
+          if [ "$PREV_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "supabase_changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff "$PREV_SHA" "$CURR_SHA" --name-only | grep -qE '^supabase/'; then
             echo "Supabase files changed"
             echo "supabase_changed=true" >> "$GITHUB_OUTPUT"
           else
