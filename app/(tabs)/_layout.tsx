@@ -1,12 +1,17 @@
 import { Tabs } from 'expo-router';
+import { useColorScheme } from 'react-native';
 
 import { FeatureErrorBoundary } from '@/components/feature-error-boundary';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { RotaRealtimeRoot } from '@/features/rotas/rota-realtime-root';
+import { Colors } from '@/constants/theme';
 import { tabBlurPopNestedStackToRoot } from '@/lib/navigation/tab-blur-reset-stack';
 
 export default function TabLayout() {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+
   return (
     <FeatureErrorBoundary>
       <RotaRealtimeRoot>
@@ -14,12 +19,12 @@ export default function TabLayout() {
           screenOptions={{
             headerShown: false,
             tabBarButton: HapticTab,
-            tabBarActiveTintColor: '#0a7ea4',
-            tabBarInactiveTintColor: '#AEAEB2',
+            tabBarActiveTintColor: Colors[isDark ? 'dark' : 'light'].tint,
+            tabBarInactiveTintColor: Colors[isDark ? 'dark' : 'light'].tabIconDefault,
             tabBarStyle: {
-              backgroundColor: 'rgba(255,255,255,0.85)',
+              backgroundColor: isDark ? 'rgba(21,23,24,0.92)' : 'rgba(255,255,255,0.85)',
               borderTopWidth: 0.5,
-              borderTopColor: 'rgba(60,60,67,0.10)',
+              borderTopColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(60,60,67,0.10)',
             },
           }}
         >
