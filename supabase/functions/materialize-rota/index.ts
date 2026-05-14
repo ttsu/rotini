@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { expand, formatInTimeZone, smallestGapMinutes } from '../_shared/rrule.ts';
+import { getDefaultPublishableKey, getDefaultSecretKey } from '../_shared/supabase-keys.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -19,16 +20,15 @@ serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const secretKey = getDefaultSecretKey();
+  const publishableKey = getDefaultPublishableKey();
 
   const authHeader = req.headers.get('Authorization') ?? '';
   const apikeyHeader = req.headers.get('apikey') ?? '';
-  // Service callers: legacy JWT in Authorization (role service_role), or new sb_secret_* / JWT
-  // in apikey matching SUPABASE_SERVICE_ROLE_KEY (Authorization must not be a non-JWT — gateway).
+  // Service callers: JWT with role service_role in Authorization, or the default secret key
+  // in `apikey` (non-JWT keys must not be sent as Bearer — see Supabase Functions auth guide).
   const isServiceRole =
-    jwtRole(authHeader) === 'service_role' ||
-    timingSafeEqualString(apikeyHeader, SERVICE_ROLE_KEY);
+    jwtRole(authHeader) === 'service_role' || timingSafeEqualString(apikeyHeader, secretKey);
 
   let rotaId: string;
   try {
@@ -39,14 +39,14 @@ serve(async (req) => {
     return json({ error: 'rota_id required' }, 400);
   }
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  const admin = createClient(SUPABASE_URL, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
   // Auth: service_role key (pg_cron) or authenticated rota owner
   if (!isServiceRole) {
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
-    const user = createClient(SUPABASE_URL, ANON_KEY, {
+    const user = createClient(SUPABASE_URL, publishableKey, {
       global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });

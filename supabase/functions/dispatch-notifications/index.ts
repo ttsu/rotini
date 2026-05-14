@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getDefaultSecretKey } from '../_shared/supabase-keys.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -20,9 +21,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const secretKey = getDefaultSecretKey();
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  const admin = createClient(SUPABASE_URL, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 

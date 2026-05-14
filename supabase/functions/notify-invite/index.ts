@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getDefaultPublishableKey, getDefaultSecretKey } from '../_shared/supabase-keys.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -42,15 +43,15 @@ serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const secretKey = getDefaultSecretKey();
+  const publishableKey = getDefaultPublishableKey();
 
   const authHeader = req.headers.get('Authorization') ?? '';
   if (!authHeader.startsWith('Bearer ')) {
     return json({ error: 'Unauthorized' }, 401);
   }
 
-  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+  const userClient = createClient(SUPABASE_URL, publishableKey, {
     global: { headers: { Authorization: authHeader } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -72,7 +73,7 @@ serve(async (req) => {
     return json({ error: 'invite_id required' }, 400);
   }
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  const admin = createClient(SUPABASE_URL, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 

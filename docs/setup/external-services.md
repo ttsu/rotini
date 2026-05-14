@@ -65,7 +65,7 @@ supabase functions deploy materialize-rota
 supabase functions deploy dispatch-notifications
 ```
 
-Edge Functions expect standard Supabase-hosted secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` where used). The platform injects these when deployed from the Supabase CLI or dashboard.
+Edge Functions receive default Supabase secrets automatically, including `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS`, and `SUPABASE_SECRET_KEYS` (JSON maps; use the `default` entry as the API key — see [Environment variables](https://supabase.com/docs/guides/functions/secrets)). Legacy `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` are still injected on older stacks but are deprecated in docs; this repo’s functions read only the publishable/secret key maps.
 
 ### 1.5 Cron jobs and hard-coded project URLs (important)
 
