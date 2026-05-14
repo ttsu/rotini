@@ -287,7 +287,7 @@ export default function EditProfileScreen() {
             <Text
               style={{
                 fontSize: 14,
-                color: statusBanner.kind === 'success' ? '#34C759' : '#FF9500',
+                color: statusBanner.kind === 'success' ? '#34C759' : '#FF9F0A',
                 fontWeight: '500',
               }}
             >

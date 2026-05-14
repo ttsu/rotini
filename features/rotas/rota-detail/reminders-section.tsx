@@ -84,7 +84,6 @@ export function RemindersSection({
           backgroundColor: card,
           borderRadius: 18,
           overflow: 'hidden',
-          marginHorizontal: 16,
           marginBottom: 12,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },

@@ -131,7 +131,7 @@ function SwapInboxCard({
         backgroundColor: card,
         borderRadius: 18,
         overflow: 'hidden',
-        marginBottom: 10,
+        marginBottom: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
@@ -283,7 +283,7 @@ export default function HomeScreen() {
               testID="home-create-shift-button"
               style={{
                 backgroundColor: '#0a7ea4',
-                borderRadius: 10,
+                borderRadius: 14,
                 paddingHorizontal: 20,
                 paddingVertical: 10,
               }}
@@ -291,7 +291,7 @@ export default function HomeScreen() {
               accessibilityLabel="Create a shift"
               accessibilityRole="button"
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 16 }}>
                 Create a shift
               </Text>
             </TouchableOpacity>

@@ -156,8 +156,9 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
                   hitSlop={8}
                   accessibilityLabel="Edit shift"
                   accessibilityRole="button"
+                  style={{ paddingHorizontal: 12 }}
                 >
-                  <Text style={{ fontSize: 16, color: '#0a7ea4' }}>Edit</Text>
+                  <Text style={{ fontSize: 17, color: textPrimary, fontWeight: '500' }}>Edit</Text>
                 </TouchableOpacity>
               )
             : undefined,
@@ -209,6 +210,18 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             />
           </View>
 
+          {myMembership && (
+            <RemindersSection
+              rotaId={routeId}
+              userRole={myMembership.role as 'owner' | 'member' | 'viewer'}
+              notifyScope={(myMembership.notify_scope as 'own' | 'all') ?? 'own'}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+              sep={sep}
+            />
+          )}
+
           <SectionHeader label={`Members (${members.length})`} testID="rota-members-heading" />
           <View testID="rota-members-section" style={[cardStyle, { marginBottom: 12 }]}>
             {members.map((m, i) => (
@@ -228,18 +241,6 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
           {isOwner && myId && (
             <InviteSection
               rotaId={routeId}
-              card={card}
-              textPrimary={textPrimary}
-              textSec={textSec}
-              sep={sep}
-            />
-          )}
-
-          {myMembership && (
-            <RemindersSection
-              rotaId={routeId}
-              userRole={myMembership.role as 'owner' | 'member' | 'viewer'}
-              notifyScope={(myMembership.notify_scope as 'own' | 'all') ?? 'own'}
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}

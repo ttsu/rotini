@@ -62,7 +62,7 @@ export default function RotasListScreen() {
             testID="empty-shifts-create-button"
             style={{
               backgroundColor: '#0a7ea4',
-              borderRadius: 10,
+              borderRadius: 14,
               paddingHorizontal: 20,
               paddingVertical: 12,
             }}

@@ -1,6 +1,7 @@
 import { Link, Stack } from 'expo-router';
-import { Pressable, Text } from 'react-native';
+import { Pressable } from 'react-native';
 
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /**
@@ -10,7 +11,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 export default function RotasStackLayout() {
   const colorScheme = useColorScheme();
   const tint = colorScheme === 'dark' ? '#fff' : '#000';
-  const accent = '#0a7ea4';
+  const primary = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
+
 
   return (
     <Stack
@@ -36,8 +38,9 @@ export default function RotasStackLayout() {
                 hitSlop={8}
                 accessibilityLabel="Create new shift"
                 accessibilityRole="button"
+                style={{ paddingHorizontal: 6 }}
               >
-                <Text style={{ fontSize: 24, fontWeight: '300', color: accent, lineHeight: 24, paddingLeft: 10 }}>+</Text>
+                <IconSymbol name="plus" size={22} color={primary} />
               </Pressable>
             </Link>
           ),
