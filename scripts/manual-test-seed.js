@@ -186,7 +186,8 @@ function looksLikeJwt(value) {
  * Invokes the deployed materialize-rota edge function (same logic as pg_cron / app).
  * New Supabase `sb_secret_*` keys are not JWTs — send them only in `apikey`, never as Bearer
  * (see https://supabase.com/docs/guides/functions/auth). Requires `verify_jwt = false` on the
- * function and the edge handler accepting `apikey === SUPABASE_SERVICE_ROLE_KEY`.
+ * function and the edge handler accepting `apikey` equal to the project’s default secret key
+ * (same value as `SUPABASE_SECRET_KEYS["default"]` on the hosted platform).
  *
  * @param {string} supabaseUrl
  * @param {string} serviceRoleKey
