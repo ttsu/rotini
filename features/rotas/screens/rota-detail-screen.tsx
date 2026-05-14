@@ -228,7 +228,6 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
           {isOwner && myId && (
             <InviteSection
               rotaId={routeId}
-              userId={myId}
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
