@@ -1,14 +1,9 @@
 const { version } = require('./package.json');
 
 const appIdentifier = 'com.timtsu.rotini';
-const easCommitHash =
-  process.env.EAS_BUILD_GIT_COMMIT_HASH ?? process.env.GIT_COMMIT_SHA ?? 'local';
 const buildProfile = process.env.EAS_BUILD_PROFILE ?? process.env.APP_ENV ?? 'development';
 const sentryEnvironment = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT ?? buildProfile;
-const sentryRelease =
-  easCommitHash === 'local'
-    ? `rotini@${version}+local`
-    : `rotini@${version}+${easCommitHash.slice(0, 12)}`;
+const sentryRelease = `rotini@${version}`;
 
 /**
  * Builds optional Sentry plugin settings from EAS secrets.
@@ -185,7 +180,6 @@ module.exports = ({ config }) => {
       sentry: {
         release: sentryRelease,
         environment: sentryEnvironment,
-        commit: easCommitHash,
       },
     },
   };
