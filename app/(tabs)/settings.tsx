@@ -102,7 +102,7 @@ export default function SettingsScreen() {
 
   const calendarSubtitleColor = (() => {
     switch (calendarStatus) {
-      case 'permission_denied': return '#FF9500';
+      case 'permission_denied': return '#FF9F0A';
       case 'synced': return '#34C759';
       case 'error': return '#FF3B30';
       default: return textSec;
@@ -221,7 +221,7 @@ export default function SettingsScreen() {
             accessibilityRole="button"
           >
             <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Notifications</Text>
-            <Text style={{ fontSize: 15, color: notifStatus === 'granted' ? '#34C759' : '#FF9500', marginRight: 4 }}>
+            <Text style={{ fontSize: 15, color: notifStatus === 'granted' ? '#34C759' : '#FF9F0A', marginRight: 4 }}>
               {notifStatus === 'granted' ? 'Allowed' : 'Denied'}
             </Text>
             {notifStatus !== 'granted' && <RowChevron />}
@@ -366,7 +366,7 @@ export default function SettingsScreen() {
           testID="settings-sign-out-button"
           style={{
             backgroundColor: card,
-            borderRadius: 16,
+            borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
             shadowColor: '#000',

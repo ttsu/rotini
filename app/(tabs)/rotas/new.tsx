@@ -309,7 +309,7 @@ export default function NewRotaScreen() {
             style={{
               marginTop: 32,
               backgroundColor: submitDisabled ? '#AEAEB2' : '#0a7ea4',
-              borderRadius: 10,
+              borderRadius: 14,
               paddingVertical: 14,
               alignItems: 'center',
             }}
