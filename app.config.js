@@ -153,7 +153,6 @@ module.exports = ({ config }) => {
         'expo-calendar',
         {
           calendarPermission: 'Rotini needs access to your calendar to show your on-call shifts.',
-          remindersPermission: false,
         },
       ],
       [
