@@ -20,6 +20,7 @@ expo-env.d.ts
 *.mobileprovision
 google-services-key.json
 eas-service-account.json
+*.ipa
 
 # Metro
 .metro-health-check*
@@ -55,3 +56,5 @@ supabase/.temp/
 
 # manual Supabase seed harness output (credentials / deep links)
 scripts/.manual-seed-output.json
+
+.env.local
