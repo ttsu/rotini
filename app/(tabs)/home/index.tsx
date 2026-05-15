@@ -279,7 +279,7 @@ export default function HomeScreen() {
               No upcoming shifts
             </Text>
             <Text style={{ fontSize: 14, color: textSec, textAlign: 'center', marginBottom: 16 }}>
-              You haven't been assigned to any rotas yet. Create your own or ask a teammate to invite you.
+              {"You haven't been assigned to any rotas yet. Create your own or ask a teammate to invite you."}
             </Text>
             <TouchableOpacity
               testID="home-create-shift-button"
