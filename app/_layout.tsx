@@ -17,6 +17,7 @@ import { usePushToken } from '@/features/notifications/usePushToken';
 import { useNotificationNavigation } from '@/features/notifications/useNotificationNavigation';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OfflineBanner } from '@/components/ui/offline-banner';
+import { ToastProvider } from '@/components/ui/toast';
 import { initSentry } from '@/lib/sentry';
 import { AppPreferencesProvider } from '@/contexts/app-preferences';
 import { CalendarSyncProvider } from '@/contexts/calendar-sync';
@@ -96,6 +97,7 @@ function AppShell() {
     <AuthProvider>
       <CalendarSyncProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <ToastProvider>
           <OfflineBanner />
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -111,6 +113,7 @@ function AppShell() {
           </Stack>
           <AuthGate />
           <StatusBar style="auto" />
+          </ToastProvider>
         </ThemeProvider>
       </CalendarSyncProvider>
     </AuthProvider>
