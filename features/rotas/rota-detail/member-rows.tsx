@@ -3,6 +3,7 @@ import { ActionSheetIOS, Alert, Platform, Text, TouchableOpacity, View } from 'r
 import { Pill } from '@/components/ui/pill';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
 import { getUserMessage } from '@/lib/errors';
+import { supabase } from '@/lib/supabase';
 
 import {
   useChangeMemberRole,
@@ -37,7 +38,7 @@ function MemberAvatar({
 }
 
 /**
- * Single member row with owner actions (role, remove, transfer).
+ * Single member row with owner actions (role, remove, transfer) and optional reorder controls.
  */
 export function MemberRow({
   member,
@@ -47,6 +48,11 @@ export function MemberRow({
   textPrimary,
   sep,
   showSep,
+  showReorderControls,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
 }: {
   member: Member;
   isOwner: boolean;
@@ -55,12 +61,100 @@ export function MemberRow({
   textPrimary: string;
   sep: string;
   showSep: boolean;
+  showReorderControls?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const changeRole = useChangeMemberRole(rotaId);
   const removeMember = useRemoveMember(rotaId);
   const transferOwnership = useTransferOwnership(rotaId);
   const name = member.profile?.display_name ?? 'Unknown';
   const avatarUrl = member.profile?.avatar_url;
+
+  async function getOrphanCount(): Promise<number> {
+    const { count } = await supabase
+      .from('occurrences')
+      .select('id', { count: 'exact', head: true })
+      .eq('rota_id', rotaId)
+      .eq('assigned_user_id', member.user_id)
+      .eq('status', 'scheduled')
+      .gt('scheduled_at', new Date().toISOString());
+    return count ?? 0;
+  }
+
+  async function confirmRemove() {
+    const count = await getOrphanCount();
+    const note =
+      count > 0
+        ? `\n\n${count} upcoming turn${count === 1 ? '' : 's'} will be automatically reassigned.`
+        : '';
+    Alert.alert(`Remove ${name}?`, `They will lose access to this shift.${note}`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () =>
+          removeMember.mutate(member.user_id, {
+            onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
+          }),
+      },
+    ]);
+  }
+
+  async function confirmDemotion() {
+    const count = await getOrphanCount();
+    const note =
+      count > 0
+        ? `\n\n${count} upcoming turn${count === 1 ? '' : 's'} will be automatically reassigned.`
+        : '';
+    Alert.alert(
+      `Make ${name} a viewer?`,
+      `They will no longer appear in the rotation.${note}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Make viewer',
+          style: 'destructive',
+          onPress: () =>
+            changeRole.mutate(
+              { userId: member.user_id, newRole: 'viewer' },
+              { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
+            ),
+        },
+      ]
+    );
+  }
+
+  async function handleRoleChange(newRole: 'owner' | 'member' | 'viewer') {
+    if (newRole === 'viewer' && member.position !== null) {
+      await confirmDemotion();
+      return;
+    }
+    changeRole.mutate(
+      { userId: member.user_id, newRole },
+      { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
+    );
+  }
+
+  function confirmTransfer() {
+    Alert.alert(
+      `Transfer ownership to ${name}?`,
+      'You will become a member. This cannot be undone without their cooperation.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Transfer',
+          style: 'destructive',
+          onPress: () =>
+            transferOwnership.mutate(member.user_id, {
+              onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
+            }),
+        },
+      ]
+    );
+  }
 
   function showActions() {
     const roles: ('owner' | 'member' | 'viewer')[] = ['owner', 'member', 'viewer'];
@@ -81,12 +175,7 @@ export function MemberRow({
             confirmTransfer();
           } else {
             const newRole = options[idx].replace('Make ', '') as 'owner' | 'member' | 'viewer';
-            changeRole.mutate(
-              { userId: member.user_id, newRole },
-              {
-                onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
-              }
-            );
+            handleRoleChange(newRole);
           }
         }
       );
@@ -94,51 +183,13 @@ export function MemberRow({
       Alert.alert(name, undefined, [
         ...roles.filter((r) => r !== member.role).map((r) => ({
           text: `Make ${r}`,
-          onPress: () =>
-            changeRole.mutate(
-              { userId: member.user_id, newRole: r },
-              {
-                onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
-              }
-            ),
+          onPress: () => handleRoleChange(r),
         })),
         { text: `Transfer ownership to ${name}`, onPress: confirmTransfer },
-        { text: `Remove ${name}`, style: 'destructive', onPress: confirmRemove },
-        { text: 'Cancel', style: 'cancel' },
+        { text: `Remove ${name}`, style: 'destructive' as const, onPress: confirmRemove },
+        { text: 'Cancel', style: 'cancel' as const },
       ]);
     }
-  }
-
-  function confirmRemove() {
-    Alert.alert(`Remove ${name}?`, 'They will lose access to this shift.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () =>
-          removeMember.mutate(member.user_id, {
-            onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
-          }),
-      },
-    ]);
-  }
-
-  function confirmTransfer() {
-    Alert.alert(
-      `Transfer ownership to ${name}?`,
-      'You will become a member. This cannot be undone without their cooperation.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Transfer',
-          style: 'destructive',
-          onPress: () =>
-            transferOwnership.mutate(member.user_id, {
-              onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
-            }),
-        },
-      ]
-    );
   }
 
   return (
@@ -166,17 +217,41 @@ export function MemberRow({
         )}
       </View>
       <Pill label={member.role} color={member.role === 'owner' ? 'teal' : 'gray'} />
-      {isOwner && !isMe && (
+      {showReorderControls && (
+        <View style={{ flexDirection: 'row', marginLeft: 8 }}>
+          <TouchableOpacity
+            onPress={canMoveUp ? onMoveUp : undefined}
+            hitSlop={6}
+            style={{ opacity: canMoveUp ? 1 : 0.25, paddingHorizontal: 5 }}
+            accessibilityLabel={`Move ${name} up in rotation`}
+            accessibilityRole="button"
+          >
+            <Text style={{ fontSize: 16, color: textPrimary }}>↑</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={canMoveDown ? onMoveDown : undefined}
+            hitSlop={6}
+            style={{ opacity: canMoveDown ? 1 : 0.25, paddingHorizontal: 5 }}
+            accessibilityLabel={`Move ${name} down in rotation`}
+            accessibilityRole="button"
+          >
+            <Text style={{ fontSize: 16, color: textPrimary }}>↓</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {isOwner && !isMe ? (
         <TouchableOpacity
           onPress={showActions}
           hitSlop={8}
           style={{ marginLeft: 10 }}
-          accessibilityLabel={`Manage ${name}`}
+          accessibilityLabel={`Manage ${member.profile?.display_name ?? 'member'}`}
           accessibilityRole="button"
         >
           <Text style={{ color: '#AEAEB2', fontSize: 18 }}>⋯</Text>
         </TouchableOpacity>
-      )}
+      ) : showReorderControls ? (
+        <View style={{ marginLeft: 10, width: 20 }} />
+      ) : null}
     </View>
   );
 }

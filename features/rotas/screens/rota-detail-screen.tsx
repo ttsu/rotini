@@ -1,8 +1,20 @@
 /**
  * Shared rota detail screen implementation for Home and Shifts route wrappers.
  */
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -16,10 +28,12 @@ import { MemberRow } from '@/features/rotas/rota-detail/member-rows';
 import { RemindersSection } from '@/features/rotas/rota-detail/reminders-section';
 import { StatusCard } from '@/features/rotas/rota-detail/status-card';
 import { UpcomingSection } from '@/features/rotas/rota-detail/upcoming-section';
+import { useReorderMembers } from '@/features/rotas/use-rotas-mutations';
 import { useRotaNow } from '@/features/rotas/useRotaNow';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getUserMessage } from '@/lib/errors';
 import { routes } from '@/lib/navigation/routes';
+import { supabase } from '@/lib/supabase';
 
 /** Where the user opened this detail screen from (drives post-action navigation). */
 export type RotaDetailOrigin = 'home' | 'shifts';
@@ -42,7 +56,18 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   const rotaNow = useRotaNow(routeId);
   const leaveRota = useLeaveRota();
   const deleteRota = useDeleteRota();
+  const reorderMembers = useReorderMembers(routeId);
   const scheme = useColorScheme();
+
+  // Reorder state
+  const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [pickerDate, setPickerDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
+  const [pendingOrderForDate, setPendingOrderForDate] = useState<string[] | null>(null);
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
   const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
@@ -62,19 +87,111 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   };
 
   const myId = session?.user.id;
-  const members = ((rota?.rota_members ?? []) as Member[]).sort((a, b) => {
-    const order = { owner: 0, member: 1, viewer: 2 };
-    const roleOrder =
-      (order[a.role as keyof typeof order] ?? 2) - (order[b.role as keyof typeof order] ?? 2);
-    if (roleOrder !== 0) return roleOrder;
-    return (a.position ?? 999) - (b.position ?? 999);
-  });
-  const myMembership = members.find((m) => m.user_id === myId);
+
+  // Active (non-viewer) members sorted by round-robin position
+  const rawMembers = (rota?.rota_members ?? []) as Member[];
+  const activeMembers = rawMembers
+    .filter((m) => m.position !== null)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const viewerMembers = rawMembers
+    .filter((m) => m.position === null)
+    .sort((a, b) => a.role.localeCompare(b.role));
+
+  // While reordering, use the pending order; otherwise use server state
+  const displayActiveMembers: Member[] = pendingOrder
+    ? pendingOrder.map((id) => activeMembers.find((m) => m.user_id === id)!).filter(Boolean)
+    : activeMembers;
+
+  const displayMembers = [...displayActiveMembers, ...viewerMembers];
+
+  // membersById for the upcoming section
+  const membersById = new Map<string, string>(
+    rawMembers.map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
+  );
+
+  const myMembership = rawMembers.find((m) => m.user_id === myId);
   const isOwner = myMembership?.role === 'owner';
 
-  const membersById = new Map<string, string>(
-    members.map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
-  );
+  function handleMoveUp(activeIdx: number) {
+    const current = pendingOrder ?? activeMembers.map((m) => m.user_id);
+    const next = [...current];
+    [next[activeIdx - 1], next[activeIdx]] = [next[activeIdx], next[activeIdx - 1]];
+    setPendingOrder(next);
+  }
+
+  function handleMoveDown(activeIdx: number) {
+    const current = pendingOrder ?? activeMembers.map((m) => m.user_id);
+    const next = [...current];
+    [next[activeIdx], next[activeIdx + 1]] = [next[activeIdx + 1], next[activeIdx]];
+    setPendingOrder(next);
+  }
+
+  async function applyOrder(orderedIds: string[], mode: 0 | 1 | 2) {
+    let cutoffAt: string;
+
+    if (mode === 0) {
+      cutoffAt = new Date().toISOString();
+    } else if (mode === 1) {
+      // Keep the next N upcoming occurrences (N = active member count), clear the rest
+      const n = activeMembers.length;
+      const { data } = await supabase
+        .from('occurrences')
+        .select('scheduled_at')
+        .eq('rota_id', routeId)
+        .eq('status', 'scheduled')
+        .gt('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true })
+        .range(n - 1, n - 1)
+        .single();
+      cutoffAt = data?.scheduled_at ?? new Date().toISOString();
+    } else {
+      // Open date picker — actual mutation fires from handleDateConfirm
+      setPendingOrderForDate(orderedIds);
+      setDatePickerVisible(true);
+      return;
+    }
+
+    setPendingOrder(null);
+    reorderMembers.mutate(
+      { orderedUserIds: orderedIds, cutoffAt },
+      { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
+    );
+  }
+
+  function handleSaveOrder() {
+    if (!pendingOrder) return;
+    const saved = pendingOrder;
+
+    const options = ['Apply immediately', 'After one rotation', 'After a specific date', 'Cancel'];
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: 'Apply new order', options, cancelButtonIndex: 3 },
+        (idx) => {
+          if (idx === 3) return;
+          applyOrder(saved, idx as 0 | 1 | 2);
+        }
+      );
+    } else {
+      Alert.alert('Apply new order', undefined, [
+        { text: 'Apply immediately', onPress: () => applyOrder(saved, 0) },
+        { text: 'After one rotation', onPress: () => applyOrder(saved, 1) },
+        { text: 'After a specific date', onPress: () => applyOrder(saved, 2) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }
+
+  function handleDateConfirm() {
+    setDatePickerVisible(false);
+    if (!pendingOrderForDate) return;
+    setPendingOrder(null);
+    reorderMembers.mutate(
+      { orderedUserIds: pendingOrderForDate, cutoffAt: pickerDate.toISOString() },
+      { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
+    );
+    setPendingOrderForDate(null);
+  }
 
   function handleLeave() {
     const afterLeave = detailOrigin === 'home' ? routes.home.root : routes.rotas.list;
@@ -143,6 +260,12 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   const editRoute =
     detailOrigin === 'home' ? routes.home.rotas.edit(routeId) : routes.rotas.edit(routeId);
 
+  const hasPendingOrder =
+    pendingOrder !== null &&
+    pendingOrder.join(',') !== activeMembers.map((m) => m.user_id).join(',');
+
+  const maxDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
   return (
     <>
       <Stack.Screen
@@ -164,6 +287,58 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             : undefined,
         }}
       />
+
+      {/* Date picker modal for "after a specific date" reorder option */}
+      <Modal
+        visible={datePickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDatePickerVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <View
+            style={{
+              backgroundColor: card,
+              paddingTop: 16,
+              paddingBottom: 32,
+              paddingHorizontal: 16,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary, textAlign: 'center', marginBottom: 4 }}>
+              Apply after date
+            </Text>
+            <Text style={{ fontSize: 13, color: textSec, textAlign: 'center', marginBottom: 12 }}>
+              Turns up to this date keep their assignments.
+            </Text>
+            <DateTimePicker
+              mode="date"
+              value={pickerDate}
+              minimumDate={new Date()}
+              maximumDate={maxDate}
+              onChange={(_e, d) => d && setPickerDate(d)}
+              display="spinner"
+              textColor={textPrimary}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 8 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDatePickerVisible(false);
+                  setPendingOrderForDate(null);
+                }}
+                hitSlop={8}
+              >
+                <Text style={{ fontSize: 17, color: '#FF3B30' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDateConfirm} hitSlop={8}>
+                <Text style={{ fontSize: 17, fontWeight: '600', color: '#007AFF' }}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView
         testID="rota-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}
@@ -222,20 +397,68 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             />
           )}
 
-          <SectionHeader label={`Members (${members.length})`} testID="rota-members-heading" />
+          <SectionHeader label={`Members (${rawMembers.length})`} testID="rota-members-heading" />
+          {isOwner && hasPendingOrder && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                paddingHorizontal: 16,
+                marginTop: -4,
+                marginBottom: 8,
+                gap: 16,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => setPendingOrder(null)}
+                hitSlop={8}
+                accessibilityLabel="Cancel reorder"
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: 15, color: textSec }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveOrder}
+                disabled={reorderMembers.isPending}
+                hitSlop={8}
+                accessibilityLabel="Save member order"
+                accessibilityRole="button"
+              >
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: reorderMembers.isPending ? textSec : '#007AFF',
+                  }}
+                >
+                  Save order
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View testID="rota-members-section" style={[cardStyle, { marginBottom: 12 }]}>
-            {members.map((m, i) => (
-              <MemberRow
-                key={m.user_id}
-                member={m}
-                isOwner={isOwner}
-                isMe={m.user_id === myId}
-                rotaId={routeId}
-                textPrimary={textPrimary}
-                sep={sep}
-                showSep={i < members.length - 1}
-              />
-            ))}
+            {displayMembers.map((m, i) => {
+              const activeIdx = displayActiveMembers.findIndex((a) => a.user_id === m.user_id);
+              const isActiveMember = activeIdx !== -1;
+              return (
+                <MemberRow
+                  key={m.user_id}
+                  member={m}
+                  isOwner={isOwner}
+                  isMe={m.user_id === myId}
+                  rotaId={routeId}
+                  textPrimary={textPrimary}
+                  sep={sep}
+                  showSep={i < displayMembers.length - 1}
+                  showReorderControls={isOwner && isActiveMember}
+                  canMoveUp={activeIdx > 0}
+                  canMoveDown={activeIdx < displayActiveMembers.length - 1}
+                  onMoveUp={() => handleMoveUp(activeIdx)}
+                  onMoveDown={() => handleMoveDown(activeIdx)}
+                />
+              );
+            })}
           </View>
 
           {isOwner && myId && (
