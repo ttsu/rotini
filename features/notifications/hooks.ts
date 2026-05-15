@@ -34,7 +34,7 @@ export function useSetMyReminder(rotaId: string) {
     mutationFn: async (leadMinutes: number | null) => {
       const { error } = await supabase.rpc('set_user_reminder', {
         p_rota_id: rotaId,
-        p_lead_minutes: leadMinutes,
+        p_lead_minutes: leadMinutes as number, // null signals deletion; DB function handles it
       });
       if (error) throw error;
     },

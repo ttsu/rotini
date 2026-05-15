@@ -295,8 +295,7 @@ export function useReorderMembers(rotaId: string) {
       orderedUserIds: string[];
       cutoffAt: string;
     }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.rpc as any)('reorder_members', {
+      const { error } = await supabase.rpc('reorder_members', {
         p_rota_id: rotaId,
         p_ordered_user_ids: orderedUserIds,
         p_cutoff_at: cutoffAt,
