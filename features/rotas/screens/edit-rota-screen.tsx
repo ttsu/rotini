@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 
+import * as Haptics from 'expo-haptics';
 import { ErrorState } from '@/components/ui/error-state';
 import { DurationWheelPicker } from '@/components/ui/duration-wheel-picker';
 import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
@@ -158,8 +159,14 @@ export function EditRotaScreenContent({
         resetActive,
       },
       {
-        onSuccess: () => router.back(),
-        onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)),
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.back();
+        },
+        onError: (e: unknown) => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Error', getUserMessage(e));
+        },
       },
     );
   }

@@ -4,6 +4,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -117,6 +118,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
     const next = [...current];
     [next[activeIdx - 1], next[activeIdx]] = [next[activeIdx], next[activeIdx - 1]];
     setPendingOrder(next);
+    Haptics.selectionAsync();
   }
 
   function handleMoveDown(activeIdx: number) {
@@ -124,6 +126,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
     const next = [...current];
     [next[activeIdx], next[activeIdx + 1]] = [next[activeIdx + 1], next[activeIdx]];
     setPendingOrder(next);
+    Haptics.selectionAsync();
   }
 
   async function applyOrder(orderedIds: string[], mode: 0 | 1 | 2) {

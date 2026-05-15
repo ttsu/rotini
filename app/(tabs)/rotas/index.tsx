@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { Pill } from '@/components/ui/pill';
 import { ErrorState } from '@/components/ui/error-state';
+import { RotaRowSkeleton } from '@/components/ui/skeleton';
 import { useRotas } from '@/features/rotas/hooks';
 import { routes } from '@/lib/navigation/routes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -32,8 +33,25 @@ export default function RotasListScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
+      <View style={{ flex: 1, backgroundColor: bg }}>
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginTop: 16,
+            backgroundColor: card,
+            borderRadius: 18,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 2,
+          }}
+        >
+          <RotaRowSkeleton />
+          <RotaRowSkeleton />
+          <RotaRowSkeleton isLast />
+        </View>
       </View>
     );
   }
@@ -56,7 +74,7 @@ export default function RotasListScreen() {
             No shifts yet
           </Text>
           <Text style={{ fontSize: 15, color: textSec, textAlign: 'center', marginBottom: 32 }}>
-            Create a shift to start managing recurring duties.
+            Organise on-call, chores, or any recurring duty. Create your first shift to get started.
           </Text>
           <TouchableOpacity
             testID="empty-shifts-create-button"
