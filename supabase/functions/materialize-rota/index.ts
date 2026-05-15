@@ -43,15 +43,15 @@ serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Auth: service_role key (pg_cron) or authenticated rota owner
+  // Auth: service_role key (pg_cron) or authenticated rota member
   if (!isServiceRole) {
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
     const user = createClient(SUPABASE_URL, publishableKey, {
       global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: isOwner, error } = await user.rpc('is_rota_owner', { p_rota_id: rotaId });
-    if (error || !isOwner) return json({ error: 'Forbidden' }, 403);
+    const { data: isMember, error } = await user.rpc('is_rota_member', { p_rota_id: rotaId });
+    if (error || !isMember) return json({ error: 'Forbidden' }, 403);
   }
 
   try {

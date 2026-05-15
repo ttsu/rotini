@@ -8,6 +8,13 @@ import { supabase } from '@/lib/supabase';
 import type { CreateRotaValues } from './schemas';
 import { queryKeys } from './query-keys';
 
+async function triggerMaterialize(rotaId: string) {
+  const { error } = await supabase.functions.invoke('materialize-rota', {
+    body: { rota_id: rotaId },
+  });
+  if (error) console.error('materialize-rota:', error);
+}
+
 type OriginalRota = {
   tz: string;
   dtstart: string;
@@ -199,6 +206,7 @@ export function useAcceptInvite() {
     mutationFn: async (code: string) => {
       const { data, error } = await supabase.rpc('accept_invite', { p_code: code });
       if (error) throw error;
+      await triggerMaterialize(data.rota_id);
       return data;
     },
     onSuccess: () => {
@@ -217,10 +225,12 @@ export function useChangeMemberRole(rotaId: string) {
         p_new_role: newRole,
       });
       if (error) throw error;
+      await triggerMaterialize(rotaId);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
     },
   });
 }
@@ -234,9 +244,11 @@ export function useRemoveMember(rotaId: string) {
         p_user_id: userId,
       });
       if (error) throw error;
+      await triggerMaterialize(rotaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
     },
   });
 }
@@ -247,6 +259,8 @@ export function useLeaveRota() {
     mutationFn: async (rotaId: string) => {
       const { error } = await supabase.rpc('leave_rota', { p_rota_id: rotaId });
       if (error) throw error;
+      // Best-effort: caller is no longer a member so this may 403; daily cron is the backstop.
+      triggerMaterialize(rotaId).catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
@@ -267,6 +281,32 @@ export function useTransferOwnership(rotaId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
+    },
+  });
+}
+
+export function useReorderMembers(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orderedUserIds,
+      cutoffAt,
+    }: {
+      orderedUserIds: string[];
+      cutoffAt: string;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.rpc as any)('reorder_members', {
+        p_rota_id: rotaId,
+        p_ordered_user_ids: orderedUserIds,
+        p_cutoff_at: cutoffAt,
+      });
+      if (error) throw error;
+      await triggerMaterialize(rotaId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
     },
   });
 }
