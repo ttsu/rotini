@@ -1,12 +1,13 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ErrorState } from '@/components/ui/error-state';
 import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
+import { ShiftCardSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth';
 import { useMyProfile } from '@/features/profile/use-my-profile';
 import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
@@ -254,9 +255,10 @@ export default function HomeScreen() {
         </Text>
 
         {isLoading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <ActivityIndicator />
-          </View>
+          <>
+            <ShiftCardSkeleton />
+            <ShiftCardSkeleton />
+          </>
         ) : error ? (
           <ErrorState message="Failed to load shifts." onRetry={refetch} textSec={textSec} />
         ) : !data || data.length === 0 ? (
@@ -274,10 +276,10 @@ export default function HomeScreen() {
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary, marginBottom: 6 }}>
-              No shifts yet
+              No upcoming shifts
             </Text>
             <Text style={{ fontSize: 14, color: textSec, textAlign: 'center', marginBottom: 16 }}>
-              Create or join a shift to see your upcoming turns here.
+              You haven't been assigned to any rotas yet. Create your own or ask a teammate to invite you.
             </Text>
             <TouchableOpacity
               testID="home-create-shift-button"

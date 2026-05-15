@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import * as Haptics from 'expo-haptics';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -32,7 +33,7 @@ export function DurationWheelPicker({
       <Picker
         style={{ flex: 1 }}
         selectedValue={d}
-        onValueChange={(v) => onChange((v as number) * 1440 + h * 60 + mSnapped)}
+        onValueChange={(v) => { Haptics.selectionAsync(); onChange((v as number) * 1440 + h * 60 + mSnapped); }}
         itemStyle={itemStyle}
       >
         {DAY_VALS.map((v) => (
@@ -42,7 +43,7 @@ export function DurationWheelPicker({
       <Picker
         style={{ flex: 1 }}
         selectedValue={h}
-        onValueChange={(v) => onChange(d * 1440 + (v as number) * 60 + mSnapped)}
+        onValueChange={(v) => { Haptics.selectionAsync(); onChange(d * 1440 + (v as number) * 60 + mSnapped); }}
         itemStyle={itemStyle}
       >
         {HOUR_VALS.map((v) => (
@@ -52,7 +53,7 @@ export function DurationWheelPicker({
       <Picker
         style={{ flex: 1 }}
         selectedValue={mSnapped}
-        onValueChange={(v) => onChange(d * 1440 + h * 60 + (v as number))}
+        onValueChange={(v) => { Haptics.selectionAsync(); onChange(d * 1440 + h * 60 + (v as number)); }}
         itemStyle={itemStyle}
       >
         {MIN_VALS.map((v) => (

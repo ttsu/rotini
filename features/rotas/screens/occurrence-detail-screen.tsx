@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -35,6 +36,7 @@ import {
   type RotaMemberEmbed,
 } from '@/lib/api-schemas/occurrence-detail';
 import { getUserMessage } from '@/lib/errors';
+import { useToast } from '@/components/ui/toast';
 import { toTestIdSegment } from '@/lib/formatting';
 import { supabase } from '@/lib/supabase';
 import { queryKeys } from '@/features/rotas/query-keys';
@@ -55,6 +57,7 @@ export function OccurrenceDetailScreenContent({
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
   const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
@@ -162,9 +165,13 @@ export function OccurrenceDetailScreenContent({
           setShowSwapModal(false);
           setSelectedTargetId(null);
           setSwapMessage('');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showToast('Swap request sent');
         },
-        onError: (err: unknown) =>
-          Alert.alert('Error', getUserMessage(err) || 'Failed to request swap'),
+        onError: (err: unknown) => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Error', getUserMessage(err) || 'Failed to request swap');
+        },
       },
     );
   }
@@ -178,9 +185,13 @@ export function OccurrenceDetailScreenContent({
           setShowOverrideModal(false);
           setSelectedAssigneeId(null);
           setOverrideReason('');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showToast('Assignment overridden');
         },
-        onError: (err: unknown) =>
-          Alert.alert('Error', getUserMessage(err) || 'Failed to override'),
+        onError: (err: unknown) => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Error', getUserMessage(err) || 'Failed to override');
+        },
       },
     );
   }
@@ -370,9 +381,16 @@ export function OccurrenceDetailScreenContent({
                         onPress={() =>
                           respondSwap.mutate(
                             { swapId: swapReq.id, accept: false },
-                            { onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)) },
+                            {
+                              onSuccess: () => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                showToast('Swap declined');
+                              },
+                              onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)),
+                            },
                           )
                         }
+                        disabled={respondSwap.isPending}
                         style={{
                           flex: 1,
                           backgroundColor: 'rgba(255,255,255,0.25)',
@@ -382,15 +400,26 @@ export function OccurrenceDetailScreenContent({
                         }}
                         testID="decline-swap-button"
                       >
-                        <Text style={{ color: '#fff', fontWeight: '600' }}>Decline</Text>
+                        {respondSwap.isPending ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={{ color: '#fff', fontWeight: '600' }}>Decline</Text>
+                        )}
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() =>
                           respondSwap.mutate(
                             { swapId: swapReq.id, accept: true },
-                            { onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)) },
+                            {
+                              onSuccess: () => {
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                showToast('Swap accepted');
+                              },
+                              onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)),
+                            },
                           )
                         }
+                        disabled={respondSwap.isPending}
                         style={{
                           flex: 1,
                           backgroundColor: '#fff',
@@ -400,7 +429,11 @@ export function OccurrenceDetailScreenContent({
                         }}
                         testID="accept-swap-button"
                       >
-                        <Text style={{ color: '#FF9F0A', fontWeight: '700' }}>Accept</Text>
+                        {respondSwap.isPending ? (
+                          <ActivityIndicator size="small" color="#FF9F0A" />
+                        ) : (
+                          <Text style={{ color: '#FF9F0A', fontWeight: '700' }}>Accept</Text>
+                        )}
                       </TouchableOpacity>
                     </>
                   )}
@@ -475,16 +508,21 @@ export function OccurrenceDetailScreenContent({
               testID="send-swap-request-button"
               onPress={submitSwapRequest}
               disabled={!selectedTargetId || requestSwap.isPending}
+              style={{ minWidth: 50, alignItems: 'flex-end' }}
             >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: selectedTargetId && !requestSwap.isPending ? '#0a7ea4' : textSec,
-                }}
-              >
-                {requestSwap.isPending ? 'Sending…' : 'Send'}
-              </Text>
+              {requestSwap.isPending ? (
+                <ActivityIndicator size="small" color="#0a7ea4" />
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: selectedTargetId ? '#0a7ea4' : textSec,
+                  }}
+                >
+                  Send
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -607,16 +645,21 @@ export function OccurrenceDetailScreenContent({
               testID="submit-override-button"
               onPress={submitOverride}
               disabled={!selectedAssigneeId || overrideOccurrence.isPending}
+              style={{ minWidth: 70, alignItems: 'flex-end' }}
             >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: selectedAssigneeId && !overrideOccurrence.isPending ? '#FF3B30' : textSec,
-                }}
-              >
-                {overrideOccurrence.isPending ? 'Saving…' : 'Override'}
-              </Text>
+              {overrideOccurrence.isPending ? (
+                <ActivityIndicator size="small" color="#FF3B30" />
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: selectedAssigneeId ? '#FF3B30' : textSec,
+                  }}
+                >
+                  Override
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
