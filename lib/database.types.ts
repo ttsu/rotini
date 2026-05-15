@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       notification_jobs: {
@@ -635,6 +660,14 @@ export type Database = {
       }
     }
     Functions: {
+      _compact_membership: {
+        Args: {
+          p_removed_pos: number
+          p_removed_uid: string
+          p_rota_id: string
+        }
+        Returns: undefined
+      }
       accept_invite: {
         Args: { p_code: string }
         Returns: {
@@ -774,6 +807,14 @@ export type Database = {
         Args: { p_rota_id: string; p_user_id: string }
         Returns: undefined
       }
+      reorder_members: {
+        Args: {
+          p_cutoff_at: string
+          p_ordered_user_ids: string[]
+          p_rota_id: string
+        }
+        Returns: undefined
+      }
       request_swap: {
         Args: {
           p_message?: string
@@ -825,7 +866,7 @@ export type Database = {
         Returns: undefined
       }
       set_user_reminder: {
-        Args: { p_lead_minutes: number | null; p_rota_id: string }
+        Args: { p_lead_minutes: number; p_rota_id: string }
         Returns: undefined
       }
       transfer_ownership: {
@@ -961,6 +1002,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
