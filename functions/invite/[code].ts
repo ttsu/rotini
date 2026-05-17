@@ -50,7 +50,7 @@ export async function onRequestGet({
 function validHtml(rotaName: string, role: string, code: string, canonicalUrl: string): string {
   const title = `You're invited to ${rotaName}`;
   const description = `Join as a ${role} on Rotini`;
-  const ogImage = 'https://rotini.timtsu.com/og-invite.png';
+  const ogImage = 'https://www.gorotini.com/og-invite.png';
   const escapedTitle = escapeHtml(title);
   const escapedDescription = escapeHtml(description);
   const escapedCode = encodeURIComponent(code);

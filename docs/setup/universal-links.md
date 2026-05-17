@@ -52,7 +52,7 @@ Note the generated `*.pages.dev` subdomain — you'll need it for DNS.
 
 ## 4. Add the custom domain in Cloudflare Pages
 
-In the Pages project: **Custom domains → Set up a custom domain → `rotini.timtsu.com`**
+In the Pages project: **Custom domains → Set up a custom domain → `www.gorotini.com`**
 
 Cloudflare will provision HTTPS automatically.
 
@@ -92,7 +92,7 @@ Create the API token at: **dash.cloudflare.com → My Profile → API Tokens →
 In the Supabase dashboard: **Authentication → URL Configuration → Redirect URLs → Add URL**
 
 ```
-https://rotini.timtsu.com/auth-callback
+https://www.gorotini.com/auth-callback
 ```
 
 Without this, magic link emails will be rejected by Supabase when `EXPO_PUBLIC_APP_BASE_URL` is set.
@@ -102,10 +102,10 @@ Without this, magic link emails will be rejected by Supabase when `EXPO_PUBLIC_A
 ## 8. Set edge function secret
 
 ```sh
-supabase secrets set INVITE_PUBLIC_LINK_BASE=https://rotini.timtsu.com
+supabase secrets set INVITE_PUBLIC_LINK_BASE=https://www.gorotini.com
 ```
 
-This activates the web invite link path in the `notify-invite` function — invite push notifications will link to `https://rotini.timtsu.com/invite/[code]` instead of the custom scheme.
+This activates the web invite link path in the `notify-invite` function — invite push notifications will link to `https://www.gorotini.com/invite/[code]` instead of the custom scheme.
 
 ---
 
@@ -114,7 +114,7 @@ This activates the web invite link path in the `notify-invite` function — invi
 In EAS: **expo.dev → rotini → Secrets → New secret** (or via CLI):
 
 ```sh
-eas secret:create --scope project --name EXPO_PUBLIC_APP_BASE_URL --value https://rotini.timtsu.com
+eas secret:create --scope project --name EXPO_PUBLIC_APP_BASE_URL --value https://www.gorotini.com
 ```
 
 This makes magic link emails redirect to the Universal Link URL instead of the custom `rotini://` scheme.
@@ -139,25 +139,25 @@ Once the domain is live and the build is installed on a real device:
 
 ```sh
 # Check Content-Type on well-known files
-curl -I https://rotini.timtsu.com/.well-known/apple-app-site-association
+curl -I https://www.gorotini.com/.well-known/apple-app-site-association
 # → HTTP/2 200, content-type: application/json
 
-curl -I https://rotini.timtsu.com/.well-known/assetlinks.json
+curl -I https://www.gorotini.com/.well-known/assetlinks.json
 # → HTTP/2 200, content-type: application/json
 
 # Check invite rewrite works
-curl -I https://rotini.timtsu.com/invite/TESTCODE
+curl -I https://www.gorotini.com/invite/TESTCODE
 # → HTTP/2 200
 ```
 
 **Apple:** Validate AASA parsing at [search.developer.apple.com/appsearch-validation-tool](https://search.developer.apple.com/appsearch-validation-tool/)
 
-**iOS device test:** Open `https://rotini.timtsu.com/invite/TEST` from Notes or Safari — should open Rotini directly to the invite screen.
+**iOS device test:** Open `https://www.gorotini.com/invite/TEST` from Notes or Safari — should open Rotini directly to the invite screen.
 
 **Android device test:**
 
 ```sh
-adb shell am start -a android.intent.action.VIEW -d "https://rotini.timtsu.com/invite/TEST"
+adb shell am start -a android.intent.action.VIEW -d "https://www.gorotini.com/invite/TEST"
 ```
 
 Should open Rotini directly.

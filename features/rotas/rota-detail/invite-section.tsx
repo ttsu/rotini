@@ -5,7 +5,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { useCreateInvite } from '@/features/rotas/use-rotas-mutations';
 import { getUserMessage } from '@/lib/errors';
 
-const INVITE_BASE = 'https://rotini.timtsu.com/invite';
+const INVITE_BASE = 'https://www.gorotini.com/invite';
 
 export type InviteSectionProps = {
   rotaId: string;
