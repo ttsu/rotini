@@ -392,16 +392,16 @@ async function main() {
 
   const kitchenRows = testerUserId
     ? [
-        { rota_id: kitchenRota.id, user_id: owner.id, role: 'owner', position: 0 },
-        { rota_id: kitchenRota.id, user_id: member.id, role: 'member', position: 1 },
-        { rota_id: kitchenRota.id, user_id: outsider.id, role: 'member', position: 2 },
-        { rota_id: kitchenRota.id, user_id: testerUserId, role: 'member', position: 3 },
-        { rota_id: kitchenRota.id, user_id: viewer.id, role: 'viewer', position: null },
+        { rota_id: kitchenRota.id, user_id: owner.id, role: 'member', is_manager: true, position: 0 },
+        { rota_id: kitchenRota.id, user_id: member.id, role: 'member', is_manager: false, position: 1 },
+        { rota_id: kitchenRota.id, user_id: outsider.id, role: 'member', is_manager: false, position: 2 },
+        { rota_id: kitchenRota.id, user_id: testerUserId, role: 'member', is_manager: false, position: 3 },
+        { rota_id: kitchenRota.id, user_id: viewer.id, role: 'watcher', is_manager: false, position: null },
       ]
     : [
-        { rota_id: kitchenRota.id, user_id: owner.id, role: 'owner', position: 0 },
-        { rota_id: kitchenRota.id, user_id: member.id, role: 'member', position: 1 },
-        { rota_id: kitchenRota.id, user_id: viewer.id, role: 'viewer', position: null },
+        { rota_id: kitchenRota.id, user_id: owner.id, role: 'member', is_manager: true, position: 0 },
+        { rota_id: kitchenRota.id, user_id: member.id, role: 'member', is_manager: false, position: 1 },
+        { rota_id: kitchenRota.id, user_id: viewer.id, role: 'watcher', is_manager: false, position: null },
       ];
 
   const { error: membersKitchen } = await admin.from('rota_members').upsert(kitchenRows, {
@@ -411,16 +411,16 @@ async function main() {
 
   const standupRows = testerUserId
     ? [
-        { rota_id: standupRota.id, user_id: testerUserId, role: 'owner', position: 0 },
-        { rota_id: standupRota.id, user_id: owner.id, role: 'member', position: 1 },
-        { rota_id: standupRota.id, user_id: member.id, role: 'member', position: 2 },
-        { rota_id: standupRota.id, user_id: outsider.id, role: 'member', position: 3 },
-        { rota_id: standupRota.id, user_id: viewer.id, role: 'viewer', position: null },
+        { rota_id: standupRota.id, user_id: testerUserId, role: 'member', is_manager: true, position: 0 },
+        { rota_id: standupRota.id, user_id: owner.id, role: 'member', is_manager: false, position: 1 },
+        { rota_id: standupRota.id, user_id: member.id, role: 'member', is_manager: false, position: 2 },
+        { rota_id: standupRota.id, user_id: outsider.id, role: 'member', is_manager: false, position: 3 },
+        { rota_id: standupRota.id, user_id: viewer.id, role: 'watcher', is_manager: false, position: null },
       ]
     : [
-        { rota_id: standupRota.id, user_id: owner.id, role: 'owner', position: 0 },
-        { rota_id: standupRota.id, user_id: member.id, role: 'member', position: 1 },
-        { rota_id: standupRota.id, user_id: viewer.id, role: 'viewer', position: null },
+        { rota_id: standupRota.id, user_id: owner.id, role: 'member', is_manager: true, position: 0 },
+        { rota_id: standupRota.id, user_id: member.id, role: 'member', is_manager: false, position: 1 },
+        { rota_id: standupRota.id, user_id: viewer.id, role: 'watcher', is_manager: false, position: null },
       ];
 
   const { error: membersStandup } = await admin.from('rota_members').upsert(standupRows, {
@@ -430,15 +430,15 @@ async function main() {
 
   const oncallRows = testerUserId
     ? [
-        { rota_id: oncallRota.id, user_id: owner.id, role: 'owner', position: 0 },
-        { rota_id: oncallRota.id, user_id: member.id, role: 'member', position: 1 },
-        { rota_id: oncallRota.id, user_id: outsider.id, role: 'member', position: 2 },
-        { rota_id: oncallRota.id, user_id: viewer.id, role: 'viewer', position: null },
-        { rota_id: oncallRota.id, user_id: testerUserId, role: 'viewer', position: null },
+        { rota_id: oncallRota.id, user_id: owner.id, role: 'member', is_manager: true, position: 0 },
+        { rota_id: oncallRota.id, user_id: member.id, role: 'member', is_manager: false, position: 1 },
+        { rota_id: oncallRota.id, user_id: outsider.id, role: 'member', is_manager: false, position: 2 },
+        { rota_id: oncallRota.id, user_id: viewer.id, role: 'watcher', is_manager: false, position: null },
+        { rota_id: oncallRota.id, user_id: testerUserId, role: 'watcher', is_manager: false, position: null },
       ]
     : [
-        { rota_id: oncallRota.id, user_id: owner.id, role: 'owner', position: 0 },
-        { rota_id: oncallRota.id, user_id: member.id, role: 'member', position: 1 },
+        { rota_id: oncallRota.id, user_id: owner.id, role: 'member', is_manager: true, position: 0 },
+        { rota_id: oncallRota.id, user_id: member.id, role: 'member', is_manager: false, position: 1 },
       ];
 
   const { error: membersOncall } = await admin.from('rota_members').upsert(oncallRows, {
