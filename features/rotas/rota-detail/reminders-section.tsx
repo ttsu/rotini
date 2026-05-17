@@ -32,7 +32,7 @@ export function RemindersSection({
   sep,
 }: {
   rotaId: string;
-  userRole: 'owner' | 'member' | 'viewer';
+  userRole: 'member' | 'watcher';
   notifyScope: 'own' | 'all';
   card: string;
   textPrimary: string;
@@ -101,7 +101,7 @@ export function RemindersSection({
             borderBottomColor: sep,
           }}
         >
-          {userRole === 'viewer' ? (
+          {userRole === 'watcher' ? (
             <Text style={{ fontSize: 15, color: textSec }}>Notified for all shifts</Text>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
