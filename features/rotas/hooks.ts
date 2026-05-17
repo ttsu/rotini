@@ -20,7 +20,8 @@ export {
   useDeleteRota,
   useLeaveRota,
   useRemoveMember,
+  useReorderMembers,
   useSendTargetedInvite,
-  useTransferOwnership,
+  useSetManagerFlag,
   useUpdateRota,
 } from './use-rotas-mutations';

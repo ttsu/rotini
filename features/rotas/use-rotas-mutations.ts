@@ -91,7 +91,7 @@ export function useUpdateRota() {
   });
 }
 
-type MemberRole = 'owner' | 'member' | 'viewer';
+type ParticipationRole = 'member' | 'watcher';
 
 export function useCreateRota() {
   const { session } = useAuth();
@@ -136,7 +136,7 @@ export function useCreateInvite(rotaId: string) {
       email,
       phone,
     }: {
-      role: MemberRole;
+      role: ParticipationRole;
       email?: string | null;
       phone?: string | null;
     }) => {
@@ -166,7 +166,7 @@ export type NotifyInviteResult = {
  */
 export function useSendTargetedInvite(rotaId: string) {
   return useMutation({
-    mutationFn: async (params: { role: MemberRole; email?: string; phoneE164?: string }) => {
+    mutationFn: async (params: { role: ParticipationRole; email?: string; phoneE164?: string }) => {
       const { data: invite, error } = await supabase.rpc('create_invite', {
         p_rota_id: rotaId,
         p_role: params.role,
@@ -218,7 +218,7 @@ export function useAcceptInvite() {
 export function useChangeMemberRole(rotaId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: MemberRole }) => {
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: ParticipationRole }) => {
       const { data, error } = await supabase.rpc('change_member_role', {
         p_rota_id: rotaId,
         p_user_id: userId,
@@ -231,6 +231,25 @@ export function useChangeMemberRole(rotaId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
+    },
+  });
+}
+
+export function useSetManagerFlag(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, isManager }: { userId: string; isManager: boolean }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc('set_manager_flag', {
+        p_rota_id: rotaId,
+        p_user_id: userId,
+        p_is_manager: isManager,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
     },
   });
 }

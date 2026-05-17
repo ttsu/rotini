@@ -8,13 +8,14 @@ import { supabase } from '@/lib/supabase';
 import {
   useChangeMemberRole,
   useRemoveMember,
-  useTransferOwnership,
+  useSetManagerFlag,
 } from '../use-rotas-mutations';
 
 import { toTestIdSegment } from './formatting';
 
 export type Member = {
   role: string;
+  is_manager: boolean;
   notify_scope: string;
   user_id: string;
   position: number | null;
@@ -38,7 +39,7 @@ function MemberAvatar({
 }
 
 /**
- * Single member row with owner actions (role, remove, transfer) and optional reorder controls.
+ * Single member row with manager actions (role, manager flag, remove) and optional reorder controls.
  */
 export function MemberRow({
   member,
@@ -69,7 +70,7 @@ export function MemberRow({
 }) {
   const changeRole = useChangeMemberRole(rotaId);
   const removeMember = useRemoveMember(rotaId);
-  const transferOwnership = useTransferOwnership(rotaId);
+  const setManager = useSetManagerFlag(rotaId);
   const name = member.profile?.display_name ?? 'Unknown';
   const avatarUrl = member.profile?.avatar_url;
 
@@ -110,16 +111,16 @@ export function MemberRow({
         ? `\n\n${count} upcoming turn${count === 1 ? '' : 's'} will be automatically reassigned.`
         : '';
     Alert.alert(
-      `Make ${name} a viewer?`,
+      `Make ${name} a watcher?`,
       `They will no longer appear in the rotation.${note}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Make viewer',
+          text: 'Make watcher',
           style: 'destructive',
           onPress: () =>
             changeRole.mutate(
-              { userId: member.user_id, newRole: 'viewer' },
+              { userId: member.user_id, newRole: 'watcher' },
               { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
             ),
         },
@@ -127,8 +128,8 @@ export function MemberRow({
     );
   }
 
-  async function handleRoleChange(newRole: 'owner' | 'member' | 'viewer') {
-    if (newRole === 'viewer' && member.position !== null) {
+  async function handleRoleChange(newRole: 'member' | 'watcher') {
+    if (newRole === 'watcher' && member.position !== null) {
       await confirmDemotion();
       return;
     }
@@ -138,55 +139,74 @@ export function MemberRow({
     );
   }
 
-  function confirmTransfer() {
+  function confirmGrantManager() {
     Alert.alert(
-      `Transfer ownership to ${name}?`,
-      'You will become a member. This cannot be undone without their cooperation.',
+      `Grant manager to ${name}?`,
+      'They will be able to manage this shift alongside you.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Transfer',
+          text: 'Grant manager',
+          onPress: () =>
+            setManager.mutate(
+              { userId: member.user_id, isManager: true },
+              { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
+            ),
+        },
+      ]
+    );
+  }
+
+  function confirmRevokeManager() {
+    Alert.alert(
+      `Revoke manager from ${name}?`,
+      'They will no longer be able to manage this shift.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Revoke manager',
           style: 'destructive',
           onPress: () =>
-            transferOwnership.mutate(member.user_id, {
-              onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
-            }),
+            setManager.mutate(
+              { userId: member.user_id, isManager: false },
+              { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
+            ),
         },
       ]
     );
   }
 
   function showActions() {
-    const roles: ('owner' | 'member' | 'viewer')[] = ['owner', 'member', 'viewer'];
-    const options = [
-      ...roles.filter((r) => r !== member.role).map((r) => `Make ${r}`),
-      `Transfer ownership to ${name}`,
-      `Remove ${name}`,
-      'Cancel',
-    ];
+    const options: string[] = [];
+    if (member.role !== 'member') options.push('Make member');
+    if (member.role !== 'watcher') options.push('Make watcher');
+    if (!member.is_manager) options.push('Grant manager');
+    if (member.is_manager) options.push('Revoke manager');
+    options.push(`Remove ${name}`, 'Cancel');
+
+    function handleOption(label: string) {
+      if (label === 'Make member') handleRoleChange('member');
+      else if (label === 'Make watcher') handleRoleChange('watcher');
+      else if (label === 'Grant manager') confirmGrantManager();
+      else if (label === 'Revoke manager') confirmRevokeManager();
+      else if (label === `Remove ${name}`) confirmRemove();
+    }
+
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: options.length - 1, destructiveButtonIndex: options.length - 2 },
         (idx) => {
           if (idx === options.length - 1) return;
-          if (idx === options.length - 2) {
-            confirmRemove();
-          } else if (options[idx].startsWith('Transfer')) {
-            confirmTransfer();
-          } else {
-            const newRole = options[idx].replace('Make ', '') as 'owner' | 'member' | 'viewer';
-            handleRoleChange(newRole);
-          }
+          handleOption(options[idx]);
         }
       );
     } else {
       Alert.alert(name, undefined, [
-        ...roles.filter((r) => r !== member.role).map((r) => ({
-          text: `Make ${r}`,
-          onPress: () => handleRoleChange(r),
+        ...options.slice(0, -1).map((label) => ({
+          text: label,
+          style: label.startsWith('Remove') ? ('destructive' as const) : ('default' as const),
+          onPress: () => handleOption(label),
         })),
-        { text: `Transfer ownership to ${name}`, onPress: confirmTransfer },
-        { text: `Remove ${name}`, style: 'destructive' as const, onPress: confirmRemove },
         { text: 'Cancel', style: 'cancel' as const },
       ]);
     }
@@ -216,7 +236,7 @@ export function MemberRow({
           </Text>
         )}
       </View>
-      <Pill label={member.role} color={member.role === 'owner' ? 'teal' : 'gray'} />
+      {member.is_manager && <Pill label="manager" color="teal" />}
       {showReorderControls && (
         <View style={{ flexDirection: 'row', marginLeft: 8 }}>
           <TouchableOpacity
