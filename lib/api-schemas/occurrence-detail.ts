@@ -28,6 +28,7 @@ export type OccurrenceDetail = z.infer<typeof occurrenceDetailSchema>;
 export const rotaMemberEmbedSchema = z.object({
   user_id: z.string(),
   role: z.string(),
+  is_manager: z.boolean().default(false),
   profile: z.object({ id: z.string(), display_name: z.string().nullable() }).nullable(),
 });
 

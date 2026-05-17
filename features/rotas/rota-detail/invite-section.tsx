@@ -16,12 +16,12 @@ export type InviteSectionProps = {
 };
 
 export function InviteSection({ rotaId, card, textPrimary, textSec, sep }: InviteSectionProps) {
-  const [pendingRole, setPendingRole] = useState<'member' | 'viewer' | null>(null);
+  const [pendingRole, setPendingRole] = useState<'member' | 'watcher' | null>(null);
   const createInvite = useCreateInvite(rotaId);
   const busy = createInvite.isPending;
 
   const handleInvite = useCallback(
-    (role: 'member' | 'viewer') => {
+    (role: 'member' | 'watcher') => {
       setPendingRole(role);
       createInvite.mutate(
         { role, email: null, phone: null },
@@ -83,7 +83,7 @@ export function InviteSection({ rotaId, card, textPrimary, textSec, sep }: Invit
           </TouchableOpacity>
 
           <TouchableOpacity
-            testID="invite-viewer-button"
+            testID="invite-watcher-button"
             style={{
               flex: 1,
               borderWidth: 1.5,
@@ -93,15 +93,15 @@ export function InviteSection({ rotaId, card, textPrimary, textSec, sep }: Invit
               alignItems: 'center',
               opacity: busy ? 0.6 : 1,
             }}
-            onPress={() => handleInvite('viewer')}
+            onPress={() => handleInvite('watcher')}
             disabled={busy}
-            accessibilityLabel="Invite viewer"
+            accessibilityLabel="Invite watcher"
             accessibilityRole="button"
           >
-            {busy && pendingRole === 'viewer' ? (
+            {busy && pendingRole === 'watcher' ? (
               <ActivityIndicator color="#0a7ea4" />
             ) : (
-              <Text style={{ color: '#0a7ea4', fontSize: 15, fontWeight: '600' }}>+ Viewer</Text>
+              <Text style={{ color: '#0a7ea4', fontSize: 15, fontWeight: '600' }}>+ Watcher</Text>
             )}
           </TouchableOpacity>
         </View>

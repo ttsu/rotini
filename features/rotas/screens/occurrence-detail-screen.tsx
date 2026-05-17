@@ -141,8 +141,8 @@ export function OccurrenceDetailScreenContent({
   const isFuture = occ ? new Date(occ.scheduled_at) > now : false;
 
   const members: RotaMemberEmbed[] = parseRotaMemberEmbeds(rotaData?.rota_members);
-  const myRole = members.find((m) => m.user_id === userId)?.role;
-  const isOwner = myRole === 'owner';
+  const myMember = members.find((m) => m.user_id === userId);
+  const isOwner = myMember?.is_manager === true;
   const isAssignee = occ?.assigned_user_id === userId;
 
   const hasPendingSwap = !!occ?.swap_request_id;
@@ -150,8 +150,8 @@ export function OccurrenceDetailScreenContent({
   const isSwapTarget = swapReq?.target_user_id === userId;
   const canRequestSwap = isAssignee && isFuture && occ?.status === 'scheduled' && !hasPendingSwap;
 
-  const swapTargets = members.filter((m) => m.role !== 'viewer' && m.user_id !== userId);
-  const overrideTargets = members.filter((m) => m.role !== 'viewer');
+  const swapTargets = members.filter((m) => m.role !== 'watcher' && m.user_id !== userId);
+  const overrideTargets = members.filter((m) => m.role !== 'watcher');
   const assigneeTestId = toTestIdSegment(occ?.assignee?.display_name ?? 'unassigned');
 
   // ── Handlers ──────────────────────────────────────────────────────────────
