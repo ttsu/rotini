@@ -90,7 +90,7 @@ module.exports = ({ config }) => {
       supportsTablet: true,
       usesAppleSignIn: true,
       bundleIdentifier: appIdentifier,
-      associatedDomains: ['applinks:rotini.timtsu.com'],
+      associatedDomains: ['applinks:www.gorotini.com'],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -114,8 +114,8 @@ module.exports = ({ config }) => {
           action: 'VIEW',
           autoVerify: true,
           data: [
-            { scheme: 'https', host: 'rotini.timtsu.com', pathPrefix: '/invite' },
-            { scheme: 'https', host: 'rotini.timtsu.com', pathPrefix: '/auth-callback' },
+            { scheme: 'https', host: 'www.gorotini.com', pathPrefix: '/invite' },
+            { scheme: 'https', host: 'www.gorotini.com', pathPrefix: '/auth-callback' },
           ],
           category: ['BROWSABLE', 'DEFAULT'],
         },
