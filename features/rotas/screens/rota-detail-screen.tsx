@@ -90,7 +90,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   const myId = session?.user.id;
 
   // Members sorted by round-robin position; watchers (position=null) in a separate list
-  const rawMembers = (rota?.rota_members ?? []) as Member[];
+  const rawMembers = (rota?.rota_members ?? []) as unknown as Member[];
   const activeMembers = rawMembers
     .filter((m) => m.position !== null)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));

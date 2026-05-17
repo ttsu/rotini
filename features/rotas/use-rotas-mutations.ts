@@ -239,7 +239,8 @@ export function useSetManagerFlag(rotaId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId, isManager }: { userId: string; isManager: boolean }) => {
-      const { data, error } = await supabase.rpc('set_manager_flag', {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc('set_manager_flag', {
         p_rota_id: rotaId,
         p_user_id: userId,
         p_is_manager: isManager,
