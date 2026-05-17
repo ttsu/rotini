@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -440,21 +441,22 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
 
           <View testID="rota-members-section" style={[cardStyle, { marginBottom: 12 }]}>
             {displayActiveMembers.map((m, i) => (
-              <MemberRow
-                key={m.user_id}
-                member={m}
-                isOwner={isOwner}
-                isMe={m.user_id === myId}
-                rotaId={routeId}
-                textPrimary={textPrimary}
-                sep={sep}
-                showSep={i < displayActiveMembers.length - 1}
-                showReorderControls={isOwner}
-                canMoveUp={i > 0}
-                canMoveDown={i < displayActiveMembers.length - 1}
-                onMoveUp={() => handleMoveUp(i)}
-                onMoveDown={() => handleMoveDown(i)}
-              />
+              <Animated.View key={m.user_id} layout={LinearTransition}>
+                <MemberRow
+                  member={m}
+                  isOwner={isOwner}
+                  isMe={m.user_id === myId}
+                  rotaId={routeId}
+                  textPrimary={textPrimary}
+                  sep={sep}
+                  showSep={i < displayActiveMembers.length - 1}
+                  showReorderControls={isOwner}
+                  canMoveUp={i > 0}
+                  canMoveDown={i < displayActiveMembers.length - 1}
+                  onMoveUp={() => handleMoveUp(i)}
+                  onMoveDown={() => handleMoveDown(i)}
+                />
+              </Animated.View>
             ))}
           </View>
 
