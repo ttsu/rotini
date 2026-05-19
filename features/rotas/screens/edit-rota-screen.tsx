@@ -137,7 +137,7 @@ export function EditRotaScreenContent({
     if (!rota || !rota.dtstart || !rota.tz) return false;
     return (
       values.tz !== rota.tz ||
-      fromZonedTime(values.dtstart, values.tz).getTime() !== new Date(rota.dtstart).getTime() ||
+      Math.floor(fromZonedTime(values.dtstart, values.tz).getTime() / 60000) !== Math.floor(new Date(rota.dtstart).getTime() / 60000) ||
       values.rrule !== (rota.rrule ?? '') ||
       values.back_to_back !== (rota.back_to_back ?? false) ||
       (!values.back_to_back && (values.duration_minutes ?? null) !== (rota.duration_minutes ?? null))
@@ -237,6 +237,7 @@ export function EditRotaScreenContent({
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
 

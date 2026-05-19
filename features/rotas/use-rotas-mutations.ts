@@ -52,7 +52,7 @@ export function useUpdateRota() {
 
       const destructive =
         values.tz !== original.tz ||
-        fromZonedTime(values.dtstart, values.tz).getTime() !== new Date(original.dtstart).getTime() ||
+        Math.floor(fromZonedTime(values.dtstart, values.tz).getTime() / 60000) !== Math.floor(new Date(original.dtstart).getTime() / 60000) ||
         values.rrule !== original.rrule ||
         values.back_to_back !== original.back_to_back ||
         (!values.back_to_back && (values.duration_minutes ?? null) !== original.duration_minutes);

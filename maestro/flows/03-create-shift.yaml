@@ -24,11 +24,7 @@ appId: com.timtsu.rotini
 - assertVisible:
     id: "schedule-modal"
 - assertVisible:
-    id: "rrule-frequency-daily"
-- assertVisible:
-    id: "rrule-frequency-weekly"
-- assertVisible:
-    id: "rrule-frequency-monthly"
+    id: "rrule-frequency-tabs"
 - tapOn:
     id: "done-editing-schedule-button"
 - tapOn:

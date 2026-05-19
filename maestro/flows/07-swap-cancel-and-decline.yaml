@@ -1,0 +1,79 @@
+appId: com.timtsu.rotini
+---
+# PART 1: Requester cancels a pending swap request
+- runFlow: ../generated/login-owner.yaml
+- runFlow: ../generated/open-cancel-decline-occurrence.yaml
+- extendedWaitUntil:
+    visible:
+      id: "occurrence-assignee-e2e-owner"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "request-swap-button"
+    timeout: 10000
+- tapOn:
+    id: "request-swap-button"
+- assertVisible:
+    id: "swap-request-modal"
+- tapOn:
+    id: "swap-target-e2e-member"
+- tapOn:
+    id: "swap-message-input"
+- inputText: "Cancel test"
+- tapOn:
+    id: "send-swap-request-button"
+- extendedWaitUntil:
+    visible:
+      id: "swap-pending-banner"
+    timeout: 15000
+- tapOn:
+    id: "cancel-swap-button"
+- tapOn:
+    text: "Cancel swap"
+- extendedWaitUntil:
+    visible:
+      id: "request-swap-button"
+    timeout: 10000
+- assertNotVisible:
+    id: "swap-pending-banner"
+
+# PART 2: Target declines a pending swap request
+- runFlow: ../generated/login-owner.yaml
+- runFlow: ../generated/open-cancel-decline-occurrence.yaml
+- extendedWaitUntil:
+    visible:
+      id: "occurrence-assignee-e2e-owner"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "request-swap-button"
+    timeout: 10000
+- tapOn:
+    id: "request-swap-button"
+- tapOn:
+    id: "swap-target-e2e-member"
+- tapOn:
+    id: "swap-message-input"
+- inputText: "Decline test"
+- tapOn:
+    id: "send-swap-request-button"
+- extendedWaitUntil:
+    visible:
+      id: "swap-pending-banner"
+    timeout: 15000
+- runFlow: ../generated/login-member.yaml
+- runFlow: ../generated/open-cancel-decline-occurrence.yaml
+- extendedWaitUntil:
+    visible:
+      id: "swap-pending-banner"
+    timeout: 15000
+- tapOn:
+    id: "decline-swap-button"
+- extendedWaitUntil:
+    visible:
+      id: "occurrence-detail-screen"
+    timeout: 10000
+- assertNotVisible:
+    id: "swap-pending-banner"
+- assertNotVisible:
+    id: "decline-swap-button"

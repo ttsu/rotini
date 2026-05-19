@@ -152,6 +152,8 @@ async function main() {
   const swapEnd = addMinutes(now, 25 * 60);
   const overrideStart = addMinutes(now, 48 * 60);
   const overrideEnd = addMinutes(now, 49 * 60);
+  const cancelDeclineStart = addMinutes(now, 72 * 60);
+  const cancelDeclineEnd = addMinutes(now, 73 * 60);
 
   const { data: rota, error: rotaError } = await admin
     .from('rotas')
@@ -174,9 +176,9 @@ async function main() {
 
   const { error: memberError } = await admin.from('rota_members').upsert(
     [
-      { rota_id: rota.id, user_id: owner.id, role: 'owner', position: 0 },
-      { rota_id: rota.id, user_id: member.id, role: 'member', position: 1 },
-      { rota_id: rota.id, user_id: viewer.id, role: 'viewer', position: null },
+      { rota_id: rota.id, user_id: owner.id, role: 'member', is_manager: true, position: 0 },
+      { rota_id: rota.id, user_id: member.id, role: 'member', is_manager: false, position: 1 },
+      { rota_id: rota.id, user_id: viewer.id, role: 'watcher', is_manager: false, position: null },
     ],
     { onConflict: 'rota_id,user_id' },
   );
@@ -186,6 +188,7 @@ async function main() {
   const activeOccurrenceId = randomUUID();
   const swapOccurrenceId = randomUUID();
   const overrideOccurrenceId = randomUUID();
+  const cancelDeclineOccurrenceId = randomUUID();
 
   const { error: occurrenceError } = await admin.from('occurrences').insert([
     {
@@ -221,13 +224,24 @@ async function main() {
       status: 'scheduled',
       generated_from_rule: true,
     },
+    {
+      id: cancelDeclineOccurrenceId,
+      rota_id: rota.id,
+      scheduled_at: cancelDeclineStart.toISOString(),
+      ends_at: cancelDeclineEnd.toISOString(),
+      scheduled_local_date: localDate(cancelDeclineStart),
+      assigned_user_id: owner.id,
+      original_assignee_id: owner.id,
+      status: 'scheduled',
+      generated_from_rule: true,
+    },
   ]);
 
   if (occurrenceError) throw occurrenceError;
 
   const { error: reminderError } = await admin
-    .from('rota_reminders')
-    .insert({ rota_id: rota.id, lead_minutes: 60 });
+    .from('user_rota_reminders')
+    .insert({ rota_id: rota.id, user_id: owner.id, lead_minutes: 60 });
 
   if (reminderError) throw reminderError;
 
@@ -244,6 +258,11 @@ async function main() {
     `rotini://rotas/occurrence/${overrideOccurrenceId}`,
     'occurrence-detail-screen',
   );
+  writeOpenFlow(
+    'open-cancel-decline-occurrence.yaml',
+    `rotini://rotas/occurrence/${cancelDeclineOccurrenceId}`,
+    'occurrence-detail-screen',
+  );
 
   fs.writeFileSync(
     path.join(GENERATED_DIR, 'data.json'),
@@ -254,6 +273,7 @@ async function main() {
         activeOccurrenceId,
         swapOccurrenceId,
         overrideOccurrenceId,
+        cancelDeclineOccurrenceId,
         ownerEmail: OWNER_EMAIL,
         memberEmail: MEMBER_EMAIL,
         viewerEmail: VIEWER_EMAIL,

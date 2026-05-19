@@ -91,8 +91,12 @@ module.exports = ({ config }) => {
       usesAppleSignIn: true,
       bundleIdentifier: appIdentifier,
       associatedDomains: ['applinks:www.gorotini.com'],
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+        NSCalendarsFullAccessUsageDescription:
+          'Rotini needs access to your calendar to show your on-call shifts.',
+        NSCalendarsWriteOnlyAccessUsageDescription:
+          'Rotini needs access to your calendar to add your on-call shifts.',
       },
       icon: {
         light: './assets/images/ios-light.png',

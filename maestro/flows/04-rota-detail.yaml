@@ -16,8 +16,6 @@ appId: com.timtsu.rotini
     id: 'rota-member-row-e2e-owner'
 - assertVisible:
     id: 'rota-member-row-e2e-member'
-- assertVisible:
-    id: 'rota-member-row-e2e-viewer'
 - scrollUntilVisible:
     element:
       id: 'invite-member-button'
@@ -25,12 +23,20 @@ appId: com.timtsu.rotini
 - assertVisible:
     id: 'invite-member-button'
 - assertVisible:
-    id: 'invite-viewer-button'
+    id: 'invite-watcher-button'
+- scrollUntilVisible:
+    element:
+      id: 'rota-watchers-section'
+    direction: DOWN
+- assertVisible:
+    id: 'rota-watchers-heading'
+- assertVisible:
+    id: 'rota-member-row-e2e-viewer'
 - scrollUntilVisible:
     element:
       id: 'rota-reminders-heading'
     direction: DOWN
 - assertVisible:
-    id: 'rota-reminder-row-60'
+    id: 'reminder-picker-row'
 - assertVisible:
     id: 'leave-shift-button'

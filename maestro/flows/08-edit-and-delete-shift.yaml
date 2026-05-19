@@ -1,0 +1,95 @@
+appId: com.timtsu.rotini
+---
+# PART 1: Edit a rota's name
+- runFlow: ../generated/login-owner.yaml
+- tapOn:
+    id: "home-rota-card-e2e-kitchen-duty"
+- extendedWaitUntil:
+    visible:
+      id: "rota-detail-screen"
+    timeout: 15000
+- tapOn:
+    id: "edit-shift-button"
+- extendedWaitUntil:
+    visible:
+      id: "shift-name-input"
+    timeout: 10000
+- tapOn:
+    id: "shift-name-input"
+- eraseText: 30
+- inputText: "E2E Kitchen Duty Edited"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "save-shift-button"
+    direction: DOWN
+- tapOn:
+    id: "save-shift-button"
+- extendedWaitUntil:
+    visible:
+      id: "rota-detail-screen"
+    timeout: 15000
+- assertVisible:
+    text: "E2E Kitchen Duty Edited"
+# Restore original name so later tests are unaffected
+- tapOn:
+    id: "edit-shift-button"
+- extendedWaitUntil:
+    visible:
+      id: "shift-name-input"
+    timeout: 10000
+- tapOn:
+    id: "shift-name-input"
+- eraseText: 30
+- inputText: "E2E Kitchen Duty"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "save-shift-button"
+    direction: DOWN
+- tapOn:
+    id: "save-shift-button"
+- extendedWaitUntil:
+    visible:
+      id: "rota-detail-screen"
+    timeout: 15000
+
+# PART 2: Create and delete a rota
+- tapOn:
+    id: "tab-shifts"
+- extendedWaitUntil:
+    visible:
+      id: "shifts-screen"
+    timeout: 10000
+- tapOn:
+    id: "create-new-shift-button"
+- extendedWaitUntil:
+    visible:
+      id: "shift-name-input"
+    timeout: 10000
+- tapOn:
+    id: "shift-name-input"
+- inputText: "E2E Delete Me"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "create-shift-button"
+    direction: DOWN
+- tapOn:
+    id: "create-shift-button"
+- extendedWaitUntil:
+    visible:
+      id: "rota-detail-screen"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "delete-shift-button"
+    direction: DOWN
+- tapOn:
+    id: "delete-shift-button"
+- tapOn:
+    text: "Delete"
+- extendedWaitUntil:
+    visible:
+      id: "shifts-screen"
+    timeout: 15000
