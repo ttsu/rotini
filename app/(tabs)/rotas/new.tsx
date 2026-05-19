@@ -139,6 +139,7 @@ export default function NewRotaScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
 

@@ -8,7 +8,7 @@ export const queryKeys = {
   occurrences: {
     all: (): QueryKey => ['occurrences'],
     forRota: (rotaId: string): QueryKey => ['occurrences', rotaId],
-    detail: (occurrenceId: string): QueryKey => ['occurrence', occurrenceId],
+    detail: (occurrenceId: string): QueryKey => ['occurrences', occurrenceId],
   },
   homeRotas: {
     all: (): QueryKey => ['home-rotas'],
