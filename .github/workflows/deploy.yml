@@ -38,6 +38,7 @@ jobs:
     outputs:
       needs_native_build: ${{ steps.detect.outputs.needs_native_build }}
       supabase_changed: ${{ steps.detect.outputs.supabase_changed }}
+      build_limit_reached: ${{ steps.detect.outputs.build_limit_reached }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,6 +91,21 @@ jobs:
             echo "needs_native_build=false" >> "$GITHUB_OUTPUT"
           fi
 
+          # Check EAS iOS build limit
+          USAGE=$(eas account:usage --non-interactive 2>/dev/null || true)
+          echo "$USAGE"
+          IOS_LINE=$(echo "$USAGE" | grep -i 'ios' | head -1)
+          IOS_USED=$(echo "$IOS_LINE" | grep -oE '[0-9]+' | sed -n '1p')
+          IOS_LIMIT=$(echo "$IOS_LINE" | grep -oE '[0-9]+' | sed -n '2p')
+          BUILD_LIMIT_REACHED=false
+          if [ -n "$IOS_USED" ] && [ -n "$IOS_LIMIT" ] && [ "$IOS_LIMIT" -gt 0 ] && [ "$IOS_USED" -ge "$IOS_LIMIT" ]; then
+            echo "EAS iOS build limit reached ($IOS_USED / $IOS_LIMIT) — skipping native build"
+            BUILD_LIMIT_REACHED=true
+          else
+            echo "EAS iOS build limit not reached (${IOS_USED:-?} / ${IOS_LIMIT:-?})"
+          fi
+          echo "build_limit_reached=$BUILD_LIMIT_REACHED" >> "$GITHUB_OUTPUT"
+
           # Detect Supabase changes
           if [ "$PREV_SHA" = "0000000000000000000000000000000000000000" ]; then
             echo "supabase_changed=true" >> "$GITHUB_OUTPUT"
@@ -104,7 +120,7 @@ jobs:
   build:
     name: EAS Build (iOS preview)
     needs: [quality, detect]
-    if: needs.detect.outputs.needs_native_build == 'true'
+    if: needs.detect.outputs.needs_native_build == 'true' && needs.detect.outputs.build_limit_reached != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
