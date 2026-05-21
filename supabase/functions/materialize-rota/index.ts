@@ -25,10 +25,10 @@ serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization') ?? '';
   const apikeyHeader = req.headers.get('apikey') ?? '';
-  // Service callers: JWT with role service_role in Authorization, or the default secret key
-  // in `apikey` (non-JWT keys must not be sent as Bearer — see Supabase Functions auth guide).
+  // Service callers must present the exact secret key — either as Bearer token or in apikey.
   const isServiceRole =
-    jwtRole(authHeader) === 'service_role' || timingSafeEqualString(apikeyHeader, secretKey);
+    timingSafeEqualString(authHeader, `Bearer ${secretKey}`) ||
+    timingSafeEqualString(apikeyHeader, secretKey);
 
   let rotaId: string;
   try {
@@ -64,21 +64,7 @@ serve(async (req) => {
   }
 });
 
-// ─── JWT helpers ─────────────────────────────────────────────────────────────
-
-function jwtRole(authHeader: string): string | null {
-  if (!authHeader.startsWith('Bearer ')) return null;
-  const parts = authHeader.slice(7).split('.');
-  if (parts.length !== 3) return null;
-  try {
-    // base64url → base64
-    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(atob(b64));
-    return typeof payload.role === 'string' ? payload.role : null;
-  } catch {
-    return null;
-  }
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function timingSafeEqualString(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

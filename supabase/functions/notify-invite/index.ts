@@ -27,6 +27,11 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function utcDayStartIso(): string {
   const d = new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)).toISOString();
@@ -130,7 +135,7 @@ serve(async (req) => {
             from: resendFrom,
             to: [invite.email.trim()],
             subject: `You're invited to ${rotaName}`,
-            html: `<p>${inviterName} invited you to <strong>${rotaName}</strong> as <strong>${invite.role}</strong>.</p><p><a href="${webLink}">Accept invite</a></p><p style="font-size:12px;color:#666">If the link does not open the app, copy: <code>${invite.code}</code></p>`,
+            html: `<p>${escapeHtml(inviterName)} invited you to <strong>${escapeHtml(rotaName)}</strong> as <strong>${escapeHtml(invite.role)}</strong>.</p><p><a href="${escapeHtml(webLink)}">Accept invite</a></p><p style="font-size:12px;color:#666">If the link does not open the app, copy: <code>${invite.code}</code></p>`,
           }),
         });
         if (!res.ok) {
