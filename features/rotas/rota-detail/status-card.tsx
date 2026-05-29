@@ -46,10 +46,12 @@ export function StatusCard({
   }
 
   const barColor = isActive ? '#34C759' : '#0a7ea4';
-  const assigneeName = isActive ? now.active_assignee_name : now.upcoming_assignee_name;
+  const assigneeName = isActive
+    ? (now.active_assignee_display ?? now.active_assignee_name ?? 'Unknown')
+    : (now.upcoming_assignee_display ?? now.upcoming_assignee_name ?? 'Unknown');
   const headlineText = isActive
-    ? `${assigneeName ?? 'Unknown'} is on now`
-    : `Up next: ${assigneeName ?? 'Unknown'}`;
+    ? `${assigneeName} is on now`
+    : `Up next: ${assigneeName}`;
 
   let subtitleText = '';
   if (isActive && now.active_ends_at) {
