@@ -14,6 +14,11 @@
 
 -- ── 1. rota_members: add UUID PK, nullable user_id, label ────────────────────
 
+-- user_rota_reminders.user_rota_reminders_rota_id_user_id_fkey references the
+-- composite PK; drop it first so we can swap PK → UUID PK.
+ALTER TABLE public.user_rota_reminders
+  DROP CONSTRAINT user_rota_reminders_rota_id_user_id_fkey;
+
 -- Generate UUIDs for all existing rows (DEFAULT applies at ALTER time)
 ALTER TABLE public.rota_members
   ADD COLUMN id uuid DEFAULT gen_random_uuid();
@@ -25,13 +30,20 @@ ALTER TABLE public.rota_members ADD PRIMARY KEY (id);
 -- Allow null user_id (pending slots have no user yet)
 ALTER TABLE public.rota_members ALTER COLUMN user_id DROP NOT NULL;
 
--- Preserve the one-membership-per-user invariant for real members
-CREATE UNIQUE INDEX rota_members_user_rota_unique
-  ON public.rota_members (rota_id, user_id)
-  WHERE user_id IS NOT NULL;
+-- Full UNIQUE constraint (not partial) so it can be the FK target for
+-- user_rota_reminders. PostgreSQL treats NULL as distinct, so multiple pending
+-- slots (user_id=NULL) on the same rota are all allowed.
+ALTER TABLE public.rota_members
+  ADD CONSTRAINT rota_members_rota_id_user_id_key UNIQUE (rota_id, user_id);
 
 -- Optional placeholder name ("Carol", "New volunteer")
 ALTER TABLE public.rota_members ADD COLUMN label text;
+
+-- Restore the FK now that the unique constraint is in place
+ALTER TABLE public.user_rota_reminders
+  ADD CONSTRAINT user_rota_reminders_rota_id_user_id_fkey
+  FOREIGN KEY (rota_id, user_id) REFERENCES public.rota_members(rota_id, user_id)
+  ON DELETE CASCADE;
 
 -- ── 2. rota_invites: add slot_id FK ─────────────────────────────────────────
 
@@ -62,6 +74,8 @@ WHERE rm.rota_id = r.id
 ALTER TABLE public.rotas DROP COLUMN cursor_user_id;
 
 -- ── 5. _compact_membership: use cursor_member_id ─────────────────────────────
+-- Drop old signature first — CREATE OR REPLACE cannot rename parameters.
+DROP FUNCTION IF EXISTS public._compact_membership(uuid, int, uuid);
 
 CREATE OR REPLACE FUNCTION public._compact_membership(
   p_rota_id      uuid,
@@ -383,6 +397,8 @@ GRANT EXECUTE ON FUNCTION public.change_member_role(uuid, uuid, text) TO authent
 -- p_occurrences elements now include:
 --   { scheduled_at, ends_at, scheduled_local_date, assigned_user_id, slot_member_id }
 -- p_new_cursor_member_id: rota_members.id of the next member to assign
+-- Drop old signature — CREATE OR REPLACE cannot rename parameters.
+DROP FUNCTION IF EXISTS public.materialize_rota_apply(uuid, jsonb, uuid);
 
 CREATE OR REPLACE FUNCTION public.materialize_rota_apply(
   p_rota_id              uuid,
