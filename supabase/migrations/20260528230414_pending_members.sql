@@ -622,3 +622,91 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.update_pending_member_label(uuid, uuid, text) TO authenticated;
+
+-- ── 15. accept_invite: handle slot invites ────────────────────────────────────
+-- Slot invites (slot_id IS NOT NULL): fill the pending rota_members row.
+-- Regular invites (slot_id IS NULL): existing path — create a new row.
+
+CREATE OR REPLACE FUNCTION public.accept_invite(p_code text)
+RETURNS public.rota_members
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_invite  rota_invites;
+  v_member  rota_members;
+  v_pos     int;
+BEGIN
+  SELECT * INTO v_invite
+  FROM rota_invites
+  WHERE code = p_code
+    AND consumed_at IS NULL
+    AND expires_at > now();
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'invite not found, expired, or already used';
+  END IF;
+
+  -- Slot invite: fill the pending slot
+  IF v_invite.slot_id IS NOT NULL THEN
+    -- Guard: slot must still be unclaimed
+    SELECT * INTO v_member
+    FROM rota_members
+    WHERE id = v_invite.slot_id AND user_id IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'invite not found, expired, or already used';
+    END IF;
+
+    -- Guard: caller must not already be a real member
+    IF EXISTS (
+      SELECT 1 FROM rota_members
+      WHERE rota_id = v_invite.rota_id AND user_id = auth.uid()
+    ) THEN
+      RAISE EXCEPTION 'already a member of this rota';
+    END IF;
+
+    UPDATE rota_members
+    SET user_id = auth.uid(), label = NULL
+    WHERE id = v_invite.slot_id
+    RETURNING * INTO v_member;
+
+    UPDATE rota_invites
+    SET consumed_by = auth.uid(), consumed_at = now()
+    WHERE id = v_invite.id;
+
+    -- Delete placeholder occurrences so materializer recreates with real user
+    DELETE FROM occurrences
+    WHERE rota_id = v_invite.rota_id
+      AND slot_member_id = v_invite.slot_id
+      AND status = 'scheduled'
+      AND scheduled_at > now();
+
+    RETURN v_member;
+  END IF;
+
+  -- Regular invite: existing path
+  IF EXISTS (
+    SELECT 1 FROM rota_members
+    WHERE rota_id = v_invite.rota_id AND user_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'already a member of this rota';
+  END IF;
+
+  IF v_invite.role != 'watcher' THEN
+    SELECT coalesce(max(position) + 1, 1) INTO v_pos
+    FROM rota_members
+    WHERE rota_id = v_invite.rota_id AND position IS NOT NULL;
+  END IF;
+
+  INSERT INTO rota_members (rota_id, user_id, role, position, is_manager)
+  VALUES (v_invite.rota_id, auth.uid(), v_invite.role, v_pos, v_invite.is_manager)
+  RETURNING * INTO v_member;
+
+  UPDATE rota_invites
+  SET consumed_by = auth.uid(), consumed_at = now()
+  WHERE id = v_invite.id;
+
+  RETURN v_member;
+END;
+$$;
