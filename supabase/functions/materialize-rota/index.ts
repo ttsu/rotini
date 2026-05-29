@@ -80,7 +80,7 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   // Load rota
   const { data: rota, error: rotaErr } = await admin
     .from('rotas')
-    .select('id, rrule, dtstart, tz, duration_minutes, back_to_back, assignment_mode, cursor_user_id')
+    .select('id, rrule, dtstart, tz, duration_minutes, back_to_back, assignment_mode, cursor_member_id')
     .eq('id', rotaId)
     .single();
   if (rotaErr) throw new Error(`Rota load: ${rotaErr.message}`);
@@ -104,14 +104,14 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   // Active members (owners + members only), ordered by position
   const { data: membersRaw, error: membersErr } = await admin
     .from('rota_members')
-    .select('user_id, position')
+    .select('id, user_id, position')
     .eq('rota_id', rotaId)
-    .in('role', ['owner', 'member'])
+    .eq('role', 'member')
     .not('position', 'is', null)
     .order('position', { ascending: true });
   if (membersErr) throw new Error(`Members load: ${membersErr.message}`);
 
-  const members = (membersRaw ?? []) as Array<{ user_id: string; position: number }>;
+  const members = (membersRaw ?? []) as Array<{ id: string; user_id: string | null; position: number }>;
 
   // Expand RRULE for [max(now, dtstart)…now + 90 days], cap 200
   const now = new Date();
@@ -142,21 +142,24 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   // Load existing future 'scheduled' occurrences (preserves round-robin assignments)
   const { data: existing, error: existErr } = await admin
     .from('occurrences')
-    .select('scheduled_at, assigned_user_id')
+    .select('scheduled_at, assigned_user_id, slot_member_id')
     .eq('rota_id', rotaId)
     .eq('status', 'scheduled')
     .gt('scheduled_at', now.toISOString());
   if (existErr) throw new Error(`Existing load: ${existErr.message}`);
 
-  const existingMap = new Map<string, string | null>();
+  const existingMap = new Map<string, { assigned_user_id: string | null; slot_member_id: string | null }>();
   for (const row of existing ?? []) {
-    existingMap.set(new Date(row.scheduled_at).toISOString(), row.assigned_user_id);
+    existingMap.set(new Date(row.scheduled_at).toISOString(), {
+      assigned_user_id: row.assigned_user_id,
+      slot_member_id: row.slot_member_id,
+    });
   }
 
   // Round-robin cursor: cursorIdx points to the next member to assign
   let cursorIdx = 0;
-  if (members.length > 0 && rota.cursor_user_id) {
-    const idx = members.findIndex((m: { user_id: string }) => m.user_id === rota.cursor_user_id);
+  if (members.length > 0 && rota.cursor_member_id) {
+    const idx = members.findIndex((m) => m.id === rota.cursor_member_id);
     cursorIdx = idx >= 0 ? idx : 0;
   }
 
@@ -165,6 +168,7 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
     ends_at: string;
     scheduled_local_date: string;
     assigned_user_id: string | null;
+    slot_member_id: string | null;
   }> = [];
 
   for (let i = 0; i < desired.length; i++) {
@@ -182,12 +186,17 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
     }
 
     let assignedUserId: string | null = null;
+    let slotMemberId: string | null = null;
 
     if (existingMap.has(key)) {
       // Preserve existing assignment; cursor only advances for genuinely new rows
-      assignedUserId = existingMap.get(key) ?? null;
+      const ex = existingMap.get(key)!;
+      assignedUserId = ex.assigned_user_id;
+      slotMemberId = ex.slot_member_id;
     } else if (members.length > 0) {
-      assignedUserId = members[cursorIdx].user_id;
+      const m = members[cursorIdx];
+      assignedUserId = m.user_id;                   // null for pending slots
+      slotMemberId = m.user_id === null ? m.id : null;
       cursorIdx = (cursorIdx + 1) % members.length;
     }
 
@@ -196,18 +205,19 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
       ends_at: endsAt.toISOString(),
       scheduled_local_date: formatInTimeZone(ts, tz, 'yyyy-MM-dd'),
       assigned_user_id: assignedUserId,
+      slot_member_id: slotMemberId,
     });
   }
 
   // cursorIdx now points to who goes next after all new assignments
   const newCursor = members.length > 0
-    ? members[cursorIdx % members.length].user_id
+    ? members[cursorIdx % members.length].id   // rota_members.id, works for pending + real
     : null;
 
   const { error: applyErr } = await admin.rpc('materialize_rota_apply', {
     p_rota_id: rotaId,
     p_occurrences: occurrences,
-    p_new_cursor_user_id: newCursor,
+    p_new_cursor_member_id: newCursor,
   });
   if (applyErr) throw new Error(`Apply: ${applyErr.message}`);
 
