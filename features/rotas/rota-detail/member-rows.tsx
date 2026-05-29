@@ -64,7 +64,7 @@ export function PendingMemberRow({
   const updateLabel = useUpdatePendingMemberLabel(rotaId);
   const displayName = member.label ?? 'Pending member';
 
-  async function handleReshare() {
+  function handleReshare() {
     resharePending.mutate(member.id, {
       onSuccess: (code) => {
         const link = `https://www.gorotini.com/invite/${code}`;
@@ -135,7 +135,6 @@ export function PendingMemberRow({
     } else {
       Alert.alert(displayName, undefined, [
         { text: 'Reshare link', onPress: handleReshare },
-        { text: 'Edit name', onPress: handleEditName },
         { text: `Remove ${displayName}`, style: 'destructive', onPress: handleRemove },
         { text: 'Cancel', style: 'cancel' },
       ]);
