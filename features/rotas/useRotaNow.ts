@@ -15,11 +15,13 @@ export type RotaNowRow = {
   active_ends_at: string | null;
   active_assignee_id: string | null;
   active_assignee_name: string | null;
+  active_assignee_display: string | null;
   upcoming_occurrence_id: string | null;
   upcoming_scheduled_at: string | null;
   upcoming_ends_at: string | null;
   upcoming_assignee_id: string | null;
   upcoming_assignee_name: string | null;
+  upcoming_assignee_display: string | null;
 };
 
 // Single-rota hook used in rota detail screen.
