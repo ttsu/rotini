@@ -440,8 +440,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.materialize_rota_apply(uuid, jsonb, uuid) TO authenticated;
-
 -- ── 11. add_pending_member ────────────────────────────────────────────────────
 -- Creates a pending rota_members slot (user_id = NULL) with an invite code.
 -- Returns: invite code (text) for the client to open the native Share sheet.
