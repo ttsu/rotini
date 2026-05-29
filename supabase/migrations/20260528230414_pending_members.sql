@@ -377,3 +377,65 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.change_member_role(uuid, uuid, text) TO authenticated;
+
+-- ── 10. materialize_rota_apply: slot_member_id + cursor_member_id ─────────────
+--
+-- p_occurrences elements now include:
+--   { scheduled_at, ends_at, scheduled_local_date, assigned_user_id, slot_member_id }
+-- p_new_cursor_member_id: rota_members.id of the next member to assign
+
+CREATE OR REPLACE FUNCTION public.materialize_rota_apply(
+  p_rota_id              uuid,
+  p_occurrences          jsonb,
+  p_new_cursor_member_id uuid
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM occurrences
+  WHERE rota_id = p_rota_id
+    AND status = 'scheduled'
+    AND scheduled_at > now()
+    AND scheduled_at NOT IN (
+      SELECT (elem->>'scheduled_at')::timestamptz
+      FROM jsonb_array_elements(p_occurrences) elem
+    );
+
+  INSERT INTO occurrences (
+    id,
+    rota_id,
+    scheduled_at,
+    ends_at,
+    scheduled_local_date,
+    assigned_user_id,
+    original_assignee_id,
+    slot_member_id,
+    status,
+    generated_from_rule,
+    created_at
+  )
+  SELECT
+    gen_random_uuid(),
+    p_rota_id,
+    (elem->>'scheduled_at')::timestamptz,
+    (elem->>'ends_at')::timestamptz,
+    (elem->>'scheduled_local_date')::date,
+    NULLIF(elem->>'assigned_user_id', '')::uuid,
+    NULLIF(elem->>'assigned_user_id', '')::uuid,  -- original_assignee_id stamped at INSERT
+    NULLIF(elem->>'slot_member_id', '')::uuid,
+    'scheduled',
+    true,
+    now()
+  FROM jsonb_array_elements(p_occurrences) elem
+  ON CONFLICT (rota_id, scheduled_at)
+  DO UPDATE SET
+    ends_at              = EXCLUDED.ends_at,
+    assigned_user_id     = EXCLUDED.assigned_user_id,
+    slot_member_id       = EXCLUDED.slot_member_id,
+    scheduled_local_date = EXCLUDED.scheduled_local_date
+  WHERE occurrences.status = 'scheduled';
+
+  UPDATE rotas SET cursor_member_id = p_new_cursor_member_id WHERE id = p_rota_id;
+END;
+$$;
