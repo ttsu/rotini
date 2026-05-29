@@ -60,3 +60,230 @@ WHERE rm.rota_id = r.id
 
 -- Drop old column (functions below use cursor_member_id exclusively)
 ALTER TABLE public.rotas DROP COLUMN cursor_user_id;
+
+-- ── 5. _compact_membership: use cursor_member_id ─────────────────────────────
+
+CREATE OR REPLACE FUNCTION public._compact_membership(
+  p_rota_id      uuid,
+  p_removed_pos  int,
+  p_removed_id   uuid   -- rota_members.id of the removed/demoted row
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_ordered       RECORD;
+  v_new_pos       int := 0;
+  v_cursor_id     uuid;
+  v_next_id       uuid;
+BEGIN
+  -- Renumber remaining active members in ascending position order
+  FOR v_ordered IN
+    SELECT id
+    FROM rota_members
+    WHERE rota_id = p_rota_id
+      AND position IS NOT NULL
+      AND id != p_removed_id
+    ORDER BY position ASC
+  LOOP
+    UPDATE rota_members
+    SET position = v_new_pos
+    WHERE id = v_ordered.id;
+    v_new_pos := v_new_pos + 1;
+  END LOOP;
+
+  -- Repair cursor only if it pointed at the removed/demoted member
+  SELECT cursor_member_id INTO v_cursor_id FROM rotas WHERE id = p_rota_id;
+  IF v_cursor_id IS DISTINCT FROM p_removed_id THEN
+    RETURN;
+  END IF;
+
+  -- Pick the member who inherited the vacated slot
+  SELECT id INTO v_next_id
+  FROM rota_members
+  WHERE rota_id = p_rota_id
+    AND position IS NOT NULL
+  ORDER BY (position >= p_removed_pos) DESC, position ASC
+  LIMIT 1;
+
+  UPDATE rotas SET cursor_member_id = v_next_id WHERE id = p_rota_id;
+END;
+$$;
+
+-- ── 6. remove_member: pass rota_members.id to _compact_membership ────────────
+
+CREATE OR REPLACE FUNCTION public.remove_member(p_rota_id uuid, p_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_target_role  text;
+  v_target_pos   int;
+  v_target_id    uuid;   -- rota_members.id
+  v_owner_count  int;
+  v_active_count int;
+BEGIN
+  IF NOT is_rota_manager(p_rota_id) THEN
+    RAISE EXCEPTION 'not authorized';
+  END IF;
+
+  SELECT role, position, id
+  INTO v_target_role, v_target_pos, v_target_id
+  FROM rota_members
+  WHERE rota_id = p_rota_id AND user_id = p_user_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'member not found';
+  END IF;
+
+  -- Guard: must keep at least one manager
+  SELECT COUNT(*) INTO v_owner_count
+  FROM rota_members
+  WHERE rota_id = p_rota_id AND is_manager = true AND user_id != p_user_id;
+  IF v_owner_count = 0 THEN
+    RAISE EXCEPTION 'rota must have at least one manager';
+  END IF;
+
+  -- Guard: must keep at least one active member
+  IF v_target_role = 'member' THEN
+    SELECT COUNT(*) INTO v_active_count
+    FROM rota_members
+    WHERE rota_id = p_rota_id AND role = 'member' AND user_id != p_user_id;
+    IF v_active_count = 0 THEN
+      RAISE EXCEPTION 'rota must have at least one member in the rotation';
+    END IF;
+  END IF;
+
+  -- Delete future scheduled turns
+  IF v_target_pos IS NOT NULL THEN
+    DELETE FROM occurrences
+    WHERE rota_id = p_rota_id
+      AND assigned_user_id = p_user_id
+      AND status = 'scheduled'
+      AND scheduled_at > now();
+
+    PERFORM public._compact_membership(p_rota_id, v_target_pos, v_target_id);
+  END IF;
+
+  DELETE FROM rota_members WHERE rota_id = p_rota_id AND user_id = p_user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.remove_member(uuid, uuid) TO authenticated;
+
+-- ── 7. leave_rota: pass rota_members.id to _compact_membership ───────────────
+
+CREATE OR REPLACE FUNCTION public.leave_rota(p_rota_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_role text;
+  v_pos  int;
+  v_id   uuid;
+  v_mgr_count  int;
+  v_mem_count  int;
+BEGIN
+  SELECT role, position, id
+  INTO v_role, v_pos, v_id
+  FROM rota_members
+  WHERE rota_id = p_rota_id AND user_id = auth.uid();
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'not a member';
+  END IF;
+
+  SELECT COUNT(*) INTO v_mgr_count
+  FROM rota_members
+  WHERE rota_id = p_rota_id AND is_manager = true AND user_id != auth.uid();
+  IF v_mgr_count = 0 THEN
+    RAISE EXCEPTION 'cannot leave: you are the last manager';
+  END IF;
+
+  IF v_role = 'member' THEN
+    SELECT COUNT(*) INTO v_mem_count
+    FROM rota_members
+    WHERE rota_id = p_rota_id AND role = 'member' AND user_id != auth.uid();
+    IF v_mem_count = 0 THEN
+      RAISE EXCEPTION 'cannot leave: you are the last member in the rotation';
+    END IF;
+  END IF;
+
+  IF v_pos IS NOT NULL THEN
+    DELETE FROM occurrences
+    WHERE rota_id = p_rota_id
+      AND assigned_user_id = auth.uid()
+      AND status = 'scheduled'
+      AND scheduled_at > now();
+
+    PERFORM public._compact_membership(p_rota_id, v_pos, v_id);
+  END IF;
+
+  DELETE FROM rota_members WHERE rota_id = p_rota_id AND user_id = auth.uid();
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.leave_rota(uuid) TO authenticated;
+
+-- ── 8. reorder_members: update cursor to cursor_member_id ────────────────────
+
+CREATE OR REPLACE FUNCTION public.reorder_members(
+  p_rota_id          uuid,
+  p_ordered_user_ids uuid[],
+  p_cutoff_at        timestamptz
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_uid      uuid;
+  v_pos      int := 0;
+  v_first_id uuid;  -- rota_members.id of the first member in new order
+BEGIN
+  IF NOT is_rota_manager(p_rota_id) THEN
+    RAISE EXCEPTION 'not authorized';
+  END IF;
+
+  IF array_length(p_ordered_user_ids, 1) IS NULL THEN
+    RAISE EXCEPTION 'ordered_user_ids must not be empty';
+  END IF;
+
+  -- Verify all provided user_ids are active members of this rota
+  IF EXISTS (
+    SELECT 1 FROM unnest(p_ordered_user_ids) uid
+    WHERE NOT EXISTS (
+      SELECT 1 FROM rota_members
+      WHERE rota_id = p_rota_id AND user_id = uid AND role = 'member'
+    )
+  ) THEN
+    RAISE EXCEPTION 'one or more user_ids are not active members of this rota';
+  END IF;
+
+  -- Delete future occurrences after cutoff so materializer reassigns in new order
+  DELETE FROM occurrences
+  WHERE rota_id = p_rota_id
+    AND generated_from_rule = true
+    AND scheduled_at > p_cutoff_at;
+
+  -- Apply new positions
+  FOREACH v_uid IN ARRAY p_ordered_user_ids LOOP
+    UPDATE rota_members
+    SET position = v_pos
+    WHERE rota_id = p_rota_id AND user_id = v_uid;
+    v_pos := v_pos + 1;
+  END LOOP;
+
+  -- Reset cursor to first person in new order
+  SELECT id INTO v_first_id
+  FROM rota_members
+  WHERE rota_id = p_rota_id AND user_id = p_ordered_user_ids[1];
+
+  UPDATE rotas SET cursor_member_id = v_first_id WHERE id = p_rota_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.reorder_members(uuid, uuid[], timestamptz) TO authenticated;
