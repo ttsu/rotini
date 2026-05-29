@@ -342,3 +342,71 @@ export function useDeleteRota() {
     },
   });
 }
+
+export function useAddPendingMember(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ role, label }: { role: 'member' | 'watcher'; label?: string }) => {
+      const { data, error } = await supabase.rpc('add_pending_member', {
+        p_rota_id: rotaId,
+        p_role: role,
+        ...(label ? { p_label: label } : {}),
+      });
+      if (error) throw error;
+      await triggerMaterialize(rotaId);
+      return data as string; // invite code
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
+    },
+  });
+}
+
+export function useResharePendingInvite(rotaId: string) {
+  return useMutation({
+    mutationFn: async (memberId: string) => {
+      const { data, error } = await supabase.rpc('reshare_pending_invite', {
+        p_rota_id: rotaId,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      return data as string; // invite code
+    },
+  });
+}
+
+export function useRemovePendingMember(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberId: string) => {
+      const { error } = await supabase.rpc('remove_pending_member', {
+        p_rota_id: rotaId,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      await triggerMaterialize(rotaId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(rotaId) });
+    },
+  });
+}
+
+export function useUpdatePendingMemberLabel(rotaId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, label }: { memberId: string; label: string }) => {
+      const { error } = await supabase.rpc('update_pending_member_label', {
+        p_rota_id: rotaId,
+        p_member_id: memberId,
+        p_label: label,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rotas.detail(rotaId) });
+    },
+  });
+}
