@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -120,6 +115,7 @@ export type Database = {
           rota_id: string
           scheduled_at: string
           scheduled_local_date: string
+          slot_member_id: string | null
           status: string
           swap_request_id: string | null
         }
@@ -134,6 +130,7 @@ export type Database = {
           rota_id: string
           scheduled_at: string
           scheduled_local_date: string
+          slot_member_id?: string | null
           status?: string
           swap_request_id?: string | null
         }
@@ -148,6 +145,7 @@ export type Database = {
           rota_id?: string
           scheduled_at?: string
           scheduled_local_date?: string
+          slot_member_id?: string | null
           status?: string
           swap_request_id?: string | null
         }
@@ -179,6 +177,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_rota_now"
             referencedColumns: ["rota_id"]
+          },
+          {
+            foreignKeyName: "occurrences_slot_member_id_fkey"
+            columns: ["slot_member_id"]
+            isOneToOne: false
+            referencedRelation: "rota_members"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "occurrences_swap_request_id_fkey"
@@ -248,9 +253,11 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          is_manager: boolean
           phone_e164: string | null
           role: string
           rota_id: string
+          slot_id: string | null
           sms_sent_at: string | null
         }
         Insert: {
@@ -261,9 +268,11 @@ export type Database = {
           expires_at: string
           id?: string
           invited_by: string
+          is_manager?: boolean
           phone_e164?: string | null
           role: string
           rota_id: string
+          slot_id?: string | null
           sms_sent_at?: string | null
         }
         Update: {
@@ -274,9 +283,11 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string
+          is_manager?: boolean
           phone_e164?: string | null
           role?: string
           rota_id?: string
+          slot_id?: string | null
           sms_sent_at?: string | null
         }
         Relationships: [
@@ -307,6 +318,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_rota_now"
             referencedColumns: ["rota_id"]
+          },
+          {
+            foreignKeyName: "rota_invites_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "rota_members"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -393,28 +411,37 @@ export type Database = {
       }
       rota_members: {
         Row: {
+          id: string
+          is_manager: boolean
           joined_at: string
+          label: string | null
           notify_scope: string
           position: number | null
           role: string
           rota_id: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
+          id?: string
+          is_manager?: boolean
           joined_at?: string
+          label?: string | null
           notify_scope?: string
           position?: number | null
           role: string
           rota_id: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
+          id?: string
+          is_manager?: boolean
           joined_at?: string
+          label?: string | null
           notify_scope?: string
           position?: number | null
           role?: string
           rota_id?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -446,7 +473,7 @@ export type Database = {
           assignment_mode: string
           back_to_back: boolean
           created_at: string
-          cursor_user_id: string | null
+          cursor_member_id: string | null
           description: string | null
           dtstart: string | null
           duration_minutes: number | null
@@ -462,7 +489,7 @@ export type Database = {
           assignment_mode: string
           back_to_back?: boolean
           created_at?: string
-          cursor_user_id?: string | null
+          cursor_member_id?: string | null
           description?: string | null
           dtstart?: string | null
           duration_minutes?: number | null
@@ -478,7 +505,7 @@ export type Database = {
           assignment_mode?: string
           back_to_back?: boolean
           created_at?: string
-          cursor_user_id?: string | null
+          cursor_member_id?: string | null
           description?: string | null
           dtstart?: string | null
           duration_minutes?: number | null
@@ -491,10 +518,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "rotas_cursor_user_id_fkey"
-            columns: ["cursor_user_id"]
+            foreignKeyName: "rotas_cursor_member_id_fkey"
+            columns: ["cursor_member_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "rota_members"
             referencedColumns: ["id"]
           },
           {
@@ -629,12 +656,14 @@ export type Database = {
     Views: {
       v_rota_now: {
         Row: {
+          active_assignee_display: string | null
           active_assignee_id: string | null
           active_assignee_name: string | null
           active_ends_at: string | null
           active_occurrence_id: string | null
           active_scheduled_at: string | null
           rota_id: string | null
+          upcoming_assignee_display: string | null
           upcoming_assignee_id: string | null
           upcoming_assignee_name: string | null
           upcoming_ends_at: string | null
@@ -644,14 +673,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "occurrences_assigned_user_id_fkey"
-            columns: ["upcoming_assignee_id"]
+            columns: ["active_assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "occurrences_assigned_user_id_fkey"
-            columns: ["active_assignee_id"]
+            columns: ["upcoming_assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -661,22 +690,21 @@ export type Database = {
     }
     Functions: {
       _compact_membership: {
-        Args: {
-          p_removed_pos: number
-          p_removed_uid: string
-          p_rota_id: string
-        }
+        Args: { p_removed_id: string; p_removed_pos: number; p_rota_id: string }
         Returns: undefined
       }
       accept_invite: {
         Args: { p_code: string }
         Returns: {
+          id: string
+          is_manager: boolean
           joined_at: string
+          label: string | null
           notify_scope: string
           position: number | null
           role: string
           rota_id: string
-          user_id: string
+          user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -685,16 +713,23 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_pending_member: {
+        Args: { p_label?: string; p_role: string; p_rota_id: string }
+        Returns: string
+      }
       cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
       change_member_role: {
         Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
         Returns: {
+          id: string
+          is_manager: boolean
           joined_at: string
+          label: string | null
           notify_scope: string
           position: number | null
           role: string
           rota_id: string
-          user_id: string
+          user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -732,9 +767,11 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          is_manager: boolean
           phone_e164: string | null
           role: string
           rota_id: string
+          slot_id: string | null
           sms_sent_at: string | null
         }
         SetofOptions: {
@@ -746,6 +783,7 @@ export type Database = {
       }
       delete_rota: { Args: { p_rota_id: string }; Returns: undefined }
       dispatch_notifications: { Args: never; Returns: number }
+      is_rota_manager: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }
       leave_rota: { Args: { p_rota_id: string }; Returns: undefined }
@@ -765,7 +803,7 @@ export type Database = {
       materialize_rota: { Args: { p_rota_id: string }; Returns: number }
       materialize_rota_apply: {
         Args: {
-          p_new_cursor_user_id: string
+          p_new_cursor_member_id: string
           p_occurrences: Json
           p_rota_id: string
         }
@@ -788,6 +826,7 @@ export type Database = {
           rota_id: string
           scheduled_at: string
           scheduled_local_date: string
+          slot_member_id: string | null
           status: string
           swap_request_id: string | null
         }
@@ -805,6 +844,10 @@ export type Database = {
       record_rota_materialization_http_errors: { Args: never; Returns: number }
       remove_member: {
         Args: { p_rota_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      remove_pending_member: {
+        Args: { p_member_id: string; p_rota_id: string }
         Returns: undefined
       }
       reorder_members: {
@@ -838,6 +881,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reshare_pending_invite: {
+        Args: { p_member_id: string; p_rota_id: string }
+        Returns: string
+      }
       respond_swap: {
         Args: { p_accept: boolean; p_swap_request_id: string }
         Returns: {
@@ -851,12 +898,33 @@ export type Database = {
           rota_id: string
           scheduled_at: string
           scheduled_local_date: string
+          slot_member_id: string | null
           status: string
           swap_request_id: string | null
         }
         SetofOptions: {
           from: "*"
           to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_manager_flag: {
+        Args: { p_is_manager: boolean; p_rota_id: string; p_user_id: string }
+        Returns: {
+          id: string
+          is_manager: boolean
+          joined_at: string
+          label: string | null
+          notify_scope: string
+          position: number | null
+          role: string
+          rota_id: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rota_members"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -871,6 +939,10 @@ export type Database = {
       }
       transfer_ownership: {
         Args: { p_new_owner_id: string; p_rota_id: string }
+        Returns: undefined
+      }
+      update_pending_member_label: {
+        Args: { p_label: string; p_member_id: string; p_rota_id: string }
         Returns: undefined
       }
       users_share_rota: { Args: { a: string; b: string }; Returns: boolean }
@@ -1009,3 +1081,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
