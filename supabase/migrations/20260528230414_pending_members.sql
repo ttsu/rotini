@@ -287,3 +287,93 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.reorder_members(uuid, uuid[], timestamptz) TO authenticated;
+
+-- ── 9. change_member_role: pass rota_members.id to _compact_membership ───────
+
+CREATE OR REPLACE FUNCTION public.change_member_role(
+  p_rota_id  uuid,
+  p_user_id  uuid,
+  p_new_role text
+)
+RETURNS public.rota_members
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_member       rota_members;
+  v_member_count int;
+  v_new_pos      int;
+  v_old_role     text;
+  v_old_scope    text;
+  v_new_scope    text;
+BEGIN
+  IF NOT is_rota_manager(p_rota_id) THEN
+    RAISE EXCEPTION 'not authorized';
+  END IF;
+
+  IF p_new_role NOT IN ('member', 'watcher') THEN
+    RAISE EXCEPTION 'invalid role: %', p_new_role;
+  END IF;
+
+  IF p_new_role = 'watcher' THEN
+    SELECT COUNT(*) INTO v_member_count
+    FROM rota_members
+    WHERE rota_id = p_rota_id AND role = 'member' AND user_id != p_user_id;
+    IF v_member_count = 0 THEN
+      RAISE EXCEPTION 'rota must have at least one member in the rotation';
+    END IF;
+  END IF;
+
+  SELECT role, notify_scope, position, id
+  INTO v_old_role, v_old_scope, v_member.position, v_member.id
+  FROM rota_members
+  WHERE rota_id = p_rota_id AND user_id = p_user_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'member not found';
+  END IF;
+
+  IF p_new_role = 'watcher' AND v_member.position IS NOT NULL THEN
+    DELETE FROM occurrences
+    WHERE rota_id = p_rota_id
+      AND assigned_user_id = p_user_id
+      AND status = 'scheduled'
+      AND scheduled_at > now();
+
+    PERFORM public._compact_membership(p_rota_id, v_member.position, v_member.id);
+  END IF;
+
+  IF p_new_role != 'watcher' THEN
+    IF v_member.position IS NULL THEN
+      SELECT COALESCE(MAX(position) + 1, 1) INTO v_new_pos
+      FROM rota_members
+      WHERE rota_id = p_rota_id AND position IS NOT NULL;
+    ELSE
+      v_new_pos := v_member.position;
+    END IF;
+  END IF;
+
+  IF p_new_role = 'watcher' THEN
+    v_new_scope := 'all';
+  ELSIF v_old_role = 'watcher' THEN
+    v_new_scope := 'own';
+  ELSE
+    v_new_scope := v_old_scope;
+  END IF;
+
+  UPDATE rota_members
+  SET role         = p_new_role,
+      notify_scope = v_new_scope,
+      position     = CASE WHEN p_new_role = 'watcher' THEN NULL ELSE v_new_pos END
+  WHERE rota_id = p_rota_id AND user_id = p_user_id
+  RETURNING * INTO v_member;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'update failed';
+  END IF;
+
+  RETURN v_member;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.change_member_role(uuid, uuid, text) TO authenticated;
