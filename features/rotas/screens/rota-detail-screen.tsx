@@ -104,16 +104,21 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
     ? pendingOrder.map((id) => activeMembers.find((m) => m.user_id === id)!).filter(Boolean)
     : activeMembers;
 
-  // membersById for the upcoming section
+  // membersById for the upcoming section (pending members have no user_id, skip them)
   const membersById = new Map<string, string>(
-    rawMembers.map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
+    rawMembers
+      .filter((m): m is Member & { user_id: string } => m.user_id !== null)
+      .map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
   );
 
   const myMembership = rawMembers.find((m) => m.user_id === myId);
   const isOwner = myMembership?.is_manager === true;
 
+  // activeMembers only contains positioned (non-pending) slots — user_id is always non-null
+  const activeMemberIds = activeMembers.map((m) => m.user_id as string);
+
   function handleMoveUp(activeIdx: number) {
-    const current = pendingOrder ?? activeMembers.map((m) => m.user_id);
+    const current = pendingOrder ?? activeMemberIds;
     const next = [...current];
     [next[activeIdx - 1], next[activeIdx]] = [next[activeIdx], next[activeIdx - 1]];
     setPendingOrder(next);
@@ -121,7 +126,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   }
 
   function handleMoveDown(activeIdx: number) {
-    const current = pendingOrder ?? activeMembers.map((m) => m.user_id);
+    const current = pendingOrder ?? activeMemberIds;
     const next = [...current];
     [next[activeIdx], next[activeIdx + 1]] = [next[activeIdx + 1], next[activeIdx]];
     setPendingOrder(next);
@@ -264,7 +269,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
 
   const hasPendingOrder =
     pendingOrder !== null &&
-    pendingOrder.join(',') !== activeMembers.map((m) => m.user_id).join(',');
+    pendingOrder.join(',') !== activeMemberIds.join(',');
 
   const maxDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 

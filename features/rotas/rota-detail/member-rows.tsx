@@ -1,4 +1,4 @@
-import { ActionSheetIOS, Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Share, Text, TouchableOpacity, View } from 'react-native';
 
 import { Pill } from '@/components/ui/pill';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
@@ -9,15 +9,20 @@ import {
   useChangeMemberRole,
   useRemoveMember,
   useSetManagerFlag,
+  useRemovePendingMember,
+  useResharePendingInvite,
+  useUpdatePendingMemberLabel,
 } from '../use-rotas-mutations';
 
 import { toTestIdSegment } from './formatting';
 
 export type Member = {
+  id: string;           // rota_members.id (UUID)
   role: string;
   is_manager: boolean;
   notify_scope: string;
-  user_id: string;
+  user_id: string | null;   // null for pending slots
+  label: string | null;     // manager's placeholder name for pending slots
   position: number | null;
   profile: { id: string; display_name: string | null; avatar_url: string | null } | null;
 };
@@ -34,6 +39,156 @@ function MemberAvatar({
   return (
     <View style={{ marginRight: 12 }}>
       <ProfileAvatarTile avatarUrl={avatarUrl} displayName={name} size={34} accent={isMe} />
+    </View>
+  );
+}
+
+/**
+ * Row for a pending slot — shows label (or "Pending member"), position, and manager actions.
+ */
+export function PendingMemberRow({
+  member,
+  rotaId,
+  textPrimary,
+  sep,
+  showSep,
+}: {
+  member: Member;
+  rotaId: string;
+  textPrimary: string;
+  sep: string;
+  showSep: boolean;
+}) {
+  const removePending = useRemovePendingMember(rotaId);
+  const resharePending = useResharePendingInvite(rotaId);
+  const updateLabel = useUpdatePendingMemberLabel(rotaId);
+  const displayName = member.label ?? 'Pending member';
+
+  async function handleReshare() {
+    resharePending.mutate(member.id, {
+      onSuccess: (code) => {
+        const link = `https://www.gorotini.com/invite/${code}`;
+        void Share.share({ message: link, title: 'Join me on Rotini' });
+      },
+      onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
+    });
+  }
+
+  function handleEditName() {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Edit name',
+        'Update the placeholder name for this invite slot.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Save',
+            onPress: (newLabel: string | undefined) => {
+              if (newLabel === undefined) return;
+              updateLabel.mutate(
+                { memberId: member.id, label: newLabel },
+                { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) },
+              );
+            },
+          },
+        ],
+        'plain-text',
+        member.label ?? '',
+      );
+    } else {
+      Alert.alert('Edit name', 'Name editing is only supported on iOS currently.', [
+        { text: 'OK', style: 'cancel' },
+      ]);
+    }
+  }
+
+  function handleRemove() {
+    Alert.alert(
+      `Remove ${displayName}?`,
+      'The invite link will be cancelled and the slot will be removed from the rotation.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () =>
+            removePending.mutate(member.id, {
+              onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
+            }),
+        },
+      ],
+    );
+  }
+
+  function showActions() {
+    const options = ['Reshare link', 'Edit name', `Remove ${displayName}`, 'Cancel'];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 3, destructiveButtonIndex: 2 },
+        (idx) => {
+          if (idx === 3) return;
+          if (idx === 0) handleReshare();
+          else if (idx === 1) handleEditName();
+          else if (idx === 2) handleRemove();
+        },
+      );
+    } else {
+      Alert.alert(displayName, undefined, [
+        { text: 'Reshare link', onPress: handleReshare },
+        { text: 'Edit name', onPress: handleEditName },
+        { text: `Remove ${displayName}`, style: 'destructive', onPress: handleRemove },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }
+
+  return (
+    <View
+      testID={`rota-pending-row-${member.id}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: showSep ? 0.5 : 0,
+        borderBottomColor: sep,
+        opacity: 0.6,
+      }}
+    >
+      {/* Ghost avatar */}
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: '#AEAEB2',
+          marginRight: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ color: '#fff', fontSize: 16 }}>?</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 16, fontWeight: '500', color: textPrimary }}>
+          {displayName}
+        </Text>
+        {member.position !== null && (
+          <Text style={{ fontSize: 12, color: '#AEAEB2', marginTop: 1 }}>
+            Position {member.position + 1}
+          </Text>
+        )}
+      </View>
+      <Pill label="pending" color="gray" />
+      <TouchableOpacity
+        onPress={showActions}
+        hitSlop={8}
+        style={{ marginLeft: 10 }}
+        accessibilityLabel={`Manage pending slot ${displayName}`}
+        accessibilityRole="button"
+      >
+        <Text style={{ color: '#AEAEB2', fontSize: 18 }}>⋯</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -73,13 +228,15 @@ export function MemberRow({
   const setManager = useSetManagerFlag(rotaId);
   const name = member.profile?.display_name ?? 'Unknown';
   const avatarUrl = member.profile?.avatar_url;
+  // MemberRow is only rendered for non-pending members; user_id is always present.
+  const userId = member.user_id!;
 
   async function getOrphanCount(): Promise<number> {
     const { count } = await supabase
       .from('occurrences')
       .select('id', { count: 'exact', head: true })
       .eq('rota_id', rotaId)
-      .eq('assigned_user_id', member.user_id)
+      .eq('assigned_user_id', userId)
       .eq('status', 'scheduled')
       .gt('scheduled_at', new Date().toISOString());
     return count ?? 0;
@@ -97,7 +254,7 @@ export function MemberRow({
         text: 'Remove',
         style: 'destructive',
         onPress: () =>
-          removeMember.mutate(member.user_id, {
+          removeMember.mutate(userId, {
             onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)),
           }),
       },
@@ -120,7 +277,7 @@ export function MemberRow({
           style: 'destructive',
           onPress: () =>
             changeRole.mutate(
-              { userId: member.user_id, newRole: 'watcher' },
+              { userId, newRole: 'watcher' },
               { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
             ),
         },
@@ -134,7 +291,7 @@ export function MemberRow({
       return;
     }
     changeRole.mutate(
-      { userId: member.user_id, newRole },
+      { userId, newRole },
       { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
     );
   }
@@ -149,7 +306,7 @@ export function MemberRow({
           text: 'Grant manager',
           onPress: () =>
             setManager.mutate(
-              { userId: member.user_id, isManager: true },
+              { userId, isManager: true },
               { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
             ),
         },
@@ -168,7 +325,7 @@ export function MemberRow({
           style: 'destructive',
           onPress: () =>
             setManager.mutate(
-              { userId: member.user_id, isManager: false },
+              { userId, isManager: false },
               { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
             ),
         },
