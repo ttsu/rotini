@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -673,14 +653,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "occurrences_assigned_user_id_fkey"
-            columns: ["active_assignee_id"]
+            columns: ["upcoming_assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "occurrences_assigned_user_id_fkey"
-            columns: ["upcoming_assignee_id"]
+            columns: ["active_assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -853,7 +833,7 @@ export type Database = {
       reorder_members: {
         Args: {
           p_cutoff_at: string
-          p_ordered_user_ids: string[]
+          p_ordered_member_ids: string[]
           p_rota_id: string
         }
         Returns: undefined
@@ -1074,11 +1054,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
-

@@ -52,12 +52,22 @@ export function PendingMemberRow({
   textPrimary,
   sep,
   showSep,
+  showReorderControls,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
 }: {
   member: Member;
   rotaId: string;
   textPrimary: string;
   sep: string;
   showSep: boolean;
+  showReorderControls?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const removePending = useRemovePendingMember(rotaId);
   const resharePending = useResharePendingInvite(rotaId);
@@ -179,6 +189,28 @@ export function PendingMemberRow({
         )}
       </View>
       <Pill label="pending" color="gray" />
+      {showReorderControls && (
+        <View style={{ flexDirection: 'row', marginLeft: 8 }}>
+          <TouchableOpacity
+            onPress={canMoveUp ? onMoveUp : undefined}
+            hitSlop={6}
+            style={{ opacity: canMoveUp ? 1 : 0.25, paddingHorizontal: 5 }}
+            accessibilityLabel={`Move ${displayName} up in rotation`}
+            accessibilityRole="button"
+          >
+            <Text style={{ fontSize: 16, color: textPrimary }}>↑</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={canMoveDown ? onMoveDown : undefined}
+            hitSlop={6}
+            style={{ opacity: canMoveDown ? 1 : 0.25, paddingHorizontal: 5 }}
+            accessibilityLabel={`Move ${displayName} down in rotation`}
+            accessibilityRole="button"
+          >
+            <Text style={{ fontSize: 16, color: textPrimary }}>↓</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <TouchableOpacity
         onPress={showActions}
         hitSlop={8}

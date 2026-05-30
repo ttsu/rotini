@@ -80,6 +80,7 @@ export function UpcomingSection({
   tz,
   activeOccId,
   membersById,
+  pendingMembersById,
   card,
   textPrimary,
   textSec,
@@ -90,6 +91,7 @@ export function UpcomingSection({
   tz: string;
   activeOccId: string | null | undefined;
   membersById: Map<string, string>;
+  pendingMembersById: Map<string, string>;
   card: string;
   textPrimary: string;
   textSec: string;
@@ -197,7 +199,7 @@ export function UpcomingSection({
             <OccurrenceListRow
               key={occ.id}
               occ={occ}
-              name={membersById.get(occ.assigned_user_id ?? '') ?? 'Unknown'}
+              name={occ.assigned_user_id ? (membersById.get(occ.assigned_user_id) ?? 'Unknown') : (pendingMembersById.get(occ.slot_member_id ?? '') ?? 'Unknown')}
               activeOccId={activeOccId}
               tz={tz}
               onPress={() => onOccurrencePress(occ.id)}
