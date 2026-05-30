@@ -278,8 +278,7 @@ export function useLeaveRota() {
     mutationFn: async (rotaId: string) => {
       const { error } = await supabase.rpc('leave_rota', { p_rota_id: rotaId });
       if (error) throw error;
-      // Best-effort: caller is no longer a member so this may 403; daily cron is the backstop.
-      triggerMaterialize(rotaId).catch(() => {});
+      // Rematerialization is now triggered server-side within leave_rota via pg_net.
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });

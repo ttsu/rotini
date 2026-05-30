@@ -39,12 +39,15 @@ export function usePendingSwapsForMe() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const key = queryKeys.swaps.pendingForMe();
-
   useEffect(() => {
     if (!session) return;
     const uid = session.user.id;
+    // supabase.channel() returns an existing subscribed channel if the topic
+    // already exists in its internal list. removeChannel is async, so a stale
+    // channel lingers between cleanup and the next effect, causing .on() to throw.
+    // Date.now() as suffix guarantees a fresh channel instance on every mount.
     const channel = supabase
-      .channel('swap-inbox')
+      .channel(`swap-inbox:${uid}:${Date.now()}`)
       .on(
         'postgres_changes',
         {

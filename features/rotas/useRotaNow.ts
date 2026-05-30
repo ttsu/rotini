@@ -54,12 +54,11 @@ export function useAllRotasNow() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const key = queryKeys.rotaNow.all();
-
   useEffect(() => {
     const userId = session?.user.id;
     if (!userId) return;
     const channel = supabase
-      .channel('rota-now-all-occ')
+      .channel(`rota-now-all-occ:${userId}:${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () =>
         queryClient.invalidateQueries({ queryKey: key }),
       )
