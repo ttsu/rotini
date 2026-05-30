@@ -26,7 +26,7 @@ import { DetailRow } from '@/features/rotas/rota-detail/detail-row';
 import { formatDuration } from '@/features/rotas/rota-detail/formatting';
 import type { Member } from '@/features/rotas/rota-detail/member-rows';
 import { InviteSection } from '@/features/rotas/rota-detail/invite-section';
-import { MemberRow } from '@/features/rotas/rota-detail/member-rows';
+import { MemberRow, PendingMemberRow } from '@/features/rotas/rota-detail/member-rows';
 import { RemindersSection } from '@/features/rotas/rota-detail/reminders-section';
 import { StatusCard } from '@/features/rotas/rota-detail/status-card';
 import { UpcomingSection } from '@/features/rotas/rota-detail/upcoming-section';
@@ -101,21 +101,27 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
 
   // While reordering, use the pending order; otherwise use server state
   const displayActiveMembers: Member[] = pendingOrder
-    ? pendingOrder.map((id) => activeMembers.find((m) => m.user_id === id)!).filter(Boolean)
+    ? pendingOrder.map((id) => activeMembers.find((m) => m.id === id)!).filter(Boolean)
     : activeMembers;
 
-  // membersById for the upcoming section (pending members have no user_id, skip them)
+  // membersById for the upcoming section — real members keyed by user_id
   const membersById = new Map<string, string>(
     rawMembers
       .filter((m): m is Member & { user_id: string } => m.user_id !== null)
       .map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
   );
+  // pendingMembersById — pending slots keyed by rota_members.id
+  const pendingMembersById = new Map<string, string>(
+    rawMembers
+      .filter((m) => m.user_id === null)
+      .map((m) => [m.id, m.label ?? 'Pending member']),
+  );
 
   const myMembership = rawMembers.find((m) => m.user_id === myId);
   const isOwner = myMembership?.is_manager === true;
 
-  // activeMembers only contains positioned (non-pending) slots — user_id is always non-null
-  const activeMemberIds = activeMembers.map((m) => m.user_id as string);
+  // Use rota_members.id (always unique) to track order — pending members have user_id=null
+  const activeMemberIds = activeMembers.map((m) => m.id);
 
   function handleMoveUp(activeIdx: number) {
     const current = pendingOrder ?? activeMemberIds;
@@ -160,7 +166,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
 
     setPendingOrder(null);
     reorderMembers.mutate(
-      { orderedUserIds: orderedIds, cutoffAt },
+      { orderedMemberIds: orderedIds, cutoffAt },
       { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
     );
   }
@@ -194,7 +200,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
     if (!pendingOrderForDate) return;
     setPendingOrder(null);
     reorderMembers.mutate(
-      { orderedUserIds: pendingOrderForDate, cutoffAt: pickerDate.toISOString() },
+      { orderedMemberIds: pendingOrderForDate, cutoffAt: pickerDate.toISOString() },
       { onError: (err: unknown) => Alert.alert('Error', getUserMessage(err)) }
     );
     setPendingOrderForDate(null);
@@ -365,6 +371,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             tz={rota.tz}
             activeOccId={rotaNow.data?.active_occurrence_id}
             membersById={membersById}
+            pendingMembersById={pendingMembersById}
             card={card}
             textPrimary={textPrimary}
             textSec={textSec}
@@ -446,21 +453,36 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
 
           <View testID="rota-members-section" style={[cardStyle, { marginBottom: 12 }]}>
             {displayActiveMembers.map((m, i) => (
-              <Animated.View key={m.user_id} layout={LinearTransition}>
-                <MemberRow
-                  member={m}
-                  isOwner={isOwner}
-                  isMe={m.user_id === myId}
-                  rotaId={routeId}
-                  textPrimary={textPrimary}
-                  sep={sep}
-                  showSep={i < displayActiveMembers.length - 1}
-                  showReorderControls={isOwner}
-                  canMoveUp={i > 0}
-                  canMoveDown={i < displayActiveMembers.length - 1}
-                  onMoveUp={() => handleMoveUp(i)}
-                  onMoveDown={() => handleMoveDown(i)}
-                />
+              <Animated.View key={m.id} layout={LinearTransition}>
+                {m.user_id === null ? (
+                  <PendingMemberRow
+                    member={m}
+                    rotaId={routeId}
+                    textPrimary={textPrimary}
+                    sep={sep}
+                    showSep={i < displayActiveMembers.length - 1}
+                    showReorderControls={isOwner}
+                    canMoveUp={i > 0}
+                    canMoveDown={i < displayActiveMembers.length - 1}
+                    onMoveUp={() => handleMoveUp(i)}
+                    onMoveDown={() => handleMoveDown(i)}
+                  />
+                ) : (
+                  <MemberRow
+                    member={m}
+                    isOwner={isOwner}
+                    isMe={m.user_id === myId}
+                    rotaId={routeId}
+                    textPrimary={textPrimary}
+                    sep={sep}
+                    showSep={i < displayActiveMembers.length - 1}
+                    showReorderControls={isOwner}
+                    canMoveUp={i > 0}
+                    canMoveDown={i < displayActiveMembers.length - 1}
+                    onMoveUp={() => handleMoveUp(i)}
+                    onMoveDown={() => handleMoveDown(i)}
+                  />
+                )}
               </Animated.View>
             ))}
           </View>
@@ -470,17 +492,28 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
               <SectionHeader label={`Watchers (${watcherMembers.length})`} testID="rota-watchers-heading" />
               <View testID="rota-watchers-section" style={[cardStyle, { marginBottom: 12 }]}>
                 {watcherMembers.map((m, i) => (
-                  <MemberRow
-                    key={m.user_id}
-                    member={m}
-                    isOwner={isOwner}
-                    isMe={m.user_id === myId}
-                    rotaId={routeId}
-                    textPrimary={textPrimary}
-                    sep={sep}
-                    showSep={i < watcherMembers.length - 1}
-                    showReorderControls={false}
-                  />
+                  m.user_id === null ? (
+                    <PendingMemberRow
+                      key={m.id}
+                      member={m}
+                      rotaId={routeId}
+                      textPrimary={textPrimary}
+                      sep={sep}
+                      showSep={i < watcherMembers.length - 1}
+                    />
+                  ) : (
+                    <MemberRow
+                      key={m.id}
+                      member={m}
+                      isOwner={isOwner}
+                      isMe={m.user_id === myId}
+                      rotaId={routeId}
+                      textPrimary={textPrimary}
+                      sep={sep}
+                      showSep={i < watcherMembers.length - 1}
+                      showReorderControls={false}
+                    />
+                  )
                 ))}
               </View>
             </>

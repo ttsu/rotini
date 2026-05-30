@@ -13,6 +13,7 @@ export type OccurrenceRow = {
   ends_at: string;
   scheduled_local_date: string;
   assigned_user_id: string | null;
+  slot_member_id: string | null;
   status: string;
 };
 
@@ -76,7 +77,7 @@ export function useRotaData(rotaId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rotas')
-        .select(`*, rota_members(*, profile:profiles(id, display_name, avatar_url))`)
+        .select(`*, rota_members!rota_id(*, profile:profiles(id, display_name, avatar_url))`)
         .eq('id', rotaId)
         .single();
       if (error) throw error;
@@ -101,7 +102,7 @@ export function useRotaOccurrences(rotaId: string) {
       const { data, error } = await supabase
         .from('occurrences')
         .select(
-          'id, rota_id, scheduled_at, ends_at, scheduled_local_date, status, assigned_user_id',
+          'id, rota_id, scheduled_at, ends_at, scheduled_local_date, status, assigned_user_id, slot_member_id',
         )
         .eq('rota_id', rotaId)
         .gte('ends_at', now.toISOString())

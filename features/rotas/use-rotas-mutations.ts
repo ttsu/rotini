@@ -308,15 +308,15 @@ export function useReorderMembers(rotaId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      orderedUserIds,
+      orderedMemberIds,
       cutoffAt,
     }: {
-      orderedUserIds: string[];
+      orderedMemberIds: string[];
       cutoffAt: string;
     }) => {
       const { error } = await supabase.rpc('reorder_members', {
         p_rota_id: rotaId,
-        p_ordered_user_ids: orderedUserIds,
+        p_ordered_member_ids: orderedMemberIds,
         p_cutoff_at: cutoffAt,
       });
       if (error) throw error;
