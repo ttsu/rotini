@@ -356,6 +356,8 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
         testID="rota-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}
         contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
       >
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           <StatusCard
