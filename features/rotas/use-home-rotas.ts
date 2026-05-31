@@ -29,6 +29,17 @@ export type HomeRota = {
 
 type OccurrenceRow = { id: string; rota_id: string; scheduled_at: string; ends_at: string; status: string };
 
+export function isShiftToday(item: HomeRota, now: Date): boolean {
+  if (item.isActive) return true;
+  if (!item.nextOccurrence) return false;
+  const d = new Date(item.nextOccurrence.scheduled_at);
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 export function deriveHomeRotas(
   rotaRows: (RotaMemberHomeRow | null)[],
   occurrenceRows: OccurrenceRow[],
