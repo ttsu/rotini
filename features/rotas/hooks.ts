@@ -4,7 +4,7 @@
 
 export { RotaRealtimeRoot, useRegisterRotaRealtime } from './rota-realtime-root';
 export type { HomeRota } from './use-home-rotas';
-export { useHomeRotas } from './use-home-rotas';
+export { useHomeRotas, isShiftToday } from './use-home-rotas';
 export {
   useRotas,
   useRotaData,

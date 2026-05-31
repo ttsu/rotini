@@ -10,7 +10,7 @@ import { Pill } from '@/components/ui/pill';
 import { ShiftCardSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth';
 import { useMyProfile } from '@/features/profile/use-my-profile';
-import { useHomeRotas, type HomeRota } from '@/features/rotas/hooks';
+import { useHomeRotas, isShiftToday, type HomeRota } from '@/features/rotas/hooks';
 import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/lib/navigation/routes';
@@ -201,28 +201,32 @@ export default function HomeScreen() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const greetingTitle = displayName ? `${greeting}, ${displayName.split(' ')[0]}` : greeting;
 
+  const nowDate = new Date(now);
+  const todayShifts = (data ?? []).filter((item) => isShiftToday(item, nowDate));
+  const upcomingShifts = (data ?? []).filter((item) => !isShiftToday(item, nowDate));
+  const hasNoShiftsAtAll = !isLoading && !error && (data ?? []).length === 0;
+
+  const sectionHeadingStyle = {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#AEAEB2',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: bg }}
       contentContainerStyle={{ paddingTop: insets.top + 45, paddingBottom: 40 }}
     >
       <LargeTitle title={greetingTitle} />
+
       {/* Swap requests inbox */}
       {pendingSwaps && pendingSwaps.length > 0 && (
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: '#AEAEB2',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 10,
-              paddingHorizontal: 4,
-            }}
-          >
-            Swap requests for you
-          </Text>
+          <Text style={sectionHeadingStyle}>Swap requests for you</Text>
           {pendingSwaps.map((item) => (
             <SwapInboxCard
               key={item.id}
@@ -237,21 +241,10 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Your shifts section */}
-      <View testID="home-your-shifts-section" style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <Text
-          testID="home-your-shifts-heading"
-          style={{
-            fontSize: 13,
-            fontWeight: '600',
-            color: '#AEAEB2',
-            textTransform: 'uppercase',
-            letterSpacing: 0.5,
-            marginBottom: 10,
-            paddingHorizontal: 4,
-          }}
-        >
-          Your shifts
+      {/* Today section */}
+      <View testID="home-today-section" style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+        <Text testID="home-today-heading" style={sectionHeadingStyle}>
+          Today
         </Text>
 
         {isLoading ? (
@@ -261,7 +254,49 @@ export default function HomeScreen() {
           </>
         ) : error ? (
           <ErrorState message="Failed to load shifts." onRetry={refetch} textSec={textSec} />
-        ) : !data || data.length === 0 ? (
+        ) : todayShifts.length === 0 ? (
+          <Text
+            testID="home-no-shifts-today"
+            style={{ fontSize: 15, color: textSec, paddingHorizontal: 4, paddingBottom: 4 }}
+          >
+            No shifts today
+          </Text>
+        ) : (
+          todayShifts.map((item) => (
+            <ShiftCard
+              key={item.rota.id}
+              item={item}
+              onPress={() => router.push(routes.home.rotas.detail(item.rota.id))}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+            />
+          ))
+        )}
+      </View>
+
+      {/* Upcoming section — only when there are future shifts */}
+      {upcomingShifts.length > 0 && (
+        <View testID="home-upcoming-section" style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <Text testID="home-upcoming-heading" style={sectionHeadingStyle}>
+            Upcoming
+          </Text>
+          {upcomingShifts.map((item) => (
+            <ShiftCard
+              key={item.rota.id}
+              item={item}
+              onPress={() => router.push(routes.home.rotas.detail(item.rota.id))}
+              card={card}
+              textPrimary={textPrimary}
+              textSec={textSec}
+            />
+          ))}
+        </View>
+      )}
+
+      {/* CTA — only when user has no shifts at all */}
+      {hasNoShiftsAtAll && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
           <View
             style={{
               backgroundColor: card,
@@ -298,19 +333,8 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          data.map((item) => (
-            <ShiftCard
-              key={item.rota.id}
-              item={item}
-              onPress={() => router.push(routes.home.rotas.detail(item.rota.id))}
-              card={card}
-              textPrimary={textPrimary}
-              textSec={textSec}
-            />
-          ))
-        )}
-      </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
