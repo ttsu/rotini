@@ -113,10 +113,10 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
 
   const members = (membersRaw ?? []) as Array<{ id: string; user_id: string | null; position: number }>;
 
-  // Expand RRULE for [max(now, dtstart)…now + 90 days], cap 200
+  // Expand RRULE for [max(now, dtstart)…now + 365 days], cap 200
   const now = new Date();
   const from = now > dtstart ? now : dtstart;
-  const to = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const to = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
   const desired = expand(rota.rrule, dtstart, tz, { from, to }, 200);
 
   // For back-to-back: each turn ends when the next starts. Pre-compute ends_at for the last
