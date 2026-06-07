@@ -18,6 +18,7 @@ export default function HomeStackLayout() {
       headerBackButtonDisplayMode: 'minimal',
      }}>
       <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
+      <Stack.Screen name="swaps" options={{ title: 'Swap Inbox' }} />
       <Stack.Screen name="rotas/[id]" options={{ title: '' }} />
       <Stack.Screen name="rotas/edit/[id]" options={{ title: 'Edit Shift' }} />
       <Stack.Screen name="rotas/occurrence/[id]" options={{ title: 'Occurrence' }} />

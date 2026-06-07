@@ -9,7 +9,7 @@ export const occurrenceDetailSchema = z.object({
   assigned_user_id: z.string().nullable(),
   original_assignee_id: z.string().nullable(),
   override_reason: z.string().nullable(),
-  swap_request_id: z.string().nullable(),
+  slot_member_id: z.string().nullable(),
   rota: z
     .object({
       name: z.string(),
@@ -21,6 +21,12 @@ export const occurrenceDetailSchema = z.object({
       display_name: z.string().nullable(),
     })
     .nullable(),
+  slot_member: z
+    .object({
+      label: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type OccurrenceDetail = z.infer<typeof occurrenceDetailSchema>;

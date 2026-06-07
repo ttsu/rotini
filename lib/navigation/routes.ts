@@ -8,6 +8,7 @@ export const routes = {
   /** Root of the Home tab stack (`/(tabs)/home`). */
   home: {
     root: '/(tabs)/home' as const,
+    swaps: '/(tabs)/home/swaps' as const,
     rotas: {
       /**
        * @param id - Rota primary key

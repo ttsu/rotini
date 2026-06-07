@@ -20,6 +20,8 @@ export const queryKeys = {
   swaps: {
     detail: (swapId: string | null | undefined): QueryKey => ['swap-request', swapId],
     pendingForMe: (): QueryKey => ['pending-swaps-for-me'],
+    pendingSent: (): QueryKey => ['pending-swaps-sent'],
+    pendingForOccurrence: (occurrenceId: string): QueryKey => ['pending-swaps-occurrence', occurrenceId],
   },
   reminders: {
     forRota: (rotaId: string | null | undefined): QueryKey => ['my-reminders', rotaId],
