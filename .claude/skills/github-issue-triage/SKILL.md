@@ -79,22 +79,56 @@ Wait for the user to answer before continuing.
 
 ### Step 4 — Per-issue deep-dive interview
 
-For each issue selected, do the following **before** spawning a sub-agent:
+Step 4 is split into two phases: a parallel research phase (4a + 4b) that fans
+out across Explore sub-agents, and an interactive phase (4c + 4d) that runs in
+the main thread where the user can respond.
 
-#### 4a. Read the full issue thread
+#### 4a + 4b — Parallel research (Explore sub-agents)
 
-Use `mcp__github__issue_read` to get the full body and all comments for the issue.
+Spawn one **Explore** sub-agent per selected issue simultaneously. Each
+sub-agent receives a self-contained prompt like:
 
-#### 4b. Search the codebase for context
+```
+Research GitHub issue #<N> in the <owner>/<repo> codebase.
 
-Use `Grep` and `Glob` to locate the files most likely relevant to the issue
-(search for error messages, function names, component names, or keywords from
-the issue body). Summarise what you find in 2-3 sentences.
+## Issue details
+Title: <title>
+Body:
+<full body>
+Comments (if any):
+<comments fetched from mcp__github__issue_read>
 
-#### 4c. Ask targeted clarifying questions
+## Your task
+1. Read the full issue thread via mcp__github__issue_read for issue #<N>
+   in <owner>/<repo> if not already provided above.
+2. Search the codebase with Grep and Glob to locate all files likely
+   relevant to this issue. Search for: error messages quoted in the issue,
+   function/component/hook names mentioned, UI labels, route names, and
+   any other specific keywords.
+3. For each relevant file found, read enough of it to understand the
+   current behaviour and where a fix would go.
 
-Based on what you read and what you found in the code, ask the user **only the
-questions you cannot answer yourself**. Examples:
+## Report back (be concise)
+- **Relevant files:** list with a one-line note on why each is relevant
+- **Root cause hypothesis:** 2-3 sentences on what is likely wrong and why
+- **Suggested fix location:** the specific function/component/line range
+  where the change should land
+- **Unknowns:** questions that can only be answered by the user (not by
+  reading the code) — e.g. platform scope, design intent, edge cases.
+  List only genuine blockers; aim for 0-3.
+```
+
+Use `subagent_type: "Explore"` and run all research sub-agents in a single
+parallel batch. Do not wait for one to finish before launching the next.
+
+Once all research sub-agents return, synthesise their findings in the main
+thread before proceeding to 4c.
+
+#### 4c — Ask targeted clarifying questions (main thread)
+
+For each issue, present the research summary to the user and ask **only the
+unknowns the Explore sub-agent flagged** — questions that cannot be resolved
+by reading the code. Examples:
 
 - "The issue mentions 'the save button does nothing' — is this on the web or
   mobile build, or both?"
@@ -103,15 +137,15 @@ questions you cannot answer yourself**. Examples:
 - "The stack trace points to `useAuth`. Should the fix go in that hook, or
   should we add a guard higher up in the navigation stack?"
 
-Do **not** ask questions you can resolve by reading the code. Aim for 0–3
-questions per issue. If the issue is fully clear, state "No clarification
-needed for #N — proceeding."
+If the Explore sub-agent flagged no unknowns, state "No clarification needed
+for #N — proceeding." and skip asking.
 
-Wait for the user's answers before spawning any sub-agent for that issue.
+Batch all per-issue questions into **one message** so the user answers
+everything in a single reply. Wait for the user before continuing.
 
-#### 4d. Confirm the plan
+#### 4d — Confirm the plan (main thread)
 
-Before spawning, state in plain English:
+For each issue, state in plain English:
 
 > "For issue #N — [title]
 > **Root cause:** …
@@ -122,6 +156,9 @@ Before spawning, state in plain English:
 
 Ask "Does this look right? (yes / adjust: …)" and wait for confirmation or
 corrections. If the user says adjust, incorporate the feedback and re-confirm.
+
+Batch all issue plans into **one message** where possible so the user can
+approve everything at once.
 
 ---
 
