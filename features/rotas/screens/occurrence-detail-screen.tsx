@@ -150,8 +150,8 @@ export function OccurrenceDetailScreenContent({
   const isSwapTarget = swapReq?.target_user_id === userId;
   const canRequestSwap = isAssignee && isFuture && occ?.status === 'scheduled' && !hasPendingSwap;
 
-  const swapTargets = members.filter((m) => m.role !== 'watcher' && m.user_id !== userId);
-  const overrideTargets = members.filter((m) => m.role !== 'watcher');
+  const swapTargets = members.filter((m) => m.role !== 'watcher' && m.user_id !== null && m.user_id !== userId);
+  const overrideTargets = members.filter((m) => m.role !== 'watcher' && m.user_id !== null);
   const assigneeTestId = toTestIdSegment(occ?.assignee?.display_name ?? 'unassigned');
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -550,7 +550,7 @@ export function OccurrenceDetailScreenContent({
                 swapTargets.map((m, idx) => (
                   <TouchableOpacity
                     key={m.user_id}
-                    testID={`swap-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id)}`}
+                    testID={`swap-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id ?? '')}`}
                     onPress={() => setSelectedTargetId(m.user_id)}
                     style={{
                       flexDirection: 'row',
@@ -687,7 +687,7 @@ export function OccurrenceDetailScreenContent({
                 overrideTargets.map((m, idx) => (
                   <TouchableOpacity
                     key={m.user_id}
-                    testID={`override-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id)}`}
+                    testID={`override-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id ?? '')}`}
                     onPress={() => setSelectedAssigneeId(m.user_id)}
                     style={{
                       flexDirection: 'row',
