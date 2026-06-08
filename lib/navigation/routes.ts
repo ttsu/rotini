@@ -2,7 +2,7 @@ import type { Href } from 'expo-router';
 
 export const routes = {
   tabs: '/(tabs)' as const,
-  inbox: '/(tabs)/inbox' as Href,
+  inbox: '/(tabs)/inbox' as const,
   home: {
     root: '/(tabs)/home' as const,
     swaps: '/(tabs)/inbox' as Href,   // alias — kept so existing call sites compile
