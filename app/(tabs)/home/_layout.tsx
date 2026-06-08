@@ -8,7 +8,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
  */
 export default function HomeStackLayout() {
   const colorScheme = useColorScheme();
-  const bg = colorScheme === 'dark' ? '#000' : '#fff';
   const tint = colorScheme === 'dark' ? '#fff' : '#000';
 
   return (
