@@ -314,7 +314,7 @@ export default function HomeScreen() {
             >
               Swap requests for you
             </Text>
-            <TouchableOpacity onPress={() => router.push(routes.home.swaps)}>
+            <TouchableOpacity onPress={() => router.push(routes.inbox)}>
               <Text style={{ fontSize: 13, color: '#0a7ea4' }}>See all</Text>
             </TouchableOpacity>
           </View>
