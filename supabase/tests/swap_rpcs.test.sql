@@ -1,5 +1,5 @@
--- pgTAP tests for swap_requests RPC permission checks.
--- Each negative path is exercised; all changes are rolled back.
+-- pgTAP tests for swap_requests RPC permission checks (v2: multi-target, volunteer, claim).
+-- Each path is exercised; all changes are rolled back.
 --
 -- Run with: supabase test db
 
@@ -7,11 +7,9 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(15);
+SELECT plan(22);
 
 -- ── Seed ─────────────────────────────────────────────────────────────────────
--- Insert as postgres (superuser) so we bypass RLS entirely.
--- The on_auth_user_created trigger creates the matching profiles rows.
 
 INSERT INTO auth.users (id, email, created_at, updated_at,
                         confirmation_token, email_change,
@@ -32,7 +30,7 @@ VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '00000000-0000-0000-0000-000000000002', 'member', 2,    now()),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '00000000-0000-0000-0000-000000000003', 'viewer', NULL, now());
 
--- occ1: future, assigned to member, will carry a pending swap (swap1)
+-- occ1: future, assigned to member (normal swap source)
 INSERT INTO public.occurrences (id, rota_id, scheduled_at, ends_at, scheduled_local_date,
                                 assigned_user_id, status, generated_from_rule, created_at)
 VALUES (
@@ -54,7 +52,7 @@ VALUES (
   '00000000-0000-0000-0000-000000000002', 'scheduled', true, now()
 );
 
--- occ3: future, assigned to member — used for the override-beats-swap test
+-- occ3: future, assigned to member — used for override-beats-swap test
 INSERT INTO public.occurrences (id, rota_id, scheduled_at, ends_at, scheduled_local_date,
                                 assigned_user_id, status, generated_from_rule, created_at)
 VALUES (
@@ -65,44 +63,57 @@ VALUES (
   '00000000-0000-0000-0000-000000000002', 'scheduled', true, now()
 );
 
+-- occ4: future, pending slot (no assigned_user_id, slot_member_id set)
+-- Insert a pending rota_members slot first
+INSERT INTO public.rota_members (id, rota_id, user_id, role, position, joined_at)
+VALUES (
+  'dddddddd-dddd-dddd-dddd-dddddddddd01',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  NULL, 'member', 3, now()
+);
+INSERT INTO public.occurrences (id, rota_id, scheduled_at, ends_at, scheduled_local_date,
+                                assigned_user_id, slot_member_id, status, generated_from_rule, created_at)
+VALUES (
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb04',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  now() + INTERVAL '6 days', now() + INTERVAL '7 days',
+  (now() + INTERVAL '6 days')::date,
+  NULL, 'dddddddd-dddd-dddd-dddd-dddddddddd01', 'scheduled', true, now()
+);
+
 -- swap1: pending on occ1, requester=member, target=owner
-INSERT INTO public.swap_requests (id, occurrence_id, requester_id, target_user_id, status, created_at)
+INSERT INTO public.swap_requests (id, occurrence_id, requester_id, target_user_id, status, kind, created_at)
 VALUES (
   'cccccccc-cccc-cccc-cccc-cccccccccc01',
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
   '00000000-0000-0000-0000-000000000002',
   '00000000-0000-0000-0000-000000000001',
-  'pending', now()
+  'pending', 'outbound', now()
 );
-UPDATE public.occurrences SET swap_request_id = 'cccccccc-cccc-cccc-cccc-cccccccccc01'
-WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01';
 
 -- swap2: pending on occ3, requester=member, target=owner (for override test)
-INSERT INTO public.swap_requests (id, occurrence_id, requester_id, target_user_id, status, created_at)
+INSERT INTO public.swap_requests (id, occurrence_id, requester_id, target_user_id, status, kind, created_at)
 VALUES (
   'cccccccc-cccc-cccc-cccc-cccccccccc02',
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03',
   '00000000-0000-0000-0000-000000000002',
   '00000000-0000-0000-0000-000000000001',
-  'pending', now()
+  'pending', 'outbound', now()
 );
-UPDATE public.occurrences SET swap_request_id = 'cccccccc-cccc-cccc-cccc-cccccccccc02'
-WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03';
 
 -- ── Tests ─────────────────────────────────────────────────────────────────────
--- Switch to authenticated role from here on; change jwt sub to swap users.
 
 SET LOCAL role authenticated;
 
--- 1. request_swap: non-assignee caller (owner tries to swap member's occ)
-SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+-- 1. request_swap: viewer caller is rejected
+SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000003","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.request_swap(
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid,
-      '00000000-0000-0000-0000-000000000002'::uuid,
+      '00000000-0000-0000-0000-000000000001'::uuid,
       NULL)$$,
-  'P0001', 'not authorized: you are not the assignee',
-  'request_swap: non-assignee is rejected'
+  'P0001', 'not authorized: you are not an eligible member of this rota',
+  'request_swap: viewer caller is rejected'
 );
 
 -- 2. request_swap: past occurrence
@@ -116,7 +127,7 @@ SELECT throws_ok(
   'request_swap: past occurrence is rejected'
 );
 
--- 3. request_swap: viewer as target
+-- 3. request_swap: viewer as outbound target
 SELECT throws_ok(
   $$SELECT public.request_swap(
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid,
@@ -126,7 +137,7 @@ SELECT throws_ok(
   'request_swap: viewer target is rejected'
 );
 
--- 4. request_swap: non-member as target
+-- 4. request_swap: non-member as outbound target
 SELECT throws_ok(
   $$SELECT public.request_swap(
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid,
@@ -146,24 +157,36 @@ SELECT throws_ok(
   'request_swap: self-swap is rejected'
 );
 
--- 6. request_swap: duplicate pending swap (occ1 already has swap1 pending)
+-- 6. request_swap: duplicate pending (same requester→target pair on same occurrence)
 SELECT throws_ok(
   $$SELECT public.request_swap(
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid,
       '00000000-0000-0000-0000-000000000001'::uuid,
       NULL)$$,
-  'P0001', 'a pending swap request already exists for this occurrence',
-  'request_swap: duplicate pending swap is rejected'
+  NULL, NULL,
+  'request_swap: duplicate pending requester→target pair is rejected'
 );
 
--- 7. respond_swap: non-target caller (member tries to respond to their own request)
+-- 7. request_swap: pending-slot occurrence redirects to claim_pending_slot
+SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+SELECT throws_ok(
+  $$SELECT public.request_swap(
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb04'::uuid,
+      '00000000-0000-0000-0000-000000000002'::uuid,
+      NULL)$$,
+  'P0001', 'use claim_pending_slot for unassigned slot occurrences',
+  'request_swap: pending slot redirected to claim_pending_slot'
+);
+
+-- 8. respond_swap: non-target caller
+SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.respond_swap('cccccccc-cccc-cccc-cccc-cccccccccc01'::uuid, true)$$,
   'P0001', 'not authorized: you are not the swap target',
   'respond_swap: non-target caller is rejected'
 );
 
--- 8. cancel_swap: non-requester (owner tries to cancel member's request)
+-- 9. cancel_swap: non-requester
 SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.cancel_swap('cccccccc-cccc-cccc-cccc-cccccccccc01'::uuid)$$,
@@ -171,7 +194,7 @@ SELECT throws_ok(
   'cancel_swap: non-requester is rejected'
 );
 
--- 9. override_occurrence: non-owner (member tries to override)
+-- 10. override_occurrence: non-owner
 SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.override_occurrence(
@@ -182,7 +205,7 @@ SELECT throws_ok(
   'override_occurrence: non-owner is rejected'
 );
 
--- 10. override_occurrence: viewer as new assignee
+-- 11. override_occurrence: viewer as new assignee
 SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.override_occurrence(
@@ -193,7 +216,7 @@ SELECT throws_ok(
   'override_occurrence: viewer new assignee is rejected'
 );
 
--- 11. override_occurrence: non-member as new assignee
+-- 12. override_occurrence: non-member as new assignee
 SELECT throws_ok(
   $$SELECT public.override_occurrence(
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid,
@@ -203,14 +226,14 @@ SELECT throws_ok(
   'override_occurrence: non-member new assignee is rejected'
 );
 
--- 12. cancel_swap: requester succeeds
+-- 13. cancel_swap: requester succeeds
 SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated"}';
 SELECT lives_ok(
   $$SELECT public.cancel_swap('cccccccc-cccc-cccc-cccc-cccccccccc01'::uuid)$$,
   'cancel_swap: requester can cancel their own pending swap'
 );
 
--- 13. respond_swap: non-pending request (swap1 now cancelled)
+-- 14. respond_swap: non-pending request (swap1 now cancelled)
 SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.respond_swap('cccccccc-cccc-cccc-cccc-cccccccccc01'::uuid, true)$$,
@@ -218,21 +241,77 @@ SELECT throws_ok(
   'respond_swap: cancelled request is rejected'
 );
 
--- 14. override_occurrence: owner overrides occ3 (which has swap2 pending)
+-- 15. override_occurrence: owner overrides occ3 (has swap2 pending); all swaps cancelled
 SELECT lives_ok(
   $$SELECT public.override_occurrence(
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03'::uuid,
       '00000000-0000-0000-0000-000000000001'::uuid,
       'owner override')$$,
-  'override_occurrence: owner can override and cancels pending swap'
+  'override_occurrence: owner can override and cancels pending swaps'
 );
 
--- 15. swap2 status must be cancelled after the override
+-- 16. swap2 status must be cancelled after the override
 SELECT is(
   (SELECT status FROM public.swap_requests
    WHERE id = 'cccccccc-cccc-cccc-cccc-cccccccccc02'::uuid),
   'cancelled',
   'override_occurrence: pending swap is auto-cancelled'
+);
+
+-- ── Volunteer swap tests ──────────────────────────────────────────────────────
+
+-- 17. request_swap volunteer: owner (non-assignee) sends volunteer request to occ1 assignee
+SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+SELECT lives_ok(
+  $$SELECT public.request_swap('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid, NULL, 'I can cover')$$,
+  'request_swap: non-assignee can send a volunteer swap request'
+);
+
+-- 18. volunteer swap kind must be 'volunteer'
+SELECT is(
+  (SELECT kind FROM public.swap_requests
+   WHERE occurrence_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid
+     AND requester_id = '00000000-0000-0000-0000-000000000001'::uuid
+     AND status = 'pending'),
+  'volunteer',
+  'volunteer swap request has kind=volunteer'
+);
+
+-- 19. respond_swap volunteer: member (assignee/target) accepts → owner (requester) gets assigned
+SELECT lives_ok(
+  $$SELECT public.respond_swap(
+    (SELECT id FROM public.swap_requests
+     WHERE occurrence_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid
+       AND requester_id = '00000000-0000-0000-0000-000000000001'::uuid
+       AND kind = 'volunteer'
+     LIMIT 1),
+    true
+  )$$,
+  'respond_swap: assignee can accept volunteer request'
+);
+
+-- 20. After volunteer accept, occurrence is assigned to requester (owner), not target
+SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+SELECT is(
+  (SELECT assigned_user_id FROM public.occurrences WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01'::uuid),
+  '00000000-0000-0000-0000-000000000001'::uuid,
+  'volunteer accept: requester (owner) is assigned, not the target'
+);
+
+-- ── claim_pending_slot tests ──────────────────────────────────────────────────
+
+-- 21. claim_pending_slot: eligible member can claim
+SET LOCAL "request.jwt.claims" TO '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+SELECT lives_ok(
+  $$SELECT public.claim_pending_slot('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb04'::uuid)$$,
+  'claim_pending_slot: eligible member can claim a pending slot occurrence'
+);
+
+-- 22. After claim, occurrence assigned to claimer and status=overridden
+SELECT is(
+  (SELECT assigned_user_id FROM public.occurrences WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb04'::uuid),
+  '00000000-0000-0000-0000-000000000001'::uuid,
+  'claim_pending_slot: occurrence assigned to claimer'
 );
 
 SELECT * FROM finish();
