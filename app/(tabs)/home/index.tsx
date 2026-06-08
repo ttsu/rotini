@@ -1,8 +1,9 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { AppState, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 import { ErrorState } from '@/components/ui/error-state';
 import { LargeTitle } from '@/components/ui/large-title';
@@ -11,10 +12,16 @@ import { ShiftCardSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth';
 import { useMyProfile } from '@/features/profile/use-my-profile';
 import { useHomeRotas, isShiftToday, type HomeRota } from '@/features/rotas/hooks';
-import { usePendingSwapsForMe, type PendingSwapForMe } from '@/features/swaps/hooks';
+import {
+  usePendingSwapsForMe,
+  useRespondSwap,
+  type PendingSwapForMe,
+} from '@/features/swaps/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/lib/navigation/routes';
+import { getUserMessage } from '@/lib/errors';
 import { formatCountdown, toTestIdSegment } from '@/lib/formatting';
+import { useToast } from '@/components/ui/toast';
 
 // ── ShiftCard ─────────────────────────────────────────────────────────────────
 
@@ -104,18 +111,22 @@ function ShiftCard({
 
 function SwapInboxCard({
   item,
+  onAccept,
+  onDecline,
   onPress,
   card,
   textPrimary,
   textSec,
-  sep,
+  isResponding,
 }: {
   item: PendingSwapForMe;
+  onAccept: () => void;
+  onDecline: () => void;
   onPress: () => void;
   card: string;
   textPrimary: string;
   textSec: string;
-  sep: string;
+  isResponding: boolean;
 }) {
   const occ = item.occurrence;
   const tz = occ?.rota?.tz ?? 'UTC';
@@ -162,6 +173,43 @@ function SwapInboxCard({
             {`"${item.message}"`}
           </Text>
         ) : null}
+        {/* Inline actions */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+          <TouchableOpacity
+            onPress={onDecline}
+            disabled={isResponding}
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(142,142,147,0.15)',
+              borderRadius: 10,
+              paddingVertical: 9,
+              alignItems: 'center',
+            }}
+          >
+            {isResponding ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 14 }}>Decline</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onAccept}
+            disabled={isResponding}
+            style={{
+              flex: 1,
+              backgroundColor: '#FF9F0A',
+              borderRadius: 10,
+              paddingVertical: 9,
+              alignItems: 'center',
+            }}
+          >
+            {isResponding ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Accept</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -176,6 +224,8 @@ export default function HomeScreen() {
   const { data: profile } = useMyProfile();
   const { data, isLoading, error, refetch } = useHomeRotas();
   const { data: pendingSwaps } = usePendingSwapsForMe();
+  const respondSwap = useRespondSwap();
+  const { showToast } = useToast();
   const scheme = useColorScheme();
 
   const [now, setNow] = useState(() => Date.now());
@@ -194,7 +244,6 @@ export default function HomeScreen() {
   const card = scheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
-  const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
 
   const displayName = profile?.display_name?.trim() || session?.user.email?.split('@')[0] || null;
   const hour = new Date().getHours();
@@ -216,6 +265,32 @@ export default function HomeScreen() {
     paddingHorizontal: 4,
   };
 
+  function handleAccept(swapId: string) {
+    respondSwap.mutate(
+      { swapId, accept: true },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showToast('Swap accepted');
+        },
+        onError: (e: unknown) => Alert.alert('Error', getUserMessage(e) || 'Failed to accept swap'),
+      },
+    );
+  }
+
+  function handleDecline(swapId: string) {
+    respondSwap.mutate(
+      { swapId, accept: false },
+      {
+        onSuccess: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          showToast('Swap declined');
+        },
+        onError: (e: unknown) => Alert.alert('Error', getUserMessage(e) || 'Failed to decline swap'),
+      },
+    );
+  }
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: bg }}
@@ -226,16 +301,34 @@ export default function HomeScreen() {
       {/* Swap requests inbox */}
       {pendingSwaps && pendingSwaps.length > 0 && (
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Text style={sectionHeadingStyle}>Swap requests for you</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 13,
+                fontWeight: '600',
+                color: '#AEAEB2',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              Swap requests for you
+            </Text>
+            <TouchableOpacity onPress={() => router.push(routes.home.swaps)}>
+              <Text style={{ fontSize: 13, color: '#0a7ea4' }}>See all</Text>
+            </TouchableOpacity>
+          </View>
           {pendingSwaps.map((item) => (
             <SwapInboxCard
               key={item.id}
               item={item}
+              onAccept={() => handleAccept(item.id)}
+              onDecline={() => handleDecline(item.id)}
               onPress={() => router.push(routes.home.rotas.occurrence(item.occurrence_id))}
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
-              sep={sep}
+              isResponding={respondSwap.isPending}
             />
           ))}
         </View>

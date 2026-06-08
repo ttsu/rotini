@@ -8,7 +8,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
  */
 export default function HomeStackLayout() {
   const colorScheme = useColorScheme();
-  const bg = colorScheme === 'dark' ? '#000' : '#fff';
   const tint = colorScheme === 'dark' ? '#fff' : '#000';
 
   return (
@@ -18,6 +17,7 @@ export default function HomeStackLayout() {
       headerBackButtonDisplayMode: 'minimal',
      }}>
       <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
+      <Stack.Screen name="swaps" options={{ title: 'Swap Inbox' }} />
       <Stack.Screen name="rotas/[id]" options={{ title: '' }} />
       <Stack.Screen name="rotas/edit/[id]" options={{ title: 'Edit Shift' }} />
       <Stack.Screen name="rotas/occurrence/[id]" options={{ title: 'Occurrence' }} />

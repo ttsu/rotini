@@ -698,6 +698,29 @@ export type Database = {
         Returns: string
       }
       cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
+      claim_pending_slot: {
+        Args: { p_occurrence_id: string }
+        Returns: {
+          assigned_user_id: string | null
+          created_at: string
+          ends_at: string
+          generated_from_rule: boolean
+          id: string
+          original_assignee_id: string | null
+          override_reason: string | null
+          rota_id: string
+          scheduled_at: string
+          scheduled_local_date: string
+          slot_member_id: string | null
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       change_member_role: {
         Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
         Returns: {
@@ -842,7 +865,7 @@ export type Database = {
         Args: {
           p_message?: string
           p_occurrence_id: string
-          p_target_user_id: string
+          p_target_user_id?: string
         }
         Returns: {
           created_at: string
