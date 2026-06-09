@@ -58,3 +58,5 @@ supabase/.temp/
 scripts/.manual-seed-output.json
 
 .env.local
+
+.superpowers/brainstorm
