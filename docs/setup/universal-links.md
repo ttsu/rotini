@@ -11,7 +11,7 @@ Open `website/.well-known/apple-app-site-association` and replace `TEAMID` with 
 Find it at: **developer.apple.com → Account → Membership details → Team ID**
 
 ```json
-"appIDs": ["ABCDE12345.com.timtsu.rotini"]
+"appIDs": ["ABCDE12345.com.gorotini.app"]
 ```
 
 Commit and push — the CI workflow will deploy it.
@@ -60,15 +60,15 @@ Cloudflare will provision HTTPS automatically.
 
 ## 5. Add the DNS CNAME
 
-In your DNS provider for `timtsu.com`, add:
+In your DNS provider for `gorotini.com`, add:
 
 
-| Type  | Name     | Target                     |
-| ----- | -------- | -------------------------- |
-| CNAME | `rotini` | `<your-project>.pages.dev` |
+| Type  | Name  | Target                     |
+| ----- | ----- | -------------------------- |
+| CNAME | `www` | `<your-project>.pages.dev` |
 
 
-If `timtsu.com` is already on Cloudflare, this will be proxied automatically.
+If `gorotini.com` is already on Cloudflare, this will be proxied automatically.
 
 ---
 

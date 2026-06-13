@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["432X6X787C.com.timtsu.rotini"],
+        "appIDs": ["432X6X787C.com.gorotini.app"],
         "components": [
           { "/": "/invite/*" },
           { "/": "/auth-callback*" }

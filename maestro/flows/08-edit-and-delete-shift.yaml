@@ -1,4 +1,4 @@
-appId: com.timtsu.rotini
+appId: com.gorotini.app
 ---
 # PART 1: Edit a rota's name
 - runFlow: ../generated/login-owner.yaml
