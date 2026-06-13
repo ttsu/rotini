@@ -7,7 +7,7 @@ const { loadEnvFile } = require('./env');
 
 const ROOT = path.resolve(__dirname, '../..');
 const GENERATED_DIR = path.join(ROOT, 'maestro/generated');
-const APP_ID = process.env.MAESTRO_APP_ID ?? 'com.timtsu.rotini';
+const APP_ID = process.env.MAESTRO_APP_ID ?? 'com.gorotini.app';
 const OWNER_EMAIL = 'e2e.owner@rotini.test';
 const MEMBER_EMAIL = 'e2e.member@rotini.test';
 const VIEWER_EMAIL = 'e2e.viewer@rotini.test';

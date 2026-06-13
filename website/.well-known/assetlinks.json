@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.timtsu.rotini",
+    "package_name": "com.gorotini.app",
     "sha256_cert_fingerprints": [
       "5D:75:24:3D:FC:7B:E4:56:AD:AD:D6:C9:79:5F:44:DE:52:37:8B:67:67:81:9E:B0:48:7E:ED:EB:05:BF:79:7D"
     ]

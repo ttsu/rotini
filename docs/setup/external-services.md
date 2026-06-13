@@ -111,8 +111,8 @@ Tables used for Realtime subscriptions are added to the `supabase_realtime` publ
 3. Configure **OAuth consent screen** (External or Internal as appropriate).
 4. Create **OAuth 2.0 Client IDs**:
   - **Web application** — used as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`. Add authorized redirect URIs that match `expo-auth-session` / `makeRedirectUri()` for dev and production builds.
-  - **iOS** — bundle ID must match `[app.config.js](../../app.config.js)` (`com.timtsu.rotini` unless you change it).
-  - **Android** — package name `com.timtsu.rotini`; add the SHA-1 from your **debug** and **release** keystores (EAS manages release credentials; fetch fingerprints from EAS or Play Console as needed).
+  - **iOS** — bundle ID must match `[app.config.js](../../app.config.js)` (`com.gorotini.app` unless you change it).
+  - **Android** — package name `com.gorotini.app`; add the SHA-1 from your **debug** and **release** keystores (EAS manages release credentials; fetch fingerprints from EAS or Play Console as needed).
 5. Copy the three client IDs into `.env` locally and into EAS env for each profile (see [Environment variables](#environment-variables)).
 6. Paste the same values into **Supabase → Authentication → Providers → Google**.
 
@@ -124,7 +124,7 @@ Tables used for Realtime subscriptions are added to the `supabase_realtime` publ
 
 ### 3.1 Sign in with Apple
 
-1. In [Apple Developer](https://developer.apple.com/), register an App ID with **Sign In with Apple** for bundle ID `com.timtsu.rotini` (or your chosen ID if you fork).
+1. In [Apple Developer](https://developer.apple.com/), register an App ID with **Sign In with Apple** for bundle ID `com.gorotini.app` (or your chosen ID if you fork).
 2. Create a **Services ID** (client identifier) for Sign in with Apple if you use web flows; configure return URLs Supabase expects.
 3. Create a **Sign in with Apple** key and note **Team ID**, **Key ID**, and **private key**.
 4. Enter those values in **Supabase → Authentication → Providers → Apple**.
@@ -172,7 +172,7 @@ The server dispatcher `[dispatch-notifications](../../supabase/functions/dispatc
 
 ## 6. Google Play Console
 
-1. Create an app with package name `**com.timtsu.rotini`** (must match `[app.config.js](../../app.config.js)` Android `package`).
+1. Create an app with package name `**com.gorotini.app`** (must match `[app.config.js](../../app.config.js)` Android `package`).
 2. Configure **Internal testing** (or your chosen track).
 3. For `eas submit`, use a **Google Play service account JSON** with API access; keep it local and off git — see notes in [Ship Readiness](../release/ship-readiness.md).
 

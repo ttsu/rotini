@@ -1,6 +1,6 @@
 const { version } = require('./package.json');
 
-const appIdentifier = 'com.timtsu.rotini';
+const appIdentifier = 'com.gorotini.app';
 const buildProfile = process.env.EAS_BUILD_PROFILE ?? process.env.APP_ENV ?? 'development';
 const sentryEnvironment = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT ?? buildProfile;
 const sentryRelease = `rotini@${version}`;
@@ -80,7 +80,7 @@ module.exports = ({ config }) => {
     version,
     orientation: 'portrait',
     icon: './assets/images/ios-light.png',
-    scheme: 'rotini',
+    scheme: ['rotini', 'com.gorotini'],
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     runtimeVersion: {

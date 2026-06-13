@@ -56,7 +56,7 @@ Prepare these values before submission:
 - Privacy policy URL.
 - Demo reviewer account email that can receive a magic link.
 - App Store Connect app ID and Apple team ID.
-- Google Play package name: `com.timtsu.rotini`.
+- Google Play package name: `com.gorotini.app`.
 - Short description: "Shared rota scheduling, swaps, and reminders."
 - Data collection disclosure: account email, display name, rota names and schedules, rota membership, invite details, swap requests, push tokens, and crash diagnostics.
 - Permission disclosure: push notifications are used for rota reminders.
