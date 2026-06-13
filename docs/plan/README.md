@@ -12,6 +12,7 @@ Per-phase implementation plan. Cross-cutting design lives in [SPEC.md](./SPEC.md
 - [Phase 5 — Notifications](./05-notifications.md)
 - [Phase 6 — Polish & ship-ready](./06-polish.md)
 - [Phase 7 — Centralized rota realtime](./07-rota-realtime-scope.md) (supplementary; run when fixing duplicate-channel errors)
+- [Phase 8 — Small-team / club enhancements](./08-small-team-club.md) (post-MVP; targets the club/small-team niche from [MARKET.md](../MARKET.md))
 
 ## Working pattern
 
@@ -71,3 +72,12 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 28. Empty states / errors / a11y
 - [ ] 29. EAS Build + TestFlight + Internal Test Track + Sentry
 - [ ] 30. Beta feedback iteration
+
+### Phase 8 — Small-team / club enhancements (post-MVP)
+
+- [ ] 31. Migration — `member_unavailability` + availability-aware materializer + RPCs
+- [ ] 32. Availability UI
+- [ ] 33. Migration — open coverage on `swap_requests` + RPCs
+- [ ] 34. Coverage UI
+- [ ] 35. Migration — read-only share tokens + `get_shared_rota` RPC
+- [ ] 36. Web companion view
