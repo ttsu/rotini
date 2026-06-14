@@ -53,9 +53,11 @@ Unavailability is modelled as **personal absence** — a property of the *user*,
 
 ---
 
-## Enhancement B — "Ask the group to cover" (open coverage requests)
+## Enhancement B — "Ask anyone to cover" (open coverage, folded into the swap flow)
 
-Clubs don't swap 1:1 — they ask "can *anyone* take Sunday?" This extends the existing swap model with an **open** request that any eligible member can claim, first-come-first-served.
+Clubs don't swap 1:1 — they ask "can *anyone* take Sunday?" Rather than a separate feature, this is the **existing swap flow with an "Ask anyone" toggle**: instead of fanning out one request per member (N rows + N jobs, plus sibling-cancellation and a relocated race), a single **open** request row (`target_user_id = NULL`) is claimed first-come-first-served via an atomic RPC. The reused inbox card means no new Home surface.
+
+> **Design note — why one open row, not "select all" fan-out.** A roster-snapshot fan-out (one direct request per member, no schema change) doesn't remove the hard part — two simultaneous accepts still need an atomic first-wins guard plus cancellation of the siblings — and it adds N-row/N-notification amplification and breaks if membership changes between asking and claiming. The single open row keeps one race point, evaluates eligibility at claim time, and the incremental schema cost is tiny because Enhancement A **already** makes `occurrences.assigned_user_id` nullable + adds the `open` status.
 
 ### 33. Migration — open coverage on `swap_requests` + RPCs
 
@@ -63,7 +65,7 @@ Clubs don't swap 1:1 — they ask "can *anyone* take Sunday?" This extends the e
   - Extend `swap_requests`:
     - Allow `target_user_id` to be **NULL** (open request — no specific target).
     - Add `kind text` — enum(`direct`,`open`), default `direct`. Existing rows backfill to `direct`.
-  - Allow `occurrences.assigned_user_id` to be **NULL** and add `'open'` to the `occurrences.status` enum (an unfilled turn — also produced by Enhancement A when everyone's away).
+  - `occurrences.assigned_user_id` nullable + `'open'` status already land in Enhancement A; this enhancement depends on them (a coverage row never vacates the assignee until claimed, but the `open` status is shared with A's "nobody eligible" case).
   - Two `SECURITY DEFINER` RPCs:
     - `request_coverage(occurrence_id, message)` — caller must be the current `assigned_user_id`; occurrence must be `scheduled` and future. Inserts an `open`/`pending` row (`target_user_id = NULL`); sets `occurrences.swap_request_id`. Does **not** vacate the assignee yet (the requester still owns it until someone claims).
     - `claim_coverage(swap_request_id)` — caller must be a non-viewer member of the rota, **not** the requester. Must be atomic and race-safe: conditionally update **only if** `status = 'pending'` (single `UPDATE … WHERE status='pending' RETURNING`); the losing claimant gets a clear "already taken" error. On win: reassign the occurrence to the claimant (set `original_assignee_id` if unset), set request `status = accepted`, `target_user_id = claimant`, clear `occurrences.swap_request_id`, set occurrence `status = scheduled`.
@@ -72,13 +74,13 @@ Clubs don't swap 1:1 — they ask "can *anyone* take Sunday?" This extends the e
 - All RPCs `pg_notify('rotini_occurrence_changed', …)` so realtime subscribers refresh.
 - Re-run `npm run db:types`.
 
-### 34. Coverage UI
+### 34. Coverage UI — unified swap flow
 
-- On occurrence detail (caller is the assignee, future + scheduled): button **Ask anyone to cover** alongside the existing **Request swap**. Optional message; calls `request_coverage`.
-- **Open-turn surfacing:** Home screen gets an "Open turns in your rotas" section listing `open`/`pending` coverage requests (and any `status='open'` occurrences with no assignee from Enhancement A) for rotas the caller is a non-viewer of, each with a **Claim** button → `claim_coverage`. Same surface on rota detail.
+- **One entry point.** The existing *Request swap* screen (occurrence detail, caller is the assignee, future + scheduled) gains an **"Ask anyone (anyone can cover)"** toggle next to the member picker. Toggle **off** → today's `request_swap` to a chosen member (`kind='direct'`). Toggle **on** → the picker collapses and submit calls `request_coverage` (`kind='open'`). Same screen, same message field — no separate "ask to cover" button.
+- **Reuse the swap inbox, don't add a surface.** The existing Home "Swap requests for you" section also lists `open`/`pending` coverage requests for rotas the caller is a non-viewer of — an open card reads "{requester} needs anyone to cover {turn}" with a **Claim** button → `claim_coverage` (vs. the direct card's Accept/Decline). Any `status='open'` occurrences with no assignee from Enhancement A surface in the same section.
 - Claimed/already-taken: optimistic claim with a clear toast on the race-loss path ("Already covered by {name}").
 - The occurrence detail shows an "Open — needs cover" banner while pending; viewers see it read-only (cannot claim).
-- Realtime: subscribe to `swap_requests` filtered to the user's rotas (not just `target_user_id = me`, since open requests have no target) so open turns appear/disappear live.
+- Realtime: the Phase 4 `swap_requests` subscription widens from `target_user_id = me OR requester_id = me` to also include open (`kind='open'`, `target_user_id IS NULL`) requests in the user's rotas, so open turns appear/disappear live.
 
 ---
 
@@ -154,7 +156,7 @@ Automated:
 ## Done-when
 
 - [ ] **A:** global `user_unavailability` table + RPCs + RLS (own-only writes, reason private, owners can't clear); materializer skips absent members and fans out across all their rotas, producing `open` turns when nobody's eligible; reminders reconcile; UI lets a user set/clear absence at the account level and coordinators see who's away (dates only). Realtime live.
-- [ ] **B:** open coverage requests work end-to-end; claim is race-safe; override/direct-swap cancel open requests; Home surfaces open turns; viewer guards hold.
+- [ ] **B:** the *Request swap* screen carries an "Ask anyone" toggle that creates a single open request (no fan-out); claim is race-safe; override/direct-swap cancel open requests; the existing swap inbox surfaces open turns (no new Home section); viewer guards hold.
 - [ ] **C:** owner can create/revoke a read-only share link; the unauthenticated web route renders a sanitized schedule; revoked/invalid tokens fail closed.
 - [ ] Each RPC is `SECURITY DEFINER` with explicit permission checks; no direct table-mutation paths.
 - [ ] `npm run db:types` re-run after every migration; one commit per unit; units 31–36 added + ticked in [`README.md`](./README.md).
