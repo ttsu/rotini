@@ -43,6 +43,7 @@ async function fanOutMaterialize(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
+        'apikey': supabaseAnonKey,
       },
       body: JSON.stringify({
         rota_id: rotaId,
@@ -90,8 +91,8 @@ export function useMyUnavailability() {
   });
 }
 
-/** Upcoming absence windows for all members of a rota (public view, no reason). */
-export function useRotaMemberUnavailability(rotaId: string | null | undefined) {
+/** Registers a realtime subscription for unavailability changes on a rota. Call once at screen level. */
+export function useRegisterUnavailabilityRealtime(rotaId: string | null | undefined) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const key = unavailabilityKeys.forRota(rotaId ?? '');
@@ -114,6 +115,12 @@ export function useRotaMemberUnavailability(rotaId: string | null | undefined) {
       supabase.removeChannel(channel);
     };
   }, [rotaId, session?.user.id, queryClient]);
+}
+
+/** Upcoming absence windows for all members of a rota (public view, no reason). */
+export function useRotaMemberUnavailability(rotaId: string | null | undefined) {
+  const { session } = useAuth();
+  const key = unavailabilityKeys.forRota(rotaId ?? '');
 
   return useQuery({
     queryKey: key,
