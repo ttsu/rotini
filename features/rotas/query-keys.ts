@@ -22,6 +22,7 @@ export const queryKeys = {
     pendingForMe: (): QueryKey => ['pending-swaps-for-me'],
     pendingSent: (): QueryKey => ['pending-swaps-sent'],
     pendingForOccurrence: (occurrenceId: string): QueryKey => ['pending-swaps-occurrence', occurrenceId],
+    pendingOpenCoverage: (): QueryKey => ['pending-open-coverage'],
   },
   reminders: {
     forRota: (rotaId: string | null | undefined): QueryKey => ['my-reminders', rotaId],

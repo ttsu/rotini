@@ -78,6 +78,6 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 31. Migration — `user_unavailability` (global) + absence-aware materializer + RPCs
 - [x] 32. Absence UI
 - [x] 33. Migration — open coverage on `swap_requests` + RPCs
-- [ ] 34. Coverage UI — unified swap flow (Ask-anyone toggle)
+- [x] 34. Coverage UI — unified swap flow (Ask-anyone toggle)
 - [ ] 35. Migration — read-only share tokens + `get_shared_rota` RPC
 - [ ] 36. Web companion view

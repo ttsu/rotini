@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
 import {
+  pendingOpenCoverageSchema,
   pendingSwapForMeSchema,
   pendingSwapSentSchema,
   rpcOccurrenceRefSchema,
   swapRequestDetailSchema,
+  type PendingOpenCoverage,
   type PendingSwapForMe,
   type PendingSwapSent,
   type SwapRequestDetail,
@@ -14,7 +16,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { queryKeys } from '@/features/rotas/query-keys';
 
-export type { PendingSwapForMe, PendingSwapSent, SwapRequestDetail };
+export type { PendingOpenCoverage, PendingSwapForMe, PendingSwapSent, SwapRequestDetail };
 
 /** All pending swap requests for a specific occurrence (any requester, any target). */
 export function usePendingSwapsForOccurrence(occurrenceId: string | null | undefined) {
@@ -180,6 +182,107 @@ export function usePendingSentSwaps() {
       });
     },
     enabled: !!session,
+  });
+}
+
+/** Pending open coverage requests visible to the current user as a claimant. */
+export function usePendingOpenCoverageRequests() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const key = queryKeys.swaps.pendingOpenCoverage();
+
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel(`open-coverage:${session.user.id}:${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'swap_requests', filter: 'kind=eq.open' },
+        () => queryClient.invalidateQueries({ queryKey: key }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user.id, queryClient]);
+
+  return useQuery({
+    queryKey: key,
+    queryFn: async (): Promise<PendingOpenCoverage[]> => {
+      const { data, error } = await supabase
+        .from('swap_requests')
+        .select(
+          'id, occurrence_id, requester_id, message, created_at,' +
+            'requester:profiles!swap_requests_requester_id_fkey(display_name),' +
+            'occurrence:occurrences(scheduled_at, ends_at, rota_id, rota:rotas!occurrences_rota_id_fkey(name, tz))',
+        )
+        .eq('kind', 'open')
+        .eq('status', 'pending')
+        .neq('requester_id', session!.user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const rows = data ?? [];
+      return rows.map((row, i) => {
+        const r = pendingOpenCoverageSchema.safeParse(row);
+        if (!r.success) {
+          if (__DEV__) console.warn('[open-coverage] row', i, r.error.flatten());
+          throw new Error('Invalid open coverage shape from server.');
+        }
+        return r.data;
+      });
+    },
+    enabled: !!session,
+  });
+}
+
+export function useRequestCoverage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      occurrenceId,
+      message,
+    }: {
+      occurrenceId: string;
+      message?: string | null;
+    }) => {
+      const { data, error } = await supabase.rpc('request_coverage', {
+        p_occurrence_id: occurrenceId,
+        p_message: message ?? undefined,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, { occurrenceId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(occurrenceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForOccurrence(occurrenceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingSent() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingOpenCoverage() });
+    },
+  });
+}
+
+export function useClaimCoverage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ swapRequestId }: { swapRequestId: string }) => {
+      const { data, error } = await supabase.rpc('claim_coverage', {
+        p_swap_request_id: swapRequestId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      const row = rpcOccurrenceRefSchema.safeParse(data);
+      const occ = row.success ? row.data : null;
+      if (occ?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.detail(occ.id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForOccurrence(occ.id) });
+      }
+      if (occ?.rota_id)
+        queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingOpenCoverage() });
+    },
   });
 }
 

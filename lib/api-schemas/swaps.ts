@@ -4,7 +4,7 @@ export const swapRequestDetailSchema = z.object({
   id: z.string(),
   occurrence_id: z.string(),
   requester_id: z.string(),
-  target_user_id: z.string(),
+  target_user_id: z.string().nullable(),
   message: z.string().nullable(),
   status: z.string(),
   kind: z.string(),
@@ -44,7 +44,7 @@ export type PendingSwapForMe = z.infer<typeof pendingSwapForMeSchema>;
 export const pendingSwapSentSchema = z.object({
   id: z.string(),
   occurrence_id: z.string(),
-  target_user_id: z.string(),
+  target_user_id: z.string().nullable(),
   message: z.string().nullable(),
   kind: z.string(),
   created_at: z.string(),
@@ -65,6 +65,26 @@ export const pendingSwapSentSchema = z.object({
 });
 
 export type PendingSwapSent = z.infer<typeof pendingSwapSentSchema>;
+
+/** Pending open coverage request visible to an eligible claimant in inbox. */
+export const pendingOpenCoverageSchema = z.object({
+  id: z.string(),
+  occurrence_id: z.string(),
+  requester_id: z.string(),
+  message: z.string().nullable(),
+  created_at: z.string(),
+  requester: z.object({ display_name: z.string().nullable() }).nullable(),
+  occurrence: z
+    .object({
+      scheduled_at: z.string(),
+      ends_at: z.string(),
+      rota_id: z.string(),
+      rota: z.object({ name: z.string(), tz: z.string() }).nullable(),
+    })
+    .nullable(),
+});
+
+export type PendingOpenCoverage = z.infer<typeof pendingOpenCoverageSchema>;
 
 /** Minimal occurrence row returned by some swap RPCs for cache invalidation. */
 export const rpcOccurrenceRefSchema = z
