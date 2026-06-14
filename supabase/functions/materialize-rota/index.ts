@@ -31,10 +31,14 @@ serve(async (req) => {
     timingSafeEqualString(apikeyHeader, secretKey);
 
   let rotaId: string;
+  let invalidateWindow: { start_date: string; end_date: string } | undefined;
   try {
     const body = await req.json();
     rotaId = body?.rota_id;
     if (typeof rotaId !== 'string' || !rotaId) throw new Error();
+    if (body?.invalidate_window) {
+      invalidateWindow = body.invalidate_window;
+    }
   } catch {
     return json({ error: 'rota_id required' }, 400);
   }
@@ -55,7 +59,7 @@ serve(async (req) => {
   }
 
   try {
-    const result = await materialize(admin, rotaId);
+    const result = await materialize(admin, rotaId, invalidateWindow);
     return json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -73,10 +77,43 @@ function timingSafeEqualString(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// ─── Unavailability types ─────────────────────────────────────────────────────
+
+interface UnavailabilityWindow {
+  user_id: string;
+  start_date: string; // yyyy-MM-dd in the user's tz
+  end_date: string;   // yyyy-MM-dd in the user's tz
+  tz: string;
+}
+
+/** Returns true if the occurrence (given as UTC Date) falls within any of the
+ *  user's unavailability windows, comparing in each window's own tz. */
+function isUserAbsent(
+  userId: string,
+  occurrenceUtc: Date,
+  unavailability: UnavailabilityWindow[],
+): boolean {
+  const windows = unavailability.filter((w) => w.user_id === userId);
+  if (windows.length === 0) return false;
+
+  for (const w of windows) {
+    // Convert the occurrence UTC timestamp to the user's own tz for comparison
+    const dateInUserTz = formatInTimeZone(occurrenceUtc, w.tz, 'yyyy-MM-dd');
+    if (dateInUserTz >= w.start_date && dateInUserTz <= w.end_date) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ─── Core logic ───────────────────────────────────────────────────────────────
 
 // deno-lint-ignore no-explicit-any
-async function materialize(admin: ReturnType<typeof createClient>, rotaId: string) {
+async function materialize(
+  admin: ReturnType<typeof createClient>,
+  rotaId: string,
+  invalidateWindow?: { start_date: string; end_date: string },
+) {
   // Load rota
   const { data: rota, error: rotaErr } = await admin
     .from('rotas')
@@ -112,6 +149,21 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
   if (membersErr) throw new Error(`Members load: ${membersErr.message}`);
 
   const members = (membersRaw ?? []) as Array<{ id: string; user_id: string | null; position: number }>;
+
+  // Load unavailability windows for all member user_ids
+  const memberUserIds = members
+    .map((m) => m.user_id)
+    .filter((uid): uid is string => uid !== null);
+
+  let unavailability: UnavailabilityWindow[] = [];
+  if (memberUserIds.length > 0) {
+    const { data: unavailRaw, error: unavailErr } = await admin
+      .from('user_unavailability')
+      .select('user_id, start_date, end_date, tz')
+      .in('user_id', memberUserIds);
+    if (unavailErr) throw new Error(`Unavailability load: ${unavailErr.message}`);
+    unavailability = (unavailRaw ?? []) as UnavailabilityWindow[];
+  }
 
   // Expand RRULE for [max(now, dtstart)…now + 365 days], cap 200
   const now = new Date();
@@ -169,11 +221,13 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
     scheduled_local_date: string;
     assigned_user_id: string | null;
     slot_member_id: string | null;
+    status: string;
   }> = [];
 
   for (let i = 0; i < desired.length; i++) {
     const ts = desired[i];
     const key = ts.toISOString();
+    const localDate = formatInTimeZone(ts, tz, 'yyyy-MM-dd');
     let endsAt: Date;
     if (rota.back_to_back) {
       if (i < desired.length - 1) {
@@ -185,27 +239,63 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
       endsAt = new Date(ts.getTime() + (durationMinutes ?? 0) * 60_000);
     }
 
+    // Determine whether this occurrence falls inside the invalidation window.
+    // When invalidate_window is provided, do NOT preserve existing assignments
+    // for occurrences within [start_date, end_date] (in rota's tz).
+    const inInvalidateWindow =
+      invalidateWindow != null &&
+      localDate >= invalidateWindow.start_date &&
+      localDate <= invalidateWindow.end_date;
+
     let assignedUserId: string | null = null;
     let slotMemberId: string | null = null;
+    let status = 'scheduled';
 
-    if (existingMap.has(key)) {
+    if (existingMap.has(key) && !inInvalidateWindow) {
       // Preserve existing assignment; cursor only advances for genuinely new rows
       const ex = existingMap.get(key)!;
       assignedUserId = ex.assigned_user_id;
       slotMemberId = ex.slot_member_id;
     } else if (members.length > 0) {
-      const m = members[cursorIdx];
-      assignedUserId = m.user_id;                   // null for pending slots
-      slotMemberId = m.user_id === null ? m.id : null;
-      cursorIdx = (cursorIdx + 1) % members.length;
+      // Absence-aware round-robin: try each member starting from cursorIdx
+      let assigned = false;
+      const n = members.length;
+      for (let attempt = 0; attempt < n; attempt++) {
+        const idx = (cursorIdx + attempt) % n;
+        const m = members[idx];
+
+        // Pending slots (no user_id) are never "absent" — treat as available
+        const absent =
+          m.user_id !== null &&
+          unavailability.length > 0 &&
+          isUserAbsent(m.user_id, ts, unavailability);
+
+        if (!absent) {
+          assignedUserId = m.user_id;
+          slotMemberId = m.user_id === null ? m.id : null;
+          cursorIdx = (idx + 1) % n;
+          assigned = true;
+          break;
+        }
+      }
+
+      if (!assigned) {
+        // All members absent: open occurrence, advance cursor by 1 so rotation
+        // resumes correctly after the absent window ends.
+        assignedUserId = null;
+        slotMemberId = null;
+        status = 'open';
+        cursorIdx = (cursorIdx + 1) % n;
+      }
     }
 
     occurrences.push({
       scheduled_at: key,
       ends_at: endsAt.toISOString(),
-      scheduled_local_date: formatInTimeZone(ts, tz, 'yyyy-MM-dd'),
+      scheduled_local_date: localDate,
       assigned_user_id: assignedUserId,
       slot_member_id: slotMemberId,
+      status,
     });
   }
 
@@ -223,4 +313,3 @@ async function materialize(admin: ReturnType<typeof createClient>, rotaId: strin
 
   return { count: occurrences.length };
 }
-

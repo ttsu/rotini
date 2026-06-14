@@ -75,7 +75,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 
 ### Phase 8 — Small-team / club enhancements (post-MVP)
 
-- [ ] 31. Migration — `user_unavailability` (global) + absence-aware materializer + RPCs
+- [x] 31. Migration — `user_unavailability` (global) + absence-aware materializer + RPCs
 - [ ] 32. Absence UI
 - [ ] 33. Migration — open coverage on `swap_requests` + RPCs
 - [ ] 34. Coverage UI — unified swap flow (Ask-anyone toggle)
