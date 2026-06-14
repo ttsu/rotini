@@ -47,11 +47,12 @@ export function WhoIsAway({
 
   // Collect the first upcoming window per member (data already sorted by start_date asc)
   const seen = new Set<string>();
-  const awayEntries: { name: string; start_date: string; end_date: string }[] = [];
+  const awayEntries: { user_id: string; name: string; start_date: string; end_date: string }[] = [];
   for (const w of rotaUnavailability) {
     if (!seen.has(w.user_id) && nameById.has(w.user_id)) {
       seen.add(w.user_id);
       awayEntries.push({
+        user_id: w.user_id,
         name: nameById.get(w.user_id)!,
         start_date: w.start_date,
         end_date: w.end_date,
@@ -91,7 +92,7 @@ export function WhoIsAway({
       </Text>
       {awayEntries.map((entry) => (
         <View
-          key={entry.name}
+          key={entry.user_id}
           style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}
         >
           <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>{entry.name}</Text>

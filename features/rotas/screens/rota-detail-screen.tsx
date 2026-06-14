@@ -22,6 +22,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import { useDeleteRota, useLeaveRota, useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
+import { useRegisterUnavailabilityRealtime } from '@/features/unavailability/hooks';
 import { DetailRow } from '@/features/rotas/rota-detail/detail-row';
 import { formatDuration } from '@/features/rotas/rota-detail/formatting';
 import type { Member } from '@/features/rotas/rota-detail/member-rows';
@@ -52,6 +53,7 @@ export type RotaDetailScreenContentProps = {
 export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScreenContentProps) {
   const routeId = rotaId;
   useRegisterRotaRealtime(rotaId || null);
+  useRegisterUnavailabilityRealtime(rotaId || null);
   const router = useRouter();
   const { session } = useAuth();
   const { data: rota, isLoading, error, refetch } = useRotaData(routeId);
