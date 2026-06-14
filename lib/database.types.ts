@@ -97,7 +97,6 @@ export type Database = {
           scheduled_local_date: string
           slot_member_id: string | null
           status: string
-          swap_request_id: string | null
         }
         Insert: {
           assigned_user_id?: string | null
@@ -112,7 +111,6 @@ export type Database = {
           scheduled_local_date: string
           slot_member_id?: string | null
           status?: string
-          swap_request_id?: string | null
         }
         Update: {
           assigned_user_id?: string | null
@@ -127,7 +125,6 @@ export type Database = {
           scheduled_local_date?: string
           slot_member_id?: string | null
           status?: string
-          swap_request_id?: string | null
         }
         Relationships: [
           {
@@ -163,13 +160,6 @@ export type Database = {
             columns: ["slot_member_id"]
             isOneToOne: false
             referencedRelation: "rota_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "occurrences_swap_request_id_fkey"
-            columns: ["swap_request_id"]
-            isOneToOne: false
-            referencedRelation: "swap_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -518,31 +508,34 @@ export type Database = {
           created_at: string
           decided_at: string | null
           id: string
+          kind: string
           message: string | null
           occurrence_id: string
           requester_id: string
           status: string
-          target_user_id: string
+          target_user_id: string | null
         }
         Insert: {
           created_at?: string
           decided_at?: string | null
           id?: string
+          kind?: string
           message?: string | null
           occurrence_id: string
           requester_id: string
           status?: string
-          target_user_id: string
+          target_user_id?: string | null
         }
         Update: {
           created_at?: string
           decided_at?: string | null
           id?: string
+          kind?: string
           message?: string | null
           occurrence_id?: string
           requester_id?: string
           status?: string
-          target_user_id?: string
+          target_user_id?: string | null
         }
         Relationships: [
           {
@@ -632,8 +625,65 @@ export type Database = {
           },
         ]
       }
+      user_unavailability: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          reason: string | null
+          start_date: string
+          tz: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          start_date: string
+          tz: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          start_date?: string
+          tz?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_unavailability_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
+      user_unavailability_public: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string | null
+          start_date: string | null
+          tz: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_unavailability_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_rota_now: {
         Row: {
           active_assignee_display: string | null
@@ -698,6 +748,63 @@ export type Database = {
         Returns: string
       }
       cancel_swap: { Args: { p_swap_request_id: string }; Returns: undefined }
+      change_member_role: {
+        Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
+        Returns: {
+          id: string
+          is_manager: boolean
+          joined_at: string
+          label: string | null
+          notify_scope: string
+          position: number | null
+          role: string
+          rota_id: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rota_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_coverage: {
+        Args: { p_swap_request_id: string }
+        Returns: {
+          assigned_user_id: string | null
+          created_at: string
+          ends_at: string
+          generated_from_rule: boolean
+          id: string
+          original_assignee_id: string | null
+          override_reason: string | null
+          rota_id: string
+          scheduled_at: string
+          scheduled_local_date: string
+          slot_member_id: string | null
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "occurrences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_notification_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          assignee_name: string
+          expo_token: string
+          fire_at: string
+          id: string
+          lead_minutes: number
+          occurrence_id: string
+          reminder_id: string
+          rota_name: string
+          user_id: string
+        }[]
+      }
       claim_pending_slot: {
         Args: { p_occurrence_id: string }
         Returns: {
@@ -721,39 +828,9 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      change_member_role: {
-        Args: { p_new_role: string; p_rota_id: string; p_user_id: string }
-        Returns: {
-          id: string
-          is_manager: boolean
-          joined_at: string
-          label: string | null
-          notify_scope: string
-          position: number | null
-          role: string
-          rota_id: string
-          user_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "rota_members"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      claim_notification_jobs: {
-        Args: { p_limit?: number }
-        Returns: {
-          assignee_name: string
-          expo_token: string
-          fire_at: string
-          id: string
-          lead_minutes: number
-          occurrence_id: string
-          reminder_id: string
-          rota_name: string
-          user_id: string
-        }[]
+      clear_unavailability: {
+        Args: { p_unavailability_id: string }
+        Returns: Json
       }
       create_invite: {
         Args: {
@@ -831,7 +908,6 @@ export type Database = {
           scheduled_local_date: string
           slot_member_id: string | null
           status: string
-          swap_request_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -861,6 +937,26 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_coverage: {
+        Args: { p_message?: string; p_occurrence_id: string }
+        Returns: {
+          created_at: string
+          decided_at: string | null
+          id: string
+          kind: string
+          message: string | null
+          occurrence_id: string
+          requester_id: string
+          status: string
+          target_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "swap_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       request_swap: {
         Args: {
           p_message?: string
@@ -871,11 +967,12 @@ export type Database = {
           created_at: string
           decided_at: string | null
           id: string
+          kind: string
           message: string | null
           occurrence_id: string
           requester_id: string
           status: string
-          target_user_id: string
+          target_user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -903,7 +1000,6 @@ export type Database = {
           scheduled_local_date: string
           slot_member_id: string | null
           status: string
-          swap_request_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -935,6 +1031,15 @@ export type Database = {
       set_notify_scope: {
         Args: { p_rota_id: string; p_scope: string }
         Returns: undefined
+      }
+      set_unavailability: {
+        Args: {
+          p_end_date: string
+          p_reason?: string
+          p_start_date: string
+          p_tz?: string
+        }
+        Returns: Json
       }
       set_user_reminder: {
         Args: { p_lead_minutes: number; p_rota_id: string }

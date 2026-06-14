@@ -23,6 +23,8 @@ import { useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
 import {
   usePendingSwapsForOccurrence,
   useRequestSwap,
+  useRequestCoverage,
+  useClaimCoverage,
   useRespondSwap,
   useCancelSwap,
   useClaimPendingSlot,
@@ -71,6 +73,7 @@ export function OccurrenceDetailScreenContent({
   // Swap modal state
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapMode, setSwapMode] = useState<SwapMode>('outbound');
+  const [askAnyone, setAskAnyone] = useState(false);
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
   const [swapMessage, setSwapMessage] = useState('');
 
@@ -126,6 +129,8 @@ export function OccurrenceDetailScreenContent({
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const requestSwap = useRequestSwap();
+  const requestCoverage = useRequestCoverage();
+  const claimCoverage = useClaimCoverage();
   const respondSwap = useRespondSwap();
   const cancelSwap = useCancelSwap();
   const claimPendingSlot = useClaimPendingSlot();
@@ -148,10 +153,8 @@ export function OccurrenceDetailScreenContent({
   const isPendingSlot = !occ?.assigned_user_id && !!occ?.slot_member_id;
 
   const mySwapsAsRequester = pendingSwaps.filter((s) => s.requester_id === userId);
-  const mySwapsAsTarget = pendingSwaps.filter((s) => s.target_user_id === userId);
+  const openCoverageRequest = pendingSwaps.find((s) => s.kind === 'open' && s.status === 'pending');
   const hasPendingSwap = pendingSwaps.length > 0;
-  const isRequester = mySwapsAsRequester.length > 0;
-  const isSwapTarget = mySwapsAsTarget.length > 0;
 
   const canRequestSwap =
     isAssignee &&
@@ -167,6 +170,11 @@ export function OccurrenceDetailScreenContent({
     isMember &&
     mySwapsAsRequester.length === 0;
   const canClaim = isPendingSlot && isFuture && isMember;
+  const canClaimOpenCoverage =
+    !!openCoverageRequest &&
+    openCoverageRequest.requester_id !== userId &&
+    isMember &&
+    isFuture;
 
   const swapTargets = members.filter(
     (m): m is RotaMemberEmbed & { user_id: string } =>
@@ -194,9 +202,20 @@ export function OccurrenceDetailScreenContent({
 
   async function submitSwapRequest() {
     if (!occ) return;
-    if (swapMode === 'outbound' && selectedTargetIds.size === 0) return;
+    if (swapMode === 'outbound' && !askAnyone && selectedTargetIds.size === 0) return;
     try {
-      if (swapMode === 'outbound') {
+      if (swapMode === 'outbound' && askAnyone) {
+        await requestCoverage.mutateAsync({
+          occurrenceId: occ.id,
+          message: swapMessage || null,
+        });
+        setShowSwapModal(false);
+        setSelectedTargetIds(new Set());
+        setSwapMessage('');
+        setAskAnyone(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast('Coverage request sent to all members');
+      } else if (swapMode === 'outbound') {
         await Promise.all(
           Array.from(selectedTargetIds).map((targetId) =>
             requestSwap.mutateAsync({
@@ -206,23 +225,26 @@ export function OccurrenceDetailScreenContent({
             }),
           ),
         );
+        setShowSwapModal(false);
+        setSelectedTargetIds(new Set());
+        setSwapMessage('');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast(
+          selectedTargetIds.size === 1
+            ? 'Swap request sent'
+            : `Swap requests sent to ${selectedTargetIds.size} members`,
+        );
       } else {
         await requestSwap.mutateAsync({
           occurrenceId: occ.id,
           message: swapMessage || null,
         });
+        setShowSwapModal(false);
+        setSelectedTargetIds(new Set());
+        setSwapMessage('');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast('Swap request sent');
       }
-      setShowSwapModal(false);
-      setSelectedTargetIds(new Set());
-      setSwapMessage('');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const label =
-        swapMode === 'volunteer'
-          ? 'Swap request sent'
-          : selectedTargetIds.size === 1
-            ? 'Swap request sent'
-            : `Swap requests sent to ${selectedTargetIds.size} members`;
-      showToast(label);
     } catch (err: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', getUserMessage(err) || 'Failed to request swap');
@@ -231,6 +253,7 @@ export function OccurrenceDetailScreenContent({
 
   function openOutboundModal() {
     setSwapMode('outbound');
+    setAskAnyone(false);
     setSelectedTargetIds(new Set());
     setSwapMessage('');
     setShowSwapModal(true);
@@ -288,9 +311,10 @@ export function OccurrenceDetailScreenContent({
   };
 
   const isSendEnabled =
-    swapMode === 'volunteer' ? true : selectedTargetIds.size > 0;
+    swapMode === 'volunteer' ? true : askAnyone ? true : selectedTargetIds.size > 0;
+  const isSubmitting = requestSwap.isPending || requestCoverage.isPending;
   const sendLabel =
-    swapMode === 'outbound' && selectedTargetIds.size > 1
+    swapMode === 'outbound' && !askAnyone && selectedTargetIds.size > 1
       ? `Send to ${selectedTargetIds.size}`
       : 'Send';
 
@@ -334,28 +358,32 @@ export function OccurrenceDetailScreenContent({
                     testID={`occurrence-assignee-${assigneeTestId}`}
                     style={{ fontSize: 20, fontWeight: '700', color: textPrimary, flex: 1 }}
                   >
-                    {assigneeDisplayName}
+                    {occ.status === 'open' ? 'Open — needs cover' : assigneeDisplayName}
                   </Text>
                   <Pill
                     label={
-                      occ.status === 'overridden'
-                        ? 'Overridden'
-                        : isPendingSlot
-                          ? 'Pending'
-                          : isActive
-                            ? 'On now'
-                            : isPast
-                              ? 'Ended'
-                              : 'Upcoming'
+                      occ.status === 'open'
+                        ? 'Open'
+                        : occ.status === 'overridden'
+                          ? 'Overridden'
+                          : isPendingSlot
+                            ? 'Pending'
+                            : isActive
+                              ? 'On now'
+                              : isPast
+                                ? 'Ended'
+                                : 'Upcoming'
                     }
                     color={
-                      occ.status === 'overridden'
+                      occ.status === 'open'
                         ? 'amber'
-                        : isPendingSlot
-                          ? 'gray'
-                          : isActive
-                            ? 'green'
-                            : 'gray'
+                        : occ.status === 'overridden'
+                          ? 'amber'
+                          : isPendingSlot
+                            ? 'gray'
+                            : isActive
+                              ? 'green'
+                              : 'gray'
                     }
                     dot={isActive}
                   />
@@ -396,6 +424,119 @@ export function OccurrenceDetailScreenContent({
               ? pendingSwaps.map((swapReq) => {
                   const iAmRequester = swapReq.requester_id === userId;
                   const iAmTarget = swapReq.target_user_id === userId;
+
+                  // Open coverage request — show to requester (cancel) and eligible claimants
+                  if (swapReq.kind === 'open') {
+                    if (!iAmRequester && !canClaimOpenCoverage) return null;
+                    return (
+                      <View
+                        key={swapReq.id}
+                        testID="open-coverage-banner"
+                        style={{
+                          backgroundColor: '#FF9F0A',
+                          borderRadius: 18,
+                          padding: 16,
+                          marginBottom: 12,
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.06,
+                          shadowRadius: 2,
+                          elevation: 2,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: '#fff', opacity: 0.85, marginBottom: 2 }}>
+                          Open — needs cover
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontWeight: '600',
+                            color: '#fff',
+                            marginBottom: swapReq.message ? 4 : 12,
+                          }}
+                        >
+                          {iAmRequester
+                            ? 'You asked anyone to cover this turn'
+                            : `${swapReq.requester?.display_name ?? 'Someone'} needs anyone to cover`}
+                        </Text>
+                        {swapReq.message ? (
+                          <Text style={{ fontSize: 14, color: '#fff', opacity: 0.9, marginBottom: 12 }}>
+                            {`"${swapReq.message}"`}
+                          </Text>
+                        ) : null}
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          {iAmRequester ? (
+                            <TouchableOpacity
+                              onPress={() =>
+                                Alert.alert('Cancel coverage request?', 'The open request will be cancelled.', [
+                                  { text: 'Keep', style: 'cancel' },
+                                  {
+                                    text: 'Cancel request',
+                                    style: 'destructive',
+                                    onPress: () =>
+                                      cancelSwap.mutate(
+                                        { swapId: swapReq.id },
+                                        { onError: (e: unknown) => Alert.alert('Error', getUserMessage(e)) },
+                                      ),
+                                  },
+                                ])
+                              }
+                              style={{
+                                flex: 1,
+                                backgroundColor: 'rgba(255,255,255,0.25)',
+                                borderRadius: 10,
+                                paddingVertical: 10,
+                                alignItems: 'center',
+                              }}
+                              testID="cancel-coverage-button"
+                            >
+                              <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              testID="claim-coverage-button"
+                              disabled={claimCoverage.isPending}
+                              onPress={() =>
+                                claimCoverage.mutate(
+                                  { swapRequestId: swapReq.id },
+                                  {
+                                    onSuccess: () => {
+                                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                      showToast('You\'ve taken this turn');
+                                    },
+                                    onError: (e: unknown) => {
+                                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                                      const msg = getUserMessage(e) ?? '';
+                                      if (msg.includes('already taken')) {
+                                        showToast('Already covered by someone else');
+                                      } else {
+                                        Alert.alert('Error', msg || 'Failed to claim coverage');
+                                      }
+                                    },
+                                  },
+                                )
+                              }
+                              style={{
+                                flex: 1,
+                                backgroundColor: '#fff',
+                                borderRadius: 10,
+                                paddingVertical: 10,
+                                alignItems: 'center',
+                              }}
+                            >
+                              {claimCoverage.isPending ? (
+                                <ActivityIndicator size="small" color="#FF9F0A" />
+                              ) : (
+                                <Text style={{ color: '#FF9F0A', fontWeight: '700' }}>Claim turn</Text>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  }
+
+                  // Direct / volunteer swap
                   if (!iAmRequester && !iAmTarget) return null;
                   return (
                     <View
@@ -654,10 +795,10 @@ export function OccurrenceDetailScreenContent({
             <TouchableOpacity
               testID="send-swap-request-button"
               onPress={submitSwapRequest}
-              disabled={!isSendEnabled || requestSwap.isPending}
+              disabled={!isSendEnabled || isSubmitting}
               style={{ minWidth: 50, alignItems: 'flex-end' }}
             >
-              {requestSwap.isPending ? (
+              {isSubmitting ? (
                 <ActivityIndicator size="small" color="#0a7ea4" />
               ) : (
                 <Text
@@ -688,65 +829,108 @@ export function OccurrenceDetailScreenContent({
               </View>
             ) : (
               <>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: '600',
-                    color: '#AEAEB2',
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    marginBottom: 8,
-                  }}
-                >
-                  Swap with
-                </Text>
+                {/* Ask anyone toggle */}
                 <View style={{ ...cardStyle, marginBottom: 20 }}>
-                  {swapTargets.length === 0 ? (
-                    <View style={{ padding: 16 }}>
-                      <Text style={{ color: textSec, fontSize: 15 }}>No eligible members.</Text>
+                  <TouchableOpacity
+                    testID="ask-anyone-toggle"
+                    onPress={() => {
+                      setAskAnyone((v) => !v);
+                      setSelectedTargetIds(new Set());
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                    }}
+                  >
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text style={{ fontSize: 15, color: textPrimary }}>Ask anyone to cover</Text>
+                      <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
+                        Open to all eligible members — first to claim wins
+                      </Text>
                     </View>
-                  ) : (
-                    swapTargets.map((m, idx) => {
-                      const selected = selectedTargetIds.has(m.user_id);
-                      return (
-                        <TouchableOpacity
-                          key={m.user_id}
-                          testID={`swap-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id)}`}
-                          onPress={() => toggleTarget(m.user_id)}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingHorizontal: 16,
-                            paddingVertical: 14,
-                            borderBottomWidth: idx < swapTargets.length - 1 ? 0.5 : 0,
-                            borderBottomColor: sep,
-                          }}
-                        >
-                          <Text style={{ fontSize: 15, color: textPrimary }}>
-                            {m.profile?.display_name ?? m.user_id}
-                          </Text>
-                          <View
-                            style={{
-                              width: 22,
-                              height: 22,
-                              borderRadius: 6,
-                              borderWidth: 2,
-                              borderColor: selected ? '#0a7ea4' : sep,
-                              backgroundColor: selected ? '#0a7ea4' : 'transparent',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            {selected && (
-                              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>✓</Text>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
+                    <View
+                      style={{
+                        width: 44,
+                        height: 26,
+                        borderRadius: 13,
+                        backgroundColor: askAnyone ? '#0a7ea4' : sep,
+                        padding: 3,
+                        justifyContent: 'center',
+                        alignItems: askAnyone ? 'flex-end' : 'flex-start',
+                      }}
+                    >
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' }} />
+                    </View>
+                  </TouchableOpacity>
                 </View>
+
+                {/* Member picker — hidden when askAnyone is on */}
+                {!askAnyone && (
+                  <>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: '600',
+                        color: '#AEAEB2',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Swap with
+                    </Text>
+                    <View style={{ ...cardStyle, marginBottom: 20 }}>
+                      {swapTargets.length === 0 ? (
+                        <View style={{ padding: 16 }}>
+                          <Text style={{ color: textSec, fontSize: 15 }}>No eligible members.</Text>
+                        </View>
+                      ) : (
+                        swapTargets.map((m, idx) => {
+                          const selected = selectedTargetIds.has(m.user_id);
+                          return (
+                            <TouchableOpacity
+                              key={m.user_id}
+                              testID={`swap-target-${toTestIdSegment(m.profile?.display_name ?? m.user_id)}`}
+                              onPress={() => toggleTarget(m.user_id)}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                paddingHorizontal: 16,
+                                paddingVertical: 14,
+                                borderBottomWidth: idx < swapTargets.length - 1 ? 0.5 : 0,
+                                borderBottomColor: sep,
+                              }}
+                            >
+                              <Text style={{ fontSize: 15, color: textPrimary }}>
+                                {m.profile?.display_name ?? m.user_id}
+                              </Text>
+                              <View
+                                style={{
+                                  width: 22,
+                                  height: 22,
+                                  borderRadius: 6,
+                                  borderWidth: 2,
+                                  borderColor: selected ? '#0a7ea4' : sep,
+                                  backgroundColor: selected ? '#0a7ea4' : 'transparent',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                {selected && (
+                                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>✓</Text>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+                    </View>
+                  </>
+                )}
               </>
             )}
 
