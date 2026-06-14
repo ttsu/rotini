@@ -28,7 +28,9 @@ VALUES ('eee00000-0000-0000-0000-000000000000', 'Coverage Rota',
 INSERT INTO public.rota_members (rota_id, user_id, role, position, joined_at)
 VALUES
   ('eee00000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000002', 'member', 2,    now()),
-  ('eee00000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000003', 'viewer', NULL, now());
+  ('eee00000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000003', 'viewer', NULL, now()),
+  -- other@cov.local: a second eligible member used for the race-condition test (not the requester)
+  ('eee00000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000004', 'member', 3,    now());
 
 -- occ_future: upcoming, assigned to member2 — the main coverage test occurrence
 INSERT INTO public.occurrences (id, rota_id, scheduled_at, ends_at, scheduled_local_date,
@@ -186,8 +188,8 @@ SELECT is(
 );
 
 -- 13. Race simulation: second claim on the same (now accepted) request is rejected
--- (We switch to member2, who is no longer the assignee, and try to claim the accepted request)
-SET LOCAL "request.jwt.claims" TO '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}';
+-- (We switch to other@cov.local, an eligible member who was not the requester)
+SET LOCAL "request.jwt.claims" TO '{"sub":"10000000-0000-0000-0000-000000000004","role":"authenticated"}';
 SELECT throws_ok(
   $$SELECT public.claim_coverage(
       (SELECT id FROM public.swap_requests
