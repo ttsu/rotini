@@ -26,7 +26,7 @@ import { DetailRow } from '@/features/rotas/rota-detail/detail-row';
 import { formatDuration } from '@/features/rotas/rota-detail/formatting';
 import type { Member } from '@/features/rotas/rota-detail/member-rows';
 import { InviteSection } from '@/features/rotas/rota-detail/invite-section';
-import { MemberRow, PendingMemberRow } from '@/features/rotas/rota-detail/member-rows';
+import { MemberRow, PendingMemberRow, WhoIsAway } from '@/features/rotas/rota-detail/member-rows';
 import { RemindersSection } from '@/features/rotas/rota-detail/reminders-section';
 import { StatusCard } from '@/features/rotas/rota-detail/status-card';
 import { UpcomingSection } from '@/features/rotas/rota-detail/upcoming-section';
@@ -452,6 +452,13 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
               </TouchableOpacity>
             </View>
           )}
+
+          <WhoIsAway
+            rotaId={routeId}
+            members={rawMembers}
+            card={card}
+            textPrimary={textPrimary}
+          />
 
           <View testID="rota-members-section" style={[cardStyle, { marginBottom: 12 }]}>
             {displayActiveMembers.map((m, i) => (
