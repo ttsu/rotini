@@ -2,6 +2,7 @@ import { ActionSheetIOS, Alert, Platform, Share, Text, TouchableOpacity, View } 
 
 import { Pill } from '@/components/ui/pill';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
+import { useRotaMemberUnavailability } from '@/features/unavailability/hooks';
 import { getUserMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
@@ -262,6 +263,28 @@ export function MemberRow({
   // MemberRow is only rendered for non-pending members; user_id is always present.
   const userId = member.user_id!;
 
+  const { data: rotaUnavailability = [] } = useRotaMemberUnavailability(rotaId);
+  const today = new Date().toISOString().slice(0, 10);
+  const in60Days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Find the nearest upcoming window for this member (start_date within 60 days)
+  const awayWindow = rotaUnavailability.find(
+    (w) => w.user_id === userId && w.start_date <= in60Days && w.end_date >= today,
+  );
+
+  /** Format a compact date range for the away badge (e.g. "14 Jun – 20 Jun"). */
+  function formatAwayDates(start: string, end: string): string {
+    try {
+      const s = new Date(`${start}T12:00:00`);
+      const e = new Date(`${end}T12:00:00`);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const sStr = `${s.getDate()} ${months[s.getMonth()]}`;
+      const eStr = `${e.getDate()} ${months[e.getMonth()]}`;
+      return start === end ? sStr : `${sStr}–${eStr}`;
+    } catch {
+      return start;
+    }
+  }
+
   async function getOrphanCount(): Promise<number> {
     const { count } = await supabase
       .from('occurrences')
@@ -425,6 +448,21 @@ export function MemberRow({
         )}
       </View>
       {member.is_manager && <Pill label="manager" color="teal" />}
+      {awayWindow && (
+        <View
+          style={{
+            backgroundColor: '#FF9F0A',
+            borderRadius: 6,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            marginLeft: 6,
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
+            Away {formatAwayDates(awayWindow.start_date, awayWindow.end_date)}
+          </Text>
+        </View>
+      )}
       {showReorderControls && (
         <View style={{ flexDirection: 'row', marginLeft: 8 }}>
           <TouchableOpacity

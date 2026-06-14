@@ -1,4 +1,6 @@
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
+import { format } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Linking, Modal, Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -6,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LargeTitle } from '@/components/ui/large-title';
 import { SectionHeader } from '@/components/ui/section-header';
+import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/contexts/auth';
 import { type ThemePreference, useAppPreferences } from '@/contexts/app-preferences';
 import { useCalendarSyncContext } from '@/contexts/calendar-sync';
@@ -14,6 +17,7 @@ import { routes } from '@/lib/navigation/routes';
 import { usePushToken } from '@/features/notifications/usePushToken';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
 import { useMyProfile } from '@/features/profile/use-my-profile';
+import { useMyUnavailability, useSetUnavailability, useClearUnavailability } from '@/features/unavailability/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const SYNC_DAYS_OPTIONS: readonly { readonly value: 30 | 90 | 180; readonly label: string }[] = [
@@ -50,6 +54,24 @@ function RowChevron() {
   return <Text style={{ fontSize: 17, color: '#AEAEB2', marginLeft: 8 }}>›</Text>;
 }
 
+/** Format a YYYY-MM-DD date string for display (e.g. "14 Jun 2026"). */
+function formatDateRange(start: string, end: string): string {
+  try {
+    const s = new Date(`${start}T12:00:00`);
+    const e = new Date(`${end}T12:00:00`);
+    const sFormatted = format(s, 'd MMM yyyy');
+    const eFormatted = format(e, 'd MMM yyyy');
+    if (sFormatted === eFormatted) return sFormatted;
+    // If same year, show year only on end
+    if (s.getFullYear() === e.getFullYear()) {
+      return `${format(s, 'd MMM')} – ${eFormatted}`;
+    }
+    return `${sFormatted} – ${eFormatted}`;
+  } catch {
+    return `${start} – ${end}`;
+  }
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -57,9 +79,27 @@ export default function SettingsScreen() {
   const { data: profile } = useMyProfile();
   const { themePreference, setThemePreference, defaultTimeZone, setDefaultTimeZone } = useAppPreferences();
   const scheme = useColorScheme();
+  const { showToast } = useToast();
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
   const [tzPickerOpen, setTzPickerOpen] = useState(false);
   const [tzSearch, setTzSearch] = useState('');
+
+  // Availability state
+  const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const [absenceStart, setAbsenceStart] = useState<Date>(today);
+  const [absenceEnd, setAbsenceEnd] = useState<Date>(today);
+  const [absenceReason, setAbsenceReason] = useState('');
+  const [absenceSubmitting, setAbsenceSubmitting] = useState(false);
+
+  const { data: myUnavailability = [] } = useMyUnavailability();
+  const setUnavailability = useSetUnavailability();
+  const clearUnavailability = useClearUnavailability();
+
+  // Filter to upcoming windows (end_date >= today)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcomingUnavailability = myUnavailability.filter((w) => w.end_date >= todayStr);
 
   const displayName = profile?.display_name ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
@@ -140,6 +180,50 @@ export default function SettingsScreen() {
     await deregisterToken();
     const { error } = await supabase.auth.signOut();
     if (error) Alert.alert('Try again');
+  }
+
+  async function handleSaveAbsence() {
+    const startStr = absenceStart.toISOString().slice(0, 10);
+    const endStr = absenceEnd.toISOString().slice(0, 10);
+    if (endStr < startStr) {
+      Alert.alert('Invalid dates', 'End date must be on or after start date.');
+      return;
+    }
+    setAbsenceSubmitting(true);
+    try {
+      await setUnavailability.mutateAsync({
+        startDate: startStr,
+        endDate: endStr,
+        reason: absenceReason.trim() || null,
+        tz: defaultTimeZone,
+      });
+      setAbsenceModalOpen(false);
+      setAbsenceReason('');
+      showToast('Absence saved');
+    } catch {
+      Alert.alert('Error', 'Could not save absence. Please try again.');
+    } finally {
+      setAbsenceSubmitting(false);
+    }
+  }
+
+  function handleDeleteAbsence(id: string) {
+    Alert.alert('Remove absence?', 'This will restore your availability for that period.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          clearUnavailability.mutate(
+            { unavailabilityId: id },
+            {
+              onSuccess: () => showToast('Absence cleared'),
+              onError: () => Alert.alert('Error', 'Could not remove absence. Please try again.'),
+            },
+          );
+        },
+      },
+    ]);
   }
 
   return (
@@ -360,6 +444,74 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Availability section */}
+      <SectionHeader label="Availability" />
+      <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+        <View
+          style={{
+            backgroundColor: card,
+            borderRadius: 18,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 2,
+          }}
+        >
+          <TouchableOpacity
+            testID="settings-add-absence-row"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderBottomWidth: upcomingUnavailability.length > 0 ? 0.5 : 0,
+              borderBottomColor: sep,
+            }}
+            onPress={() => {
+              const d = new Date();
+              d.setHours(12, 0, 0, 0);
+              setAbsenceStart(d);
+              setAbsenceEnd(d);
+              setAbsenceReason('');
+              setAbsenceModalOpen(true);
+            }}
+            accessibilityLabel="Add absence window"
+            accessibilityRole="button"
+          >
+            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>I'm away…</Text>
+            <RowChevron />
+          </TouchableOpacity>
+
+          {upcomingUnavailability.map((w, idx) => (
+            <View
+              key={w.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderBottomWidth: idx < upcomingUnavailability.length - 1 ? 0.5 : 0,
+                borderBottomColor: sep,
+              }}
+            >
+              <Text style={{ flex: 1, fontSize: 15, color: textPrimary }}>
+                {formatDateRange(w.start_date, w.end_date)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleDeleteAbsence(w.id)}
+                hitSlop={8}
+                accessibilityLabel={`Remove absence ${formatDateRange(w.start_date, w.end_date)}`}
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: 18, color: '#FF3B30' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </View>
+
       {/* Sign out */}
       <View style={{ marginHorizontal: 16, marginTop: 8 }}>
         <TouchableOpacity
@@ -459,6 +611,171 @@ export default function SettingsScreen() {
               );
             }}
           />
+        </View>
+      </Modal>
+
+      {/* Add absence modal */}
+      <Modal
+        visible={absenceModalOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setAbsenceModalOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: bg }}>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingTop: 20,
+              paddingBottom: 12,
+              borderBottomWidth: 0.5,
+              borderBottomColor: sep,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setAbsenceModalOpen(false)}
+              accessibilityLabel="Cancel"
+              accessibilityRole="button"
+            >
+              <Text style={{ fontSize: 17, color: '#0a7ea4' }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: textPrimary }}>
+              I'm away…
+            </Text>
+            <TouchableOpacity
+              onPress={() => void handleSaveAbsence()}
+              disabled={absenceSubmitting}
+              accessibilityLabel="Save absence"
+              accessibilityRole="button"
+            >
+              <Text style={{ fontSize: 17, color: absenceSubmitting ? textSec : '#0a7ea4', fontWeight: '600' }}>
+                {absenceSubmitting ? 'Saving…' : 'Save'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+            {/* Date pickers */}
+            <View
+              style={{
+                backgroundColor: card,
+                borderRadius: 18,
+                marginHorizontal: 16,
+                marginTop: 20,
+                overflow: 'hidden',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.06,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
+            >
+              {/* From row */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: sep,
+                }}
+              >
+                <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>From</Text>
+                <DateTimePicker
+                  value={absenceStart}
+                  mode="date"
+                  display="compact"
+                  accentColor="#0a7ea4"
+                  onChange={(_evt: DateTimePickerEvent, date?: Date) => {
+                    if (!date) return;
+                    const d = new Date(date);
+                    d.setHours(12, 0, 0, 0);
+                    setAbsenceStart(d);
+                    // If end is before new start, move end to match
+                    if (absenceEnd < d) setAbsenceEnd(d);
+                  }}
+                  accessibilityLabel="Absence start date"
+                />
+              </View>
+              {/* To row */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: sep,
+                }}
+              >
+                <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>To</Text>
+                <DateTimePicker
+                  value={absenceEnd}
+                  mode="date"
+                  display="compact"
+                  accentColor="#0a7ea4"
+                  minimumDate={absenceStart}
+                  onChange={(_evt: DateTimePickerEvent, date?: Date) => {
+                    if (!date) return;
+                    const d = new Date(date);
+                    d.setHours(12, 0, 0, 0);
+                    setAbsenceEnd(d);
+                  }}
+                  accessibilityLabel="Absence end date"
+                />
+              </View>
+              {/* Timezone (read-only label) */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                }}
+              >
+                <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Time zone</Text>
+                <Text style={{ fontSize: 15, color: textSec }} numberOfLines={1}>
+                  {defaultTimeZone}
+                </Text>
+              </View>
+            </View>
+
+            {/* Reason input */}
+            <View
+              style={{
+                backgroundColor: card,
+                borderRadius: 18,
+                marginHorizontal: 16,
+                marginTop: 16,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.06,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
+            >
+              <TextInput
+                value={absenceReason}
+                onChangeText={setAbsenceReason}
+                placeholder="Reason (private, only you see this)"
+                placeholderTextColor={textSec}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 17,
+                  color: textPrimary,
+                  minHeight: 80,
+                  textAlignVertical: 'top',
+                }}
+                multiline
+                returnKeyType="done"
+                accessibilityLabel="Absence reason"
+              />
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </ScrollView>
