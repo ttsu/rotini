@@ -60,10 +60,12 @@ SELECT is(
   'set_unavailability: row exists in user_unavailability after insert'
 );
 
--- 4. Return value contains id and rota_ids
+-- 4. Return value contains id and rota_ids (single call to avoid inserting extra rows)
 SELECT ok(
-  (SELECT (public.set_unavailability('2026-09-01'::date, '2026-09-07'::date, NULL, 'UTC') ? 'id')
-     AND (public.set_unavailability('2026-10-01'::date, '2026-10-01'::date, NULL, 'UTC') ? 'rota_ids')),
+  (WITH r AS (
+     SELECT public.set_unavailability('2026-09-01'::date, '2026-09-07'::date, NULL, 'UTC') AS res
+   )
+   SELECT (r.res ? 'id') AND (r.res ? 'rota_ids') FROM r),
   'set_unavailability: return jsonb contains id and rota_ids keys'
 );
 

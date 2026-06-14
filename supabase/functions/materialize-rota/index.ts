@@ -138,7 +138,8 @@ async function materialize(
     }
   }
 
-  // Active members (owners + members only), ordered by position
+  // Members in the rotation (role='member' only — owners are not in the round-robin
+  // unless also assigned the 'member' role; this matches pre-existing behaviour).
   const { data: membersRaw, error: membersErr } = await admin
     .from('rota_members')
     .select('id, user_id, position')
@@ -191,20 +192,23 @@ async function materialize(
     }
   }
 
-  // Load existing future 'scheduled' occurrences (preserves round-robin assignments)
+  // Load existing future 'scheduled' and 'open' occurrences (preserves assignments;
+  // 'open' rows are preserved when outside the invalidate_window so absence-driven
+  // open turns aren't re-assigned on every unrelated materialization call).
   const { data: existing, error: existErr } = await admin
     .from('occurrences')
-    .select('scheduled_at, assigned_user_id, slot_member_id')
+    .select('scheduled_at, assigned_user_id, slot_member_id, status')
     .eq('rota_id', rotaId)
-    .eq('status', 'scheduled')
+    .in('status', ['scheduled', 'open'])
     .gt('scheduled_at', now.toISOString());
   if (existErr) throw new Error(`Existing load: ${existErr.message}`);
 
-  const existingMap = new Map<string, { assigned_user_id: string | null; slot_member_id: string | null }>();
+  const existingMap = new Map<string, { assigned_user_id: string | null; slot_member_id: string | null; status: string }>();
   for (const row of existing ?? []) {
     existingMap.set(new Date(row.scheduled_at).toISOString(), {
       assigned_user_id: row.assigned_user_id,
       slot_member_id: row.slot_member_id,
+      status: row.status,
     });
   }
 
@@ -252,10 +256,11 @@ async function materialize(
     let status = 'scheduled';
 
     if (existingMap.has(key) && !inInvalidateWindow) {
-      // Preserve existing assignment; cursor only advances for genuinely new rows
+      // Preserve existing assignment and status; cursor only advances for genuinely new rows
       const ex = existingMap.get(key)!;
       assignedUserId = ex.assigned_user_id;
       slotMemberId = ex.slot_member_id;
+      status = ex.status;
     } else if (members.length > 0) {
       // Absence-aware round-robin: try each member starting from cursorIdx
       let assigned = false;
