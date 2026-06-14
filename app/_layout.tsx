@@ -77,8 +77,10 @@ function AuthGate() {
     const inAuthCallback = segments[0] === 'auth-callback';
     const inProfileRetry = inAuth && segments[1] === 'profile-retry';
     const inE2eAuth = segments[0] === 'e2e-auth' && E2E_AUTH_ENABLED;
+    const inShareLink = (segments as string[])[0] === 'r';
 
     if (inE2eAuth) return;
+    if (inShareLink) return;
 
     if (status === 'profile_error' && !inProfileRetry) {
       router.replace('/(auth)/profile-retry');
@@ -113,6 +115,7 @@ function AppShell() {
             <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
             <Stack.Screen name="e2e-auth" options={{ headerShown: false }} />
             <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
+            <Stack.Screen name="r/[token]" options={{ headerShown: false }} />
             <Stack.Screen
               name="edit-profile"
               options={{ title: 'Edit profile', headerShown: true, headerBackTitle: 'Settings' }}

@@ -27,6 +27,7 @@ import { DetailRow } from '@/features/rotas/rota-detail/detail-row';
 import { formatDuration } from '@/features/rotas/rota-detail/formatting';
 import type { Member } from '@/features/rotas/rota-detail/member-rows';
 import { InviteSection } from '@/features/rotas/rota-detail/invite-section';
+import { ShareLinkSection } from '@/features/rotas/share-links/share-link-section';
 import { MemberRow, PendingMemberRow, WhoIsAway } from '@/features/rotas/rota-detail/member-rows';
 import { RemindersSection } from '@/features/rotas/rota-detail/reminders-section';
 import { StatusCard } from '@/features/rotas/rota-detail/status-card';
@@ -535,6 +536,15 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
               rotaId={routeId}
               card={card}
               textPrimary={textPrimary}
+              textSec={textSec}
+              sep={sep}
+            />
+          )}
+
+          {isOwner && (
+            <ShareLinkSection
+              rotaId={routeId}
+              card={card}
               textSec={textSec}
               sep={sep}
             />
