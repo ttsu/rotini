@@ -79,5 +79,5 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 32. Absence UI
 - [x] 33. Migration — open coverage on `swap_requests` + RPCs
 - [x] 34. Coverage UI — unified swap flow (Ask-anyone toggle)
-- [ ] 35. Migration — read-only share tokens + `get_shared_rota` RPC
+- [x] 35. Migration — read-only share tokens + `get_shared_rota` RPC
 - [ ] 36. Web companion view
