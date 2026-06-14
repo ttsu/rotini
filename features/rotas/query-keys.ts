@@ -29,4 +29,8 @@ export const queryKeys = {
   profile: {
     detail: (userId: string): QueryKey => ['profile', userId],
   },
+  unavailability: {
+    mine: (): QueryKey => ['unavailability', 'mine'],
+    forRota: (rotaId: string): QueryKey => ['unavailability', 'rota', rotaId],
+  },
 } as const;

@@ -26,7 +26,7 @@ if (!resolvedUrl || !resolvedAnonKey) {
 }
 
 export const supabaseUrl = resolvedUrl;
-const supabaseAnonKey = resolvedAnonKey;
+export const supabaseAnonKey = resolvedAnonKey;
 
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
