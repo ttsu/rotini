@@ -94,26 +94,41 @@ The biggest cold-start unlock: let invited members **see the rota and who's up f
   - Table:
     ```
     rota_share_links
-      id          uuid PK
-      rota_id     uuid -> rotas.id
-      token       text unique          -- long, unguessable
-      created_by  uuid -> profiles.id
-      revoked_at  timestamptz null
-      created_at  timestamptz
+      id              uuid PK
+      rota_id         uuid -> rotas.id
+      token           text unique   -- ≥128-bit CSPRNG, NOT derived from rota_id
+      created_by      uuid -> profiles.id
+      expires_at      timestamptz null   -- optional expiry
+      revoked_at      timestamptz null
+      last_accessed_at timestamptz null  -- updated on read, for owner abuse-spotting
+      created_at      timestamptz
     ```
   - `SECURITY DEFINER` RPCs:
-    - `create_share_link(rota_id)` / `revoke_share_link(id)` — owner-only.
-    - `get_shared_rota(token)` — **callable by anon** (the web companion is unauthenticated). Validates the token is live (not revoked), returns a **sanitized, read-only** projection: rota name + tz, the upcoming occurrences with assignee **display names only** (no emails/ids/PII beyond display name + avatar), and the active/upcoming summary equivalent to `v_rota_now`. No write surface.
-  - RLS/grants: `rota_share_links` owner-managed; `get_shared_rota` is the **only** anon-reachable read path, and it returns a deliberately narrow payload. Document the PII trade-off (display names + avatars are exposed to anyone holding the link — same trust level as an invite link).
+    - `create_share_link(rota_id, expires_at)` / `revoke_share_link(id)` — owner-only. Token generated with a CSPRNG (`gen_random_bytes`, encoded), high-entropy, never sequential or derived from `rota_id`.
+    - `get_shared_rota(token)` — **callable by anon** (the web companion is unauthenticated). Validates the token is live (`revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`); returns a **sanitized, read-only** projection via an **explicit column allow-list** (never `SELECT *`): rota name + tz, upcoming occurrences (bounded window — next ~60 days, capped N) with assignee `display_name` + `avatar_url` **only**, and the active/upcoming summary equivalent to `v_rota_now`. Updates `last_accessed_at`. No write surface.
+
+#### Security hardening (anon endpoint) — required, not optional
+
+- **Payload minimization / no-PII leak.** The allow-list **must exclude** `user_id`, email, phone, push tokens, swap messages, override reasons, and — critically — **all absence/"away" data from Enhancement A**. A public schedule of named people is pattern-of-life data; an absence marker signals an empty house. Public page shows *assignments only*.
+- **SECURITY DEFINER hardening.** `get_shared_rota` is `STABLE` and declared `SET search_path = ''` with fully-qualified table refs (blocks search-path shadowing). `GRANT EXECUTE` on it to `anon`; `REVOKE` default function `EXECUTE` from `public`.
+- **Anon-surface audit.** `get_shared_rota` must be the **only** anon-reachable read path into rota data. Verify `anon` has **zero direct table grants** and that every table's RLS denies `anon`; mirror the locked-down pattern from the existing `invite_preview_anon` migration. Adding this RPC must not widen the anon surface elsewhere.
+- **Token handling.** The token reaches the RPC via the POST body (Supabase `rpc()` default) so it stays out of API access logs. Treat the link as a bearer capability — same trust level as an invite link (documented, accepted trade-off), but harden against leakage (see unit 36: `noindex`, `Referrer-Policy`).
+- **Rate limiting.** The anon endpoint must be rate-limited (edge / gateway / Cloudflare, keyed by IP) to blunt token brute-forcing and DoS — there is no auth to throttle behind.
+- **Revocation correctness.** Token checks run on every call; the payload is **not** CDN-cached (or cached per-token with a very short TTL) so revoke/expiry takes effect immediately.
+- **Forward note.** This token is **read-only**. Any future "claim/confirm from web" must NOT ride on this anon token — it introduces write-auth + CSRF concerns and needs a real authenticated session.
 - Re-run `npm run db:types`.
 
 ### 36. Web companion view
 
 - Use the existing **Expo Router web target** (the stack already uses Expo Router) to add a public route, e.g. `app/r/[token].tsx`, that runs unauthenticated, calls `get_shared_rota(token)`, and renders:
   - the active/upcoming "who's on now / up next" header (same logic as Home cards),
-  - a read-only upcoming list + month view with the active occurrence highlighted,
+  - a read-only upcoming list + month view with the active occurrence highlighted (assignments only — **no absence/away markers**),
   - a clear "Open in the app" CTA + store links for members who want the full (claim/swap/reminder) experience.
-- The owner's share UI (in the app): on rota detail settings, **Share read-only link** → `create_share_link`, copy/share sheet, plus revoke. Surface it next to the existing invite flow but clearly labelled read-only (distinct from member invites).
+- The owner's share UI (in the app): on rota detail settings, **Share read-only link** → `create_share_link` (optional expiry), copy/share sheet, plus a list of active links with revoke and `last_accessed_at`. Surface it next to the existing invite flow but clearly labelled read-only (distinct from member invites).
+- **Web-page hardening:**
+  - **No indexing / no referrer leak:** emit `noindex` (robots meta + header) and `Referrer-Policy: no-referrer` on the route so a publicly-posted link isn't crawled and the token isn't leaked via `Referer`.
+  - **XSS:** rota name / display names / any free text render through React's default escaping only — never `dangerouslySetInnerHTML`; **validate `avatar_url` is `https:`** (reject `javascript:`/`data:` URIs).
+  - **Clickjacking:** set `CSP frame-ancestors` / `X-Frame-Options` so the page can't be framed into a phishing flow.
 - No auth, no realtime required on web v1; a simple refetch on focus is enough.
 
 ---
@@ -146,17 +161,21 @@ These map cleanly onto a **coordinator/club tier** that does *not* gate the free
 **Enhancement C — web companion**
 
 - Valid token → web route renders the rota's schedule + who's up, read-only, with no auth.
-- Revoked token → friendly "link no longer active" page; no data leaks.
-- Payload contains display names/avatars only — no emails, no user ids, no write endpoints reachable by anon.
+- Revoked **or expired** token → friendly "link no longer active" page; no data leaks; revocation/expiry takes effect immediately (not defeated by caching).
+- Payload contains `display_name` + `avatar_url` only — **no** emails, user ids, phone, swap messages, override reasons, or absence/away data; no write endpoints reachable by anon.
+- Anon-surface audit: `anon` has zero direct table grants and cannot reach any rota table except via `get_shared_rota`; `get_shared_rota` is `STABLE` with `search_path=''` and EXECUTE granted only to `anon`.
+- Anon endpoint is rate-limited; bounded result window (≤~60 days / capped N).
+- Web page: `noindex` + `Referrer-Policy: no-referrer` present; no `dangerouslySetInnerHTML`; non-`https` `avatar_url` rejected; framing blocked.
 
 Automated:
 
-- `pgTAP` for `set_unavailability` / `clear_unavailability` permission + overlap paths (incl. owner-cannot-clear and reason-not-readable-by-peers), the materializer skip + cross-rota fan-out, `claim_coverage` race (two concurrent claims → one success), and `get_shared_rota` anon-reachability + revoked-token rejection.
+- `pgTAP` for `set_unavailability` / `clear_unavailability` permission + overlap paths (incl. owner-cannot-clear and reason-not-readable-by-peers), the materializer skip + cross-rota fan-out, and `claim_coverage` race (two concurrent claims → one success).
+- `pgTAP` for the anon path (negative-heavy): `get_shared_rota` rejects revoked/expired/garbage tokens; returns the allow-listed columns only and **never** PII or absence data; `anon` cannot `SELECT` any rota table directly nor `EXECUTE` any other function; `create_share_link` / `revoke_share_link` reject non-owners.
 
 ## Done-when
 
 - [ ] **A:** global `user_unavailability` table + RPCs + RLS (own-only writes, reason private, owners can't clear); materializer skips absent members and fans out across all their rotas, producing `open` turns when nobody's eligible; reminders reconcile; UI lets a user set/clear absence at the account level and coordinators see who's away (dates only). Realtime live.
 - [ ] **B:** the *Request swap* screen carries an "Ask anyone" toggle that creates a single open request (no fan-out); claim is race-safe; override/direct-swap cancel open requests; the existing swap inbox surfaces open turns (no new Home section); viewer guards hold.
-- [ ] **C:** owner can create/revoke a read-only share link; the unauthenticated web route renders a sanitized schedule; revoked/invalid tokens fail closed.
+- [ ] **C:** owner can create (with optional expiry) / revoke a read-only share link; the unauthenticated web route renders a sanitized, assignments-only schedule; revoked/expired/invalid tokens fail closed. Security hardening landed: ≥128-bit CSPRNG token, SECURITY DEFINER allow-list with `search_path=''`, anon-surface audited (zero direct grants), rate-limited endpoint, no-PII/no-absence payload, and web-page `noindex`/`Referrer-Policy`/XSS/clickjacking protections.
 - [ ] Each RPC is `SECURITY DEFINER` with explicit permission checks; no direct table-mutation paths.
 - [ ] `npm run db:types` re-run after every migration; one commit per unit; units 31–36 added + ticked in [`README.md`](./README.md).
