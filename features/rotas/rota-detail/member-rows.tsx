@@ -6,6 +6,104 @@ import { useRotaMemberUnavailability } from '@/features/unavailability/hooks';
 import { getUserMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
+/** Format a compact date range, e.g. "14 Jun – 20 Jun 2026". */
+function formatAwayDates(start: string, end: string): string {
+  try {
+    const s = new Date(`${start}T12:00:00`);
+    const e = new Date(`${end}T12:00:00`);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const sStr = `${s.getDate()} ${months[s.getMonth()]}`;
+    const eStr = `${e.getDate()} ${months[e.getMonth()]} ${e.getFullYear()}`;
+    if (start === end) return `${sStr} ${s.getFullYear()}`;
+    return `${sStr} – ${eStr}`;
+  } catch {
+    return start;
+  }
+}
+
+/**
+ * Compact summary card listing all members with upcoming absence windows (next 60 days).
+ * Renders nothing when nobody is away.
+ */
+export function WhoIsAway({
+  rotaId,
+  members,
+  card,
+  textPrimary,
+}: {
+  rotaId: string;
+  members: Member[];
+  card: string;
+  textPrimary: string;
+}) {
+  const { data: rotaUnavailability = [] } = useRotaMemberUnavailability(rotaId);
+
+  // Build a map from user_id -> display_name for quick lookups
+  const nameById = new Map<string, string>(
+    members
+      .filter((m): m is Member & { user_id: string } => m.user_id !== null)
+      .map((m) => [m.user_id, m.profile?.display_name ?? 'Unknown']),
+  );
+
+  // Collect the first upcoming window per member (data already sorted by start_date asc)
+  const seen = new Set<string>();
+  const awayEntries: { name: string; start_date: string; end_date: string }[] = [];
+  for (const w of rotaUnavailability) {
+    if (!seen.has(w.user_id) && nameById.has(w.user_id)) {
+      seen.add(w.user_id);
+      awayEntries.push({
+        name: nameById.get(w.user_id)!,
+        start_date: w.start_date,
+        end_date: w.end_date,
+      });
+    }
+  }
+
+  if (awayEntries.length === 0) return null;
+
+  return (
+    <View
+      style={{
+        backgroundColor: card,
+        borderRadius: 18,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 2,
+        elevation: 2,
+        marginBottom: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.5,
+          color: '#FF9F0A',
+          textTransform: 'uppercase',
+          marginBottom: 8,
+        }}
+      >
+        Who's Away
+      </Text>
+      {awayEntries.map((entry) => (
+        <View
+          key={entry.name}
+          style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>{entry.name}</Text>
+          <Text style={{ fontSize: 14, color: '#FF9F0A' }}>
+            {formatAwayDates(entry.start_date, entry.end_date)}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 import {
   useChangeMemberRole,
   useRemoveMember,
@@ -270,20 +368,6 @@ export function MemberRow({
   const awayWindow = rotaUnavailability.find(
     (w) => w.user_id === userId && w.start_date <= in60Days && w.end_date >= today,
   );
-
-  /** Format a compact date range for the away badge (e.g. "14 Jun – 20 Jun"). */
-  function formatAwayDates(start: string, end: string): string {
-    try {
-      const s = new Date(`${start}T12:00:00`);
-      const e = new Date(`${end}T12:00:00`);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const sStr = `${s.getDate()} ${months[s.getMonth()]}`;
-      const eStr = `${e.getDate()} ${months[e.getMonth()]}`;
-      return start === end ? sStr : `${sStr}–${eStr}`;
-    } catch {
-      return start;
-    }
-  }
 
   async function getOrphanCount(): Promise<number> {
     const { count } = await supabase
