@@ -137,23 +137,20 @@ LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
-  v_row      user_unavailability;
   v_rota_ids uuid[];
 BEGIN
-  SELECT * INTO v_row
-  FROM user_unavailability
-  WHERE id = p_unavailability_id;
+  -- Atomic ownership check + delete: avoids TOCTOU between SELECT and DELETE.
+  DELETE FROM user_unavailability
+  WHERE id = p_unavailability_id AND user_id = auth.uid();
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'unavailability record not found';
+    -- Distinguish "not found" from "not owner" for a clear error message.
+    IF NOT EXISTS (SELECT 1 FROM user_unavailability WHERE id = p_unavailability_id) THEN
+      RAISE EXCEPTION 'unavailability record not found';
+    ELSE
+      RAISE EXCEPTION 'not authorized: you do not own this unavailability record';
+    END IF;
   END IF;
-
-  -- Only the row owner may delete
-  IF v_row.user_id IS DISTINCT FROM auth.uid() THEN
-    RAISE EXCEPTION 'not authorized: you do not own this unavailability record';
-  END IF;
-
-  DELETE FROM user_unavailability WHERE id = p_unavailability_id;
 
   -- Collect rota_ids so the client can fan out re-materialization
   SELECT ARRAY_AGG(DISTINCT rm.rota_id)
