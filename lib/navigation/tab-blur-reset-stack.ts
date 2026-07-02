@@ -3,7 +3,7 @@ import {
   type NavigationState,
   type NavigationProp,
   type ParamListBase,
-} from '@react-navigation/native';
+} from 'expo-router/react-navigation';
 
 type TabScreenNavigation = NavigationProp<ParamListBase>;
 
