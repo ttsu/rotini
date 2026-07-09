@@ -53,11 +53,15 @@ export function AppPreferencesProvider({ children }: { readonly children: ReactN
   }, []);
 
   useEffect(() => {
-    Appearance.setColorScheme(themePreference === 'system' ? null : themePreference);
+    Appearance.setColorScheme(themePreference === 'system' ? 'unspecified' : themePreference);
   }, [themePreference]);
 
   const resolvedColorScheme: ResolvedColorScheme =
-    themePreference === 'system' ? (systemColorScheme ?? 'light') : themePreference;
+    themePreference === 'system'
+      ? systemColorScheme === 'dark'
+        ? 'dark'
+        : 'light'
+      : themePreference;
 
   const value = useMemo<AppPreferencesContextValue>(
     () => ({

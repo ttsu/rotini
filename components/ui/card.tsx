@@ -37,8 +37,14 @@ export function Card({
       <Animated.View style={animStyle}>
         <Pressable
           style={[base, style]}
-          onPressIn={() => { scale.value = withSpring(0.97, { damping: 15 }); }}
-          onPressOut={() => { scale.value = withSpring(1, { damping: 15 }); }}
+          onPressIn={() => {
+            // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable by design
+            scale.value = withSpring(0.97, { damping: 15 });
+          }}
+          onPressOut={() => {
+            // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable by design
+            scale.value = withSpring(1, { damping: 15 });
+          }}
           onPress={onPress}
         >
           {children}
