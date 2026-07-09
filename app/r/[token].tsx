@@ -140,7 +140,7 @@ export default function SharedRotaPage() {
         <meta name="referrer" content="no-referrer" />
         {/* X-Frame-Options is most effective as an HTTP response header, but
             we include the meta http-equiv as a belt-and-suspenders measure. */}
-        <meta http-equiv="X-Frame-Options" content="DENY" />
+        <meta httpEquiv="X-Frame-Options" content="DENY" />
         <title>{data?.rota.name ? `${data.rota.name} — rotini` : 'rotini'}</title>
       </Head>
 

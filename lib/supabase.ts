@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 import type { Database } from './database.types';
 
@@ -34,9 +35,23 @@ const ExpoSecureStoreAdapter = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
+// SecureStore has no web implementation, and on web the module is also loaded
+// in Node during static rendering (`expo export -p web`), where localStorage
+// doesn't exist either — hence the typeof guards.
+const WebStorageAdapter = {
+  getItem: (key: string) =>
+    typeof localStorage === 'undefined' ? null : localStorage.getItem(key),
+  setItem: (key: string, value: string) => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+  },
+  removeItem: (key: string) => {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+  },
+};
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: ExpoSecureStoreAdapter,
+    storage: Platform.OS === 'web' ? WebStorageAdapter : ExpoSecureStoreAdapter,
     flowType: 'pkce',
     autoRefreshToken: true,
     persistSession: true,

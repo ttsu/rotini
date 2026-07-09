@@ -480,7 +480,7 @@ export default function SettingsScreen() {
             accessibilityLabel="Add absence window"
             accessibilityRole="button"
           >
-            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>I'm away…</Text>
+            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>I&apos;m away…</Text>
             <RowChevron />
           </TouchableOpacity>
 
@@ -642,7 +642,7 @@ export default function SettingsScreen() {
               <Text style={{ fontSize: 17, color: '#0a7ea4' }}>Cancel</Text>
             </TouchableOpacity>
             <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: textPrimary }}>
-              I'm away…
+              I&apos;m away…
             </Text>
             <TouchableOpacity
               onPress={() => void handleSaveAbsence()}
