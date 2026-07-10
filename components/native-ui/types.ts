@@ -38,6 +38,8 @@ export type NativeButtonProps = {
   role?: NativeButtonRole;
   /** 'filled' = prominent CTA; 'plain' = borderless text button. */
   variant?: 'filled' | 'plain';
+  /** Stretch to the parent's width (full-width CTAs); default hugs the label. */
+  fullWidth?: boolean;
   disabled?: boolean;
   testID: string;
   height?: number;

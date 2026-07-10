@@ -2,6 +2,7 @@ import { Button, Host } from '@expo/ui/swift-ui';
 import {
   buttonStyle,
   disabled as disabledModifier,
+  frame,
   tint,
   type ViewModifier,
 } from '@expo/ui/swift-ui/modifiers';
@@ -15,6 +16,7 @@ export function NativeButton({
   onPress,
   role = 'default',
   variant = 'filled',
+  fullWidth,
   disabled,
   testID,
   height,
@@ -23,6 +25,9 @@ export function NativeButton({
   const modifiers: ViewModifier[] = [
     buttonStyle(variant === 'filled' ? 'borderedProminent' : 'borderless'),
   ];
+  if (fullWidth) {
+    modifiers.push(frame({ maxWidth: 100000 }));
+  }
   // Destructive role supplies its own red; tinting would override it.
   if (role !== 'destructive') {
     modifiers.push(tint(tintColor));
@@ -31,7 +36,13 @@ export function NativeButton({
     modifiers.push(disabledModifier());
   }
   return (
-    <Host matchContents style={height != null ? { height } : undefined}>
+    <Host
+      matchContents={fullWidth ? { vertical: true } : true}
+      style={{
+        ...(fullWidth ? { width: '100%' as const } : null),
+        ...(height != null ? { height } : null),
+      }}
+    >
       <Button label={label} onPress={onPress} role={role} testID={testID} modifiers={modifiers} />
     </Host>
   );

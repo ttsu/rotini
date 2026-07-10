@@ -89,7 +89,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 38. Pilot — Settings controls (**go/no-go gate**: theming, Maestro testIDs, Host sizing — passed on both platforms)
 - [x] 39. NativeTabs — `app/(tabs)/_layout.tsx`
 - [x] 40. Confirmation dialogs — ActionSheetIOS → native
-- [ ] 41. Create-shift form controls (RHF uncontrolled TextField pattern)
+- [x] 41. Create-shift form controls (RHF uncontrolled TextField pattern)
 - [ ] 42. RRuleBuilder + duration picker (platform-split wheel)
 - [ ] 43. Edit surfaces — edit-rota, edit-profile, reminders
 - [ ] 44. Auth & onboarding controls

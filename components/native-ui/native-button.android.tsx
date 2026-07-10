@@ -1,5 +1,5 @@
 import { Button, Host, Text, TextButton } from '@expo/ui/jetpack-compose';
-import { testID as testIDModifier } from '@expo/ui/jetpack-compose/modifiers';
+import { fillMaxWidth, testID as testIDModifier } from '@expo/ui/jetpack-compose/modifiers';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -14,6 +14,7 @@ export function NativeButton({
   onPress,
   role = 'default',
   variant = 'filled',
+  fullWidth,
   disabled,
   testID,
   height,
@@ -21,15 +22,24 @@ export function NativeButton({
   const scheme = useColorScheme() ?? 'light';
   const accent = role === 'destructive' ? DESTRUCTIVE : Colors[scheme].tint;
   const onAccent = Colors[scheme].background;
+  const modifiers = fullWidth
+    ? [fillMaxWidth(), testIDModifier(testID)]
+    : [testIDModifier(testID)];
 
   return (
-    <Host matchContents style={height != null ? { height } : undefined}>
+    <Host
+      matchContents={fullWidth ? { vertical: true } : true}
+      style={{
+        ...(fullWidth ? { width: '100%' as const } : null),
+        ...(height != null ? { height } : null),
+      }}
+    >
       {variant === 'filled' ? (
         <Button
           onClick={onPress}
           enabled={!disabled}
           colors={{ containerColor: accent, contentColor: onAccent }}
-          modifiers={[testIDModifier(testID)]}
+          modifiers={modifiers}
         >
           <Text>{label}</Text>
         </Button>
@@ -38,7 +48,7 @@ export function NativeButton({
           onClick={onPress}
           enabled={!disabled}
           colors={{ contentColor: accent }}
-          modifiers={[testIDModifier(testID)]}
+          modifiers={modifiers}
         >
           <Text>{label}</Text>
         </TextButton>
