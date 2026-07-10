@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
 import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
+import { NativeSegmented } from '@/components/native-ui/native-segmented';
 import { SectionHeader } from '@/components/ui/section-header';
 import {
   formatLeadMinutes,
@@ -102,38 +103,20 @@ export function RemindersSection({
           {userRole === 'watcher' ? (
             <Text style={{ fontSize: 15, color: textSec }}>Notified for all shifts</Text>
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 15, color: textPrimary, flex: 1 }}>Notify me for</Text>
-              <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: sep }}>
-                {(['own', 'all'] as const).map((scope) => {
-                  const active = notifyScope === scope;
-                  return (
-                    <TouchableOpacity
-                      key={scope}
-                      onPress={() => handleScopeToggle(scope)}
-                      disabled={setScope.isPending}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        backgroundColor: active ? '#0a7ea4' : 'transparent',
-                      }}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={scope === 'own' ? 'My shifts' : 'All shifts'}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: '500',
-                          color: active ? '#fff' : textSec,
-                        }}
-                      >
-                        {scope === 'own' ? 'My shifts' : 'All shifts'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+            <View>
+              <Text style={{ fontSize: 15, color: textPrimary, marginBottom: 8 }}>
+                Notify me for
+              </Text>
+              <NativeSegmented
+                options={[
+                  { label: 'My shifts', value: 'own' },
+                  { label: 'All shifts', value: 'all' },
+                ]}
+                selectedValue={notifyScope}
+                onValueChange={handleScopeToggle}
+                disabled={setScope.isPending}
+                testID="reminder-scope"
+              />
             </View>
           )}
         </View>

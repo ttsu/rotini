@@ -1,9 +1,8 @@
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { fromZonedTime, toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
@@ -12,13 +11,17 @@ import {
   Modal,
   Platform,
   ScrollView,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
+import { NativeSwitch } from '@/components/native-ui/native-switch';
+import { NativeTextField } from '@/components/native-ui/native-text-field';
+import type { NativeTextFieldRef } from '@/components/native-ui/types';
 
 import * as Haptics from 'expo-haptics';
 import { ErrorState } from '@/components/ui/error-state';
@@ -74,6 +77,8 @@ export function EditRotaScreenContent({
   const rotaNow = useRotaNow(rotaId);
   const updateRota = useUpdateRota();
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const nameFieldRef = useRef<NativeTextFieldRef>(null);
+  const descriptionFieldRef = useRef<NativeTextFieldRef>(null);
   const scheme = useColorScheme();
 
   const bg = scheme === 'dark' ? '#000000' : '#F2F2F7';
@@ -81,7 +86,6 @@ export function EditRotaScreenContent({
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
-  const border = scheme === 'dark' ? 'rgba(60,60,67,0.25)' : 'rgba(60,60,67,0.12)';
 
   const {
     control,
@@ -117,6 +121,9 @@ export function EditRotaScreenContent({
       duration_minutes: rota.duration_minutes ?? undefined,
       assignment_mode: 'round_robin',
     });
+    // Native text fields are uncontrolled — push the loaded values in.
+    nameFieldRef.current?.setText(rota.name);
+    descriptionFieldRef.current?.setText(rota.description ?? '');
   }, [rota?.id, reset]);
 
   const tz = watch('tz');
@@ -243,28 +250,19 @@ export function EditRotaScreenContent({
       >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
 
-          {/* Name */}
+          {/* Name — uncontrolled native field; the reset effect pushes loaded
+              values in via ref.setText (programmatic resets only, keystrokes
+              never round-trip). */}
           <Controller
             control={control}
             name="name"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
+            render={({ field: { onChange } }) => (
+              <NativeTextField
+                ref={nameFieldRef}
                 testID="shift-name-input"
-                style={{
-                  fontSize: 17,
-                  color: textPrimary,
-                  borderBottomWidth: 1,
-                  borderBottomColor: border,
-                  paddingVertical: 12,
-                  marginBottom: 2,
-                }}
                 placeholder="Shift name"
-                placeholderTextColor="#AEAEB2"
-                value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
-                accessibilityLabel="Shift name"
-                returnKeyType="next"
+                autoCapitalize="sentences"
               />
             )}
           />
@@ -273,32 +271,21 @@ export function EditRotaScreenContent({
           )}
 
           {/* Description */}
-          <Controller
-            control={control}
-            name="description"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                testID="shift-description-input"
-                style={{
-                  fontSize: 17,
-                  color: textPrimary,
-                  borderBottomWidth: 1,
-                  borderBottomColor: border,
-                  paddingVertical: 12,
-                  marginBottom: 2,
-                  minHeight: 44,
-                }}
-                placeholder="Description (optional)"
-                placeholderTextColor="#AEAEB2"
-                value={value ?? ''}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                multiline
-                accessibilityLabel="Shift description"
-                returnKeyType="next"
-              />
-            )}
-          />
+          <View style={{ marginTop: 12 }}>
+            <Controller
+              control={control}
+              name="description"
+              render={({ field: { onChange } }) => (
+                <NativeTextField
+                  ref={descriptionFieldRef}
+                  testID="shift-description-input"
+                  placeholder="Description (optional)"
+                  onChangeText={onChange}
+                  multiline
+                />
+              )}
+            />
+          </View>
 
           {/* Schedule row */}
           <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 24, marginBottom: 8 }}>
@@ -365,7 +352,7 @@ export function EditRotaScreenContent({
                 Each turn lasts until the next starts
               </Text>
             </View>
-            <Switch
+            <NativeSwitch
               value={backToBack}
               onValueChange={(v) => {
                 setValue('back_to_back', v, { shouldValidate: true });
@@ -375,9 +362,7 @@ export function EditRotaScreenContent({
                   setValue('duration_minutes', 60, { shouldValidate: true });
                 }
               }}
-              trackColor={{ false: '#AEAEB2', true: '#0a7ea4' }}
-              ios_backgroundColor="#AEAEB2"
-              accessibilityLabel="Back to back"
+              testID="back-to-back-switch"
             />
           </View>
 
@@ -402,24 +387,15 @@ export function EditRotaScreenContent({
           )}
 
           {/* Submit */}
-          <TouchableOpacity
-            testID="save-shift-button"
-            style={{
-              marginTop: 32,
-              backgroundColor: submitDisabled ? '#AEAEB2' : '#0a7ea4',
-              borderRadius: 10,
-              paddingVertical: 14,
-              alignItems: 'center',
-            }}
-            onPress={handleSubmit(onSubmit)}
-            disabled={submitDisabled}
-            accessibilityLabel="Save shift"
-            accessibilityRole="button"
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 16 }}>
-              {updateRota.isPending ? 'Saving…' : 'Save'}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ marginTop: 32 }}>
+            <NativeButton
+              testID="save-shift-button"
+              label={updateRota.isPending ? 'Saving…' : 'Save'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={submitDisabled}
+              fullWidth
+            />
+          </View>
         </View>
       </ScrollView>
 
@@ -474,15 +450,13 @@ export function EditRotaScreenContent({
                   try { return fromZonedTime(value, tz); } catch { return new Date(); }
                 })();
 
-                function handleDateChange(_evt: DateTimePickerEvent, date?: Date) {
-                  if (!date) return;
+                function handleDateChange(date: Date) {
                   const datePart = formatInTimeZone(date, tz, 'yyyy-MM-dd');
                   const timePart = value?.split('T')[1] ?? '09:00';
                   onChange(`${datePart}T${timePart}`);
                 }
 
-                function handleTimeChange(_evt: DateTimePickerEvent, date?: Date) {
-                  if (!date) return;
+                function handleTimeChange(date: Date) {
                   const datePart = value?.split('T')[0] ?? '2000-01-01';
                   const timePart = formatInTimeZone(date, tz, 'HH:mm');
                   onChange(`${datePart}T${timePart}`);
@@ -497,35 +471,42 @@ export function EditRotaScreenContent({
                       overflow: 'hidden',
                     }}
                   >
+                    {/* iOS: compact pills inline; Android: full-size inline
+                        pickers stack under the label. */}
                     <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: Platform.OS === 'ios' ? 'row' : 'column',
+                        alignItems: Platform.OS === 'ios' ? 'center' : 'stretch',
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderBottomWidth: 0.5,
                         borderBottomColor: sep,
                       }}
                     >
-                      <Text style={{ flex: 1, fontSize: 16, color: textPrimary }}>Starts</Text>
-                      <DateTimePicker
+                      <Text
+                        style={{
+                          flex: Platform.OS === 'ios' ? 1 : undefined,
+                          fontSize: 16,
+                          color: textPrimary,
+                          marginBottom: Platform.OS === 'ios' ? 0 : 8,
+                        }}
+                      >
+                        Starts
+                      </Text>
+                      <NativeDatePicker
                         value={pickerDate}
                         mode="date"
-                        display="compact"
-                        accentColor="#0a7ea4"
                         onChange={handleDateChange}
-                        accessibilityLabel="Start date"
+                        testID="start-date-picker"
                       />
-                      <DateTimePicker
-                        value={pickerDate}
-                        mode="time"
-                        display="compact"
-                        minuteInterval={5}
-                        accentColor="#0a7ea4"
-                        onChange={handleTimeChange}
-                        style={{ marginLeft: 6 }}
-                        accessibilityLabel="Start time"
-                      />
+                      <View style={{ marginLeft: Platform.OS === 'ios' ? 6 : 0 }}>
+                        <NativeDatePicker
+                          value={pickerDate}
+                          mode="time"
+                          onChange={handleTimeChange}
+                          testID="start-time-picker"
+                        />
+                      </View>
                     </View>
 
                     <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
