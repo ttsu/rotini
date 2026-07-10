@@ -2,15 +2,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+
+import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeTextField } from '@/components/native-ui/native-text-field';
+import type { NativeTextFieldRef } from '@/components/native-ui/types';
 import {
   ActivityIndicator,
   Alert,
   Linking,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -45,6 +48,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
+  const nameFieldRef = useRef<NativeTextFieldRef>(null);
   const { session } = useAuth();
   const userId = session?.user.id;
   const queryClient = useQueryClient();
@@ -79,6 +83,8 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (!profile) return;
     reset({ display_name: profile.display_name ?? '' });
+    // Native text field is uncontrolled — push the loaded value in.
+    nameFieldRef.current?.setText(profile.display_name ?? '');
   }, [profile, reset]);
 
   const previewUri = pickedAsset?.uri ?? null;
@@ -363,15 +369,12 @@ export default function EditProfileScreen() {
           <Controller
             control={control}
             name="display_name"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
+            render={({ field: { onChange } }) => (
+              <NativeTextField
+                ref={nameFieldRef}
                 testID="edit-profile-display-name"
-                style={{ fontSize: 17, color: textPrimary, paddingVertical: 12 }}
                 placeholder="Your name"
-                placeholderTextColor={textSec}
-                value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 autoCapitalize="words"
                 autoCorrect
               />
@@ -386,25 +389,13 @@ export default function EditProfileScreen() {
           <View style={{ height: 8 }} />
         )}
 
-        <TouchableOpacity
+        <NativeButton
           testID="edit-profile-save-button"
-          disabled={saving || !formDirty}
+          label={saving ? 'Saving…' : 'Save changes'}
           onPress={handleSubmit(onSubmit)}
-          style={{
-            backgroundColor: saving || !formDirty ? '#8E8E93' : '#0a7ea4',
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-          }}
-          accessibilityLabel="Save changes"
-          accessibilityRole="button"
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600' }}>Save changes</Text>
-          )}
-        </TouchableOpacity>
+          disabled={saving || !formDirty}
+          fullWidth
+        />
       </ScrollView>
   );
 }
