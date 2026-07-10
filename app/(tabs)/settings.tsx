@@ -2,11 +2,12 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
-import { ActionSheetIOS, Alert, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 import { NativeMenuPicker } from '@/components/native-ui/native-menu-picker';
 import { NativeSegmented } from '@/components/native-ui/native-segmented';
 import { NativeSwitch } from '@/components/native-ui/native-switch';
@@ -89,6 +90,7 @@ export default function SettingsScreen() {
   const scheme = useColorScheme();
   const { showToast } = useToast();
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
+  const [syncWindowPickerOpen, setSyncWindowPickerOpen] = useState(false);
 
   // Availability state
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
@@ -152,28 +154,7 @@ export default function SettingsScreen() {
   const syncDaysLabel = SYNC_DAYS_OPTIONS.find((o) => o.value === syncDays)?.label ?? '1 month';
 
   function showSyncWindowPicker() {
-    const options = [...SYNC_DAYS_OPTIONS.map((o) => o.label), 'Cancel'];
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: options.length - 1, title: 'Sync window' },
-        (idx) => {
-          const chosen = SYNC_DAYS_OPTIONS[idx];
-          if (chosen) void setSyncDays(chosen.value);
-        }
-      );
-    } else {
-      Alert.alert(
-        'Sync window',
-        undefined,
-        [
-          ...SYNC_DAYS_OPTIONS.map((o) => ({
-            text: o.label,
-            onPress: () => void setSyncDays(o.value),
-          })),
-          { text: 'Cancel', style: 'cancel' as const },
-        ]
-      );
-    }
+    setSyncWindowPickerOpen(true);
   }
 
   async function handleSignOut() {
@@ -491,6 +472,20 @@ export default function SettingsScreen() {
           />
         </View>
       </View>
+
+      <NativeConfirmation
+        visible={syncWindowPickerOpen}
+        onDismiss={() => setSyncWindowPickerOpen(false)}
+        title="Sync window"
+        actions={[
+          ...SYNC_DAYS_OPTIONS.map((option) => ({
+            label: option.label,
+            onPress: () => void setSyncDays(option.value),
+          })),
+          { label: 'Cancel', role: 'cancel' as const, onPress: () => {} },
+        ]}
+        testID="sync-window-confirmation"
+      />
 
       {/* Add absence modal */}
       <Modal

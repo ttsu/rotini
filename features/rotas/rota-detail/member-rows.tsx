@@ -1,4 +1,7 @@
-import { ActionSheetIOS, Alert, Platform, Share, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Platform, Share, Text, TouchableOpacity, View } from 'react-native';
+
+import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 
 import { Pill } from '@/components/ui/pill';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
@@ -172,6 +175,7 @@ export function PendingMemberRow({
   const removePending = useRemovePendingMember(rotaId);
   const resharePending = useResharePendingInvite(rotaId);
   const updateLabel = useUpdatePendingMemberLabel(rotaId);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const displayName = member.label ?? 'Pending member';
 
   function handleReshare() {
@@ -231,24 +235,7 @@ export function PendingMemberRow({
   }
 
   function showActions() {
-    const options = ['Reshare link', 'Edit name', `Remove ${displayName}`, 'Cancel'];
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 3, destructiveButtonIndex: 2 },
-        (idx) => {
-          if (idx === 3) return;
-          if (idx === 0) handleReshare();
-          else if (idx === 1) handleEditName();
-          else if (idx === 2) handleRemove();
-        },
-      );
-    } else {
-      Alert.alert(displayName, undefined, [
-        { text: 'Reshare link', onPress: handleReshare },
-        { text: `Remove ${displayName}`, style: 'destructive', onPress: handleRemove },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
+    setActionsOpen(true);
   }
 
   return (
@@ -264,6 +251,18 @@ export function PendingMemberRow({
         opacity: 0.6,
       }}
     >
+      <NativeConfirmation
+        visible={actionsOpen}
+        onDismiss={() => setActionsOpen(false)}
+        title={displayName}
+        actions={[
+          { label: 'Reshare link', onPress: handleReshare },
+          { label: 'Edit name', onPress: handleEditName },
+          { label: `Remove ${displayName}`, role: 'destructive', onPress: handleRemove },
+          { label: 'Cancel', role: 'cancel', onPress: () => {} },
+        ]}
+        testID={`rota-pending-actions-${member.id}`}
+      />
       {/* Ghost avatar */}
       <View
         style={{
@@ -354,6 +353,7 @@ export function MemberRow({
   onMoveUp?: () => void;
   onMoveDown?: () => void;
 }) {
+  const [actionsOpen, setActionsOpen] = useState(false);
   const changeRole = useChangeMemberRole(rotaId);
   const removeMember = useRemoveMember(rotaId);
   const setManager = useSetManagerFlag(rotaId);
@@ -473,40 +473,21 @@ export function MemberRow({
   }
 
   function showActions() {
-    const options: string[] = [];
-    if (member.role !== 'member') options.push('Make member');
-    if (member.role !== 'watcher') options.push('Make watcher');
-    if (!member.is_manager) options.push('Grant manager');
-    if (member.is_manager) options.push('Revoke manager');
-    options.push(`Remove ${name}`, 'Cancel');
-
-    function handleOption(label: string) {
-      if (label === 'Make member') handleRoleChange('member');
-      else if (label === 'Make watcher') handleRoleChange('watcher');
-      else if (label === 'Grant manager') confirmGrantManager();
-      else if (label === 'Revoke manager') confirmRevokeManager();
-      else if (label === `Remove ${name}`) confirmRemove();
-    }
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: options.length - 1, destructiveButtonIndex: options.length - 2 },
-        (idx) => {
-          if (idx === options.length - 1) return;
-          handleOption(options[idx]);
-        }
-      );
-    } else {
-      Alert.alert(name, undefined, [
-        ...options.slice(0, -1).map((label) => ({
-          text: label,
-          style: label.startsWith('Remove') ? ('destructive' as const) : ('default' as const),
-          onPress: () => handleOption(label),
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    }
+    setActionsOpen(true);
   }
+
+  const memberActions = [
+    ...(member.role !== 'member'
+      ? [{ label: 'Make member', onPress: () => handleRoleChange('member') }]
+      : []),
+    ...(member.role !== 'watcher'
+      ? [{ label: 'Make watcher', onPress: () => handleRoleChange('watcher') }]
+      : []),
+    ...(!member.is_manager ? [{ label: 'Grant manager', onPress: confirmGrantManager }] : []),
+    ...(member.is_manager ? [{ label: 'Revoke manager', onPress: confirmRevokeManager }] : []),
+    { label: `Remove ${name}`, role: 'destructive' as const, onPress: confirmRemove },
+    { label: 'Cancel', role: 'cancel' as const, onPress: () => {} },
+  ];
 
   return (
     <View
@@ -520,6 +501,13 @@ export function MemberRow({
         borderBottomColor: sep,
       }}
     >
+      <NativeConfirmation
+        visible={actionsOpen}
+        onDismiss={() => setActionsOpen(false)}
+        title={name}
+        actions={memberActions}
+        testID={`rota-member-actions-${toTestIdSegment(name)}`}
+      />
       <MemberAvatar name={name} avatarUrl={avatarUrl} isMe={isMe} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 16, fontWeight: '500', color: textPrimary }}>
