@@ -20,7 +20,7 @@ appId: com.gorotini.app
 - assertVisible:
     id: "settings-notifications-row"
 - assertVisible:
-    id: "settings-appearance-system"
+    id: "settings-appearance"
 - assertVisible:
     id: "settings-sign-out-button"
 - tapOn:

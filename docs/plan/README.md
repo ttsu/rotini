@@ -86,7 +86,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 ### Phase 9 — Native UI overhaul (@expo/ui)
 
 - [x] 37. Install `@expo/ui` + `components/native-ui/` wrapper scaffold (native rebuild)
-- [ ] 38. Pilot — Settings controls (**go/no-go gate**: theming, Maestro testIDs, Host sizing)
+- [x] 38. Pilot — Settings controls (**go/no-go gate**: theming, Maestro testIDs, Host sizing — passed on both platforms)
 - [ ] 39. NativeTabs — `app/(tabs)/_layout.tsx`
 - [ ] 40. Confirmation dialogs — ActionSheetIOS → native
 - [ ] 41. Create-shift form controls (RHF uncontrolled TextField pattern)

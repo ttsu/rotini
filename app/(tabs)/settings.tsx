@@ -1,11 +1,15 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
-import { ActionSheetIOS, Alert, FlatList, Linking, Modal, Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActionSheetIOS, Alert, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeMenuPicker } from '@/components/native-ui/native-menu-picker';
+import { NativeSegmented } from '@/components/native-ui/native-segmented';
+import { NativeSwitch } from '@/components/native-ui/native-switch';
 import { LargeTitle } from '@/components/ui/large-title';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useToast } from '@/components/ui/toast';
@@ -50,6 +54,10 @@ const COMMON_TIMEZONES: readonly string[] = [
   'Pacific/Noumea', 'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Tongatapu', 'UTC',
 ];
 
+const TIMEZONE_OPTIONS: readonly { label: string; value: string }[] = COMMON_TIMEZONES.map(
+  (tz) => ({ label: tz, value: tz }),
+);
+
 function RowChevron() {
   return <Text style={{ fontSize: 17, color: '#AEAEB2', marginLeft: 8 }}>›</Text>;
 }
@@ -81,8 +89,6 @@ export default function SettingsScreen() {
   const scheme = useColorScheme();
   const { showToast } = useToast();
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
-  const [tzPickerOpen, setTzPickerOpen] = useState(false);
-  const [tzSearch, setTzSearch] = useState('');
 
   // Availability state
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
@@ -109,12 +115,6 @@ export default function SettingsScreen() {
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
-
-  const filteredTimezones = useMemo(() => {
-    const q = tzSearch.trim().toLowerCase();
-    if (!q) return COMMON_TIMEZONES;
-    return COMMON_TIMEZONES.filter((tz) => tz.toLowerCase().includes(q));
-  }, [tzSearch]);
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then(({ status }) => setNotifStatus(status));
@@ -333,11 +333,11 @@ export default function SettingsScreen() {
                     {calendarSubtitle}
                   </Text>
                 </View>
-                <Switch
+                <NativeSwitch
                   value={calendarEnabled}
                   onValueChange={() => void toggleCalendarSync()}
                   disabled={calendarStatus === 'syncing'}
-                  trackColor={{ true: '#34C759' }}
+                  testID="settings-calendar-sync-switch"
                 />
               </TouchableOpacity>
               {calendarEnabled && calendarStatus !== 'permission_denied' && (
@@ -364,83 +364,38 @@ export default function SettingsScreen() {
           )}
           <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 14,
               borderBottomWidth: 0.5,
               borderBottomColor: sep,
             }}
           >
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ fontSize: 17, color: textPrimary }}>Appearance</Text>
-              <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
-                Choose how Rotini looks
-              </Text>
-            </View>
-            <View
-              style={{
-                flexDirection: 'row',
-                backgroundColor: scheme === 'dark' ? '#2C2C2E' : '#F2F2F7',
-                borderRadius: 10,
-                padding: 2,
-              }}
-            >
-              {THEME_OPTIONS.map((option) => {
-                const isSelected = themePreference === option.value;
-
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    testID={`settings-appearance-${option.value}`}
-                    onPress={() => {
-                      void setThemePreference(option.value);
-                    }}
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 8,
-                      backgroundColor: isSelected ? card : 'transparent',
-                    }}
-                    accessibilityLabel={`${option.label} appearance`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                  >
-                    <Text
-                      style={{
-                        color: isSelected ? textPrimary : textSec,
-                        fontSize: 13,
-                        fontWeight: isSelected ? '600' : '500',
-                      }}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-          <TouchableOpacity
-            testID="settings-time-zone-row"
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-            }}
-            onPress={() => {
-              setTzSearch('');
-              setTzPickerOpen(true);
-            }}
-            accessibilityLabel={`Default time zone, ${defaultTimeZone}`}
-            accessibilityRole="button"
-          >
-            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Default time zone</Text>
-            <Text style={{ fontSize: 15, color: textSec, marginRight: 4 }} numberOfLines={1}>
-              {defaultTimeZone}
+            <Text style={{ fontSize: 17, color: textPrimary }}>Appearance</Text>
+            <Text style={{ fontSize: 13, color: textSec, marginTop: 2, marginBottom: 10 }}>
+              Choose how Rotini looks
             </Text>
-            <RowChevron />
-          </TouchableOpacity>
+            <NativeSegmented
+              options={THEME_OPTIONS}
+              selectedValue={themePreference}
+              onValueChange={(value) => {
+                void setThemePreference(value);
+              }}
+              testID="settings-appearance"
+            />
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+            <Text style={{ fontSize: 17, color: textPrimary, marginBottom: 10 }}>
+              Default time zone
+            </Text>
+            <NativeMenuPicker
+              options={TIMEZONE_OPTIONS}
+              selectedValue={defaultTimeZone}
+              onValueChange={(value) => {
+                void setDefaultTimeZone(value);
+              }}
+              testID="settings-time-zone-row"
+            />
+          </View>
         </View>
       </View>
 
@@ -514,12 +469,11 @@ export default function SettingsScreen() {
 
       {/* Sign out */}
       <View style={{ marginHorizontal: 16, marginTop: 8 }}>
-        <TouchableOpacity
-          testID="settings-sign-out-button"
+        <View
           style={{
             backgroundColor: card,
             borderRadius: 14,
-            paddingVertical: 16,
+            paddingVertical: 6,
             alignItems: 'center',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 1 },
@@ -527,94 +481,16 @@ export default function SettingsScreen() {
             shadowRadius: 2,
             elevation: 2,
           }}
-          onPress={handleSignOut}
-          accessibilityLabel="Sign out"
-          accessibilityRole="button"
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: '#FF3B30' }}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Modal
-        visible={tzPickerOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setTzPickerOpen(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: bg }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              // Android ignores pageSheet and renders full-screen edge-to-edge,
-              // so the header needs the status-bar inset.
-              paddingTop: Platform.OS === 'android' ? insets.top + 8 : 20,
-              paddingBottom: 12,
-              borderBottomWidth: 0.5,
-              borderBottomColor: sep,
-            }}
-          >
-            <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: textPrimary }}>
-              Time zone
-            </Text>
-            <TouchableOpacity onPress={() => setTzPickerOpen(false)} accessibilityLabel="Close" accessibilityRole="button">
-              <Text style={{ fontSize: 17, color: '#0a7ea4' }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
-            <TextInput
-              value={tzSearch}
-              onChangeText={setTzSearch}
-              placeholder="Search time zones"
-              placeholderTextColor={textSec}
-              style={{
-                backgroundColor: card,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 15,
-                color: textPrimary,
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-            />
-          </View>
-          <FlatList
-            data={filteredTimezones}
-            keyExtractor={(item) => item}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => {
-              const isSelected = item === defaultTimeZone;
-              return (
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 16,
-                    paddingVertical: 14,
-                    borderBottomWidth: 0.5,
-                    borderBottomColor: sep,
-                  }}
-                  onPress={() => {
-                    void setDefaultTimeZone(item);
-                    setTzPickerOpen(false);
-                  }}
-                  accessibilityLabel={item}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>{item}</Text>
-                  {isSelected && (
-                    <Text style={{ fontSize: 17, color: '#0a7ea4', fontWeight: '600' }}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              );
-            }}
+          <NativeButton
+            label="Sign out"
+            onPress={handleSignOut}
+            role="destructive"
+            variant="plain"
+            testID="settings-sign-out-button"
           />
         </View>
-      </Modal>
+      </View>
 
       {/* Add absence modal */}
       <Modal
