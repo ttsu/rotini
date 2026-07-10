@@ -2,7 +2,7 @@ appId: com.gorotini.app
 ---
 - runFlow: ../generated/login-owner.yaml
 - tapOn:
-    id: "tab-shifts"
+    text: "Shifts"
 - extendedWaitUntil:
     visible:
       id: "shifts-screen"

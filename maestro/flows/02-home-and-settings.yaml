@@ -8,7 +8,7 @@ appId: com.gorotini.app
 - assertVisible:
     id: "home-rota-status-e2e-kitchen-duty"
 - tapOn:
-    id: "tab-settings"
+    text: "Settings"
 - extendedWaitUntil:
     visible:
       id: "settings-screen"
@@ -21,8 +21,16 @@ appId: com.gorotini.app
     id: "settings-notifications-row"
 - assertVisible:
     id: "settings-appearance"
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out-button"
+    direction: DOWN
 - assertVisible:
     id: "settings-sign-out-button"
+- scrollUntilVisible:
+    element:
+      id: "settings-edit-profile-row"
+    direction: UP
 - tapOn:
     id: "settings-edit-profile-row"
 - extendedWaitUntil:
