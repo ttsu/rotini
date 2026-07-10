@@ -6,7 +6,7 @@ import {
   type TextFieldKeyboardType,
   type TextFieldRef,
 } from '@expo/ui/jetpack-compose';
-import { testID as testIDModifier } from '@expo/ui/jetpack-compose/modifiers';
+import { fillMaxWidth, testID as testIDModifier } from '@expo/ui/jetpack-compose/modifiers';
 import { useImperativeHandle, useRef } from 'react';
 
 import type { NativeTextFieldKeyboardType, NativeTextFieldProps } from './types';
@@ -49,7 +49,10 @@ export function NativeTextField({
   }));
 
   return (
-    <Host matchContents style={height != null ? { height } : undefined}>
+    <Host
+      matchContents={{ vertical: true }}
+      style={height != null ? { width: '100%', height } : { width: '100%' }}
+    >
       <OutlinedTextField
         ref={fieldRef}
         value={value}
@@ -66,7 +69,7 @@ export function NativeTextField({
         keyboardActions={onSubmit ? { onDone: () => onSubmit() } : undefined}
         onValueChange={onChangeText}
         onFocusChanged={onFocusChange}
-        modifiers={[testIDModifier(testID)]}
+        modifiers={[fillMaxWidth(), testIDModifier(testID)]}
       >
         {placeholder ? (
           <OutlinedTextField.Placeholder>

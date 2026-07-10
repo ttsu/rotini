@@ -90,7 +90,12 @@ export function NativeTextField({
   }
 
   return (
-    <Host matchContents style={height != null ? { height } : undefined}>
+    // Full width: an empty SwiftUI TextField otherwise shrinks to its
+    // placeholder's intrinsic size inside the RN layout.
+    <Host
+      matchContents={{ vertical: true }}
+      style={height != null ? { width: '100%', height } : { width: '100%' }}
+    >
       {secure ? (
         <SecureField
           ref={fieldRef}

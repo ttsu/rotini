@@ -13,6 +13,7 @@ export function NativeButton({
   onPress,
   role = 'default',
   variant = 'filled',
+  fullWidth,
   disabled,
   testID,
   height,
@@ -27,6 +28,7 @@ export function NativeButton({
       disabled={disabled}
       testID={testID}
       style={{
+        alignSelf: fullWidth ? 'stretch' : 'center',
         backgroundColor: filled ? accent : 'transparent',
         borderRadius: 10,
         paddingVertical: 12,

@@ -1,4 +1,3 @@
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
@@ -11,13 +10,15 @@ import {
   Modal,
   Platform,
   ScrollView,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 
+import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
+import { NativeSwitch } from '@/components/native-ui/native-switch';
+import { NativeTextField } from '@/components/native-ui/native-text-field';
 import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
 import { useCreateRota } from '@/features/rotas/hooks';
 import { type CreateRotaValues, createRotaSchema } from '@/features/rotas/schemas';
@@ -82,7 +83,6 @@ export default function NewRotaScreen() {
   const textPrimary = scheme === 'dark' ? '#FFFFFF' : '#000000';
   const textSec = scheme === 'dark' ? '#8E8E93' : '#636366';
   const sep = scheme === 'dark' ? 'rgba(60,60,67,0.20)' : 'rgba(60,60,67,0.10)';
-  const border = scheme === 'dark' ? 'rgba(60,60,67,0.25)' : 'rgba(60,60,67,0.12)';
 
   const {
     control,
@@ -145,29 +145,18 @@ export default function NewRotaScreen() {
       >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
 
-          {/* Name */}
+          {/* Name — uncontrolled native field: keystrokes flow RHF-ward only,
+              never back into the native text state (see docs/plan/09). */}
           <Controller
             control={control}
             name="name"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
+            render={({ field: { onChange } }) => (
+              <NativeTextField
                 testID="shift-name-input"
-                style={{
-                  fontSize: 17,
-                  color: textPrimary,
-                  borderBottomWidth: 1,
-                  borderBottomColor: border,
-                  paddingVertical: 12,
-                  marginBottom: 2,
-                }}
                 placeholder="Shift name"
-                placeholderTextColor="#AEAEB2"
-                value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 autoFocus
-                accessibilityLabel="Shift name"
-                returnKeyType="next"
+                autoCapitalize="sentences"
               />
             )}
           />
@@ -176,32 +165,20 @@ export default function NewRotaScreen() {
           )}
 
           {/* Description */}
-          <Controller
-            control={control}
-            name="description"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                testID="shift-description-input"
-                style={{
-                  fontSize: 17,
-                  color: textPrimary,
-                  borderBottomWidth: 1,
-                  borderBottomColor: border,
-                  paddingVertical: 12,
-                  marginBottom: 2,
-                  minHeight: 44,
-                }}
-                placeholder="Description (optional)"
-                placeholderTextColor="#AEAEB2"
-                value={value ?? ''}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                multiline
-                accessibilityLabel="Shift description"
-                returnKeyType="next"
-              />
-            )}
-          />
+          <View style={{ marginTop: 12 }}>
+            <Controller
+              control={control}
+              name="description"
+              render={({ field: { onChange } }) => (
+                <NativeTextField
+                  testID="shift-description-input"
+                  placeholder="Description (optional)"
+                  onChangeText={onChange}
+                  multiline
+                />
+              )}
+            />
+          </View>
 
           {/* Schedule row */}
           <Text style={{ fontSize: 13, fontWeight: '600', color: '#AEAEB2', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 24, marginBottom: 8 }}>
@@ -269,7 +246,7 @@ export default function NewRotaScreen() {
                 Each turn lasts until the next starts
               </Text>
             </View>
-            <Switch
+            <NativeSwitch
               value={backToBack}
               onValueChange={(v) => {
                 setValue('back_to_back', v, { shouldValidate: true });
@@ -279,9 +256,7 @@ export default function NewRotaScreen() {
                   setValue('duration_minutes', 60, { shouldValidate: true });
                 }
               }}
-              trackColor={{ false: '#AEAEB2', true: '#0a7ea4' }}
-              ios_backgroundColor="#AEAEB2"
-              accessibilityLabel="Back to back"
+              testID="back-to-back-switch"
             />
           </View>
 
@@ -307,24 +282,15 @@ export default function NewRotaScreen() {
           )}
 
           {/* Submit */}
-          <TouchableOpacity
-            testID="create-shift-button"
-            style={{
-              marginTop: 32,
-              backgroundColor: submitDisabled ? '#AEAEB2' : '#0a7ea4',
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: 'center',
-            }}
-            onPress={handleSubmit(onSubmit)}
-            disabled={submitDisabled}
-            accessibilityLabel="Create shift"
-            accessibilityRole="button"
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 16 }}>
-              {isSubmitting ? 'Creating…' : 'Create Shift'}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ marginTop: 32 }}>
+            <NativeButton
+              testID="create-shift-button"
+              label={isSubmitting ? 'Creating…' : 'Create Shift'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={submitDisabled}
+              fullWidth
+            />
+          </View>
         </View>
       </ScrollView>
 
@@ -380,15 +346,13 @@ export default function NewRotaScreen() {
                   try { return fromZonedTime(value, tz); } catch { return new Date(); }
                 })();
 
-                function handleDateChange(_evt: DateTimePickerEvent, date?: Date) {
-                  if (!date) return;
+                function handleDateChange(date: Date) {
                   const datePart = formatInTimeZone(date, tz, 'yyyy-MM-dd');
                   const timePart = value?.split('T')[1] ?? '09:00';
                   onChange(`${datePart}T${timePart}`);
                 }
 
-                function handleTimeChange(_evt: DateTimePickerEvent, date?: Date) {
-                  if (!date) return;
+                function handleTimeChange(date: Date) {
                   const datePart = value?.split('T')[0] ?? todayLocalString(tz);
                   const timePart = formatInTimeZone(date, tz, 'HH:mm');
                   onChange(`${datePart}T${timePart}`);
@@ -403,36 +367,43 @@ export default function NewRotaScreen() {
                       overflow: 'hidden',
                     }}
                   >
-                    {/* Starts row: label + compact date + compact time pills */}
+                    {/* Starts row: label + native date + time pickers. iOS renders
+                        compact pills inline; Android renders full-size inline
+                        pickers, so they stack under the label there. */}
                     <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: Platform.OS === 'ios' ? 'row' : 'column',
+                        alignItems: Platform.OS === 'ios' ? 'center' : 'stretch',
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderBottomWidth: 0.5,
                         borderBottomColor: sep,
                       }}
                     >
-                      <Text style={{ flex: 1, fontSize: 16, color: textPrimary }}>Starts</Text>
-                      <DateTimePicker
+                      <Text
+                        style={{
+                          flex: Platform.OS === 'ios' ? 1 : undefined,
+                          fontSize: 16,
+                          color: textPrimary,
+                          marginBottom: Platform.OS === 'ios' ? 0 : 8,
+                        }}
+                      >
+                        Starts
+                      </Text>
+                      <NativeDatePicker
                         value={pickerDate}
                         mode="date"
-                        display="compact"
-                        accentColor="#0a7ea4"
                         onChange={handleDateChange}
-                        accessibilityLabel="Start date"
+                        testID="start-date-picker"
                       />
-                      <DateTimePicker
-                        value={pickerDate}
-                        mode="time"
-                        display="compact"
-                        minuteInterval={5}
-                        accentColor="#0a7ea4"
-                        onChange={handleTimeChange}
-                        style={{ marginLeft: 6 }}
-                        accessibilityLabel="Start time"
-                      />
+                      <View style={{ marginLeft: Platform.OS === 'ios' ? 6 : 0 }}>
+                        <NativeDatePicker
+                          value={pickerDate}
+                          mode="time"
+                          onChange={handleTimeChange}
+                          testID="start-time-picker"
+                        />
+                      </View>
                     </View>
 
                     {/* Timezone */}
