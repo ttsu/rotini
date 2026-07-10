@@ -13,6 +13,7 @@ Per-phase implementation plan. Cross-cutting design lives in [SPEC.md](./SPEC.md
 - [Phase 6 — Polish & ship-ready](./06-polish.md)
 - [Phase 7 — Centralized rota realtime](./07-rota-realtime-scope.md) (supplementary; run when fixing duplicate-channel errors)
 - [Phase 8 — Small-team / club enhancements](./08-small-team-club.md) (post-MVP; targets the club/small-team niche from [MARKET.md](../MARKET.md))
+- [Phase 9 — Native UI overhaul (@expo/ui)](./09-native-ui.md) (controls-first migration to SwiftUI/Jetpack Compose controls + NativeTabs)
 
 ## Working pattern
 
@@ -81,3 +82,16 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 34. Coverage UI — unified swap flow (Ask-anyone toggle)
 - [x] 35. Migration — read-only share tokens + `get_shared_rota` RPC
 - [x] 36. Web companion view
+
+### Phase 9 — Native UI overhaul (@expo/ui)
+
+- [ ] 37. Install `@expo/ui` + `components/native-ui/` wrapper scaffold (native rebuild)
+- [ ] 38. Pilot — Settings controls (**go/no-go gate**: theming, Maestro testIDs, Host sizing)
+- [ ] 39. NativeTabs — `app/(tabs)/_layout.tsx`
+- [ ] 40. Confirmation dialogs — ActionSheetIOS → native
+- [ ] 41. Create-shift form controls (RHF uncontrolled TextField pattern)
+- [ ] 42. RRuleBuilder + duration picker (platform-split wheel)
+- [ ] 43. Edit surfaces — edit-rota, edit-profile, reminders
+- [ ] 44. Auth & onboarding controls
+- [ ] 45. Settings as full native List (gated stretch)
+- [ ] 46. Cleanup + full regression (both platforms, light+dark)
