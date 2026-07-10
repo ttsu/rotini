@@ -1,7 +1,6 @@
 /**
  * Shared rota detail screen implementation for Home and Shifts route wrappers.
  */
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -18,6 +17,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
+import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
 import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
@@ -327,14 +327,13 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             <Text style={{ fontSize: 13, color: textSec, textAlign: 'center', marginBottom: 12 }}>
               Turns up to this date keep their assignments.
             </Text>
-            <DateTimePicker
+            <NativeDatePicker
               mode="date"
               value={pickerDate}
               minimumDate={new Date()}
               maximumDate={maxDate}
-              onChange={(_e, d) => d && setPickerDate(d)}
-              display="spinner"
-              textColor={textPrimary}
+              onChange={setPickerDate}
+              testID="apply-order-date-picker"
             />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 8 }}>
               <TouchableOpacity

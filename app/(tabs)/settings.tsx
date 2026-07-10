@@ -1,4 +1,3 @@
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
@@ -8,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeButton } from '@/components/native-ui/native-button';
 import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
+import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
 import { NativeMenuPicker } from '@/components/native-ui/native-menu-picker';
 import { NativeSegmented } from '@/components/native-ui/native-segmented';
 import { NativeSwitch } from '@/components/native-ui/native-switch';
@@ -547,59 +547,54 @@ export default function SettingsScreen() {
                 elevation: 2,
               }}
             >
-              {/* From row */}
+              {/* From row — iOS shows compact pills inline; Android's inline
+                  picker is full-size, so it stacks under the label. */}
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: Platform.OS === 'ios' ? 'row' : 'column',
+                  alignItems: Platform.OS === 'ios' ? 'center' : 'stretch',
                   paddingHorizontal: 16,
                   paddingVertical: 14,
                   borderBottomWidth: 0.5,
                   borderBottomColor: sep,
                 }}
               >
-                <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>From</Text>
-                <DateTimePicker
+                <Text style={{ flex: Platform.OS === 'ios' ? 1 : undefined, fontSize: 17, color: textPrimary }}>From</Text>
+                <NativeDatePicker
                   value={absenceStart}
                   mode="date"
-                  display="compact"
-                  accentColor="#0a7ea4"
-                  onChange={(_evt: DateTimePickerEvent, date?: Date) => {
-                    if (!date) return;
+                  onChange={(date) => {
                     const d = new Date(date);
                     d.setHours(12, 0, 0, 0);
                     setAbsenceStart(d);
                     // If end is before new start, move end to match
                     if (absenceEnd < d) setAbsenceEnd(d);
                   }}
-                  accessibilityLabel="Absence start date"
+                  testID="absence-start-picker"
                 />
               </View>
               {/* To row */}
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: Platform.OS === 'ios' ? 'row' : 'column',
+                  alignItems: Platform.OS === 'ios' ? 'center' : 'stretch',
                   paddingHorizontal: 16,
                   paddingVertical: 14,
                   borderBottomWidth: 0.5,
                   borderBottomColor: sep,
                 }}
               >
-                <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>To</Text>
-                <DateTimePicker
+                <Text style={{ flex: Platform.OS === 'ios' ? 1 : undefined, fontSize: 17, color: textPrimary }}>To</Text>
+                <NativeDatePicker
                   value={absenceEnd}
                   mode="date"
-                  display="compact"
-                  accentColor="#0a7ea4"
                   minimumDate={absenceStart}
-                  onChange={(_evt: DateTimePickerEvent, date?: Date) => {
-                    if (!date) return;
+                  onChange={(date) => {
                     const d = new Date(date);
                     d.setHours(12, 0, 0, 0);
                     setAbsenceEnd(d);
                   }}
-                  accessibilityLabel="Absence end date"
+                  testID="absence-end-picker"
                 />
               </View>
               {/* Timezone (read-only label) */}

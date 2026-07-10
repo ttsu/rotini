@@ -1,4 +1,8 @@
 import { View } from 'react-native';
+// @react-native-picker/picker is retained for this Android/web fallback:
+// Jetpack Compose has no wheel picker (wheels are an iOS idiom — see
+// duration-wheel-picker.ios.tsx for the SwiftUI wheels), and this community
+// picker already renders the native Android Spinner / web <select>.
 import { Picker } from '@react-native-picker/picker';
 import * as Haptics from 'expo-haptics';
 
