@@ -41,10 +41,30 @@ appId: com.gorotini.app
           optional: true
 - assertVisible:
     id: "schedule-modal"
+- scrollUntilVisible:
+    element:
+      id: "rrule-frequency-tabs"
+    direction: DOWN
 - assertVisible:
     id: "rrule-frequency-tabs"
+# iOS finds the header button by id; Android's accessibility bounds for the
+# modal header are offset, so the id tap lands wrong there — the text tap
+# works instead. Each is optional; whichever matches closes the modal.
 - tapOn:
     id: "done-editing-schedule-button"
+    optional: true
+- tapOn:
+    text: "Done"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "create-new-shift-button|shift-name-input|create-shift-button"
+    timeout: 10000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "create-shift-button"
+    direction: DOWN
 - tapOn:
     id: "create-shift-button"
 - extendedWaitUntil:

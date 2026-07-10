@@ -5,6 +5,7 @@ import { addMonths } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Calendar } from 'react-native-calendars';
 
+import { NativeSegmented } from '@/components/native-ui/native-segmented';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { expand, toRRule, type RRuleParams, WEEKDAY_CODES, type WeekdayCode } from '@/lib/rrule';
 
@@ -52,52 +53,6 @@ function RowSeparator({ color }: { color: string }) {
   return <View style={{ height: 0.5, backgroundColor: color, marginLeft: 16 }} />;
 }
 
-function SegmentedControl({
-  options,
-  selectedIndex,
-  onChange,
-  cardBg,
-  segBg,
-  textPrimary,
-}: {
-  options: string[];
-  selectedIndex: number;
-  onChange: (i: number) => void;
-  cardBg: string;
-  segBg: string;
-  textPrimary: string;
-}) {
-  return (
-    <View style={{ flexDirection: 'row', backgroundColor: segBg, borderRadius: 9, padding: 2 }}>
-      {options.map((label, i) => {
-        const active = i === selectedIndex;
-        return (
-          <TouchableOpacity
-            key={label}
-            onPress={() => onChange(i)}
-            style={{
-              flex: 1,
-              paddingVertical: 6,
-              borderRadius: 7,
-              alignItems: 'center',
-              backgroundColor: active ? cardBg : 'transparent',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: active ? 0.12 : 0,
-              shadowRadius: 2,
-              elevation: active ? 2 : 0,
-            }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: active ? '600' : '400', color: active ? textPrimary : '#8E8E93' }}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
 function StepButton({ label, onPress, disabled, bg, textColor }: {
   label: string; onPress: () => void; disabled: boolean; bg: string; textColor: string;
 }) {
@@ -123,7 +78,6 @@ export function RRuleBuilder({ value, dtstart, tz, onChangeRRule }: Props) {
   const isDark = scheme === 'dark';
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const bg = isDark ? '#2C2C2E' : '#F2F2F7';
-  const segBg = isDark ? '#3A3A3C' : '#E5E5EA';
   const sep = isDark ? 'rgba(60,60,67,0.25)' : 'rgba(60,60,67,0.12)';
   const textPrimary = isDark ? '#FFFFFF' : '#000000';
   const textSec = '#8E8E93';
@@ -239,13 +193,11 @@ export function RRuleBuilder({ value, dtstart, tz, onChangeRRule }: Props) {
       >
         {/* Frequency segmented control */}
         <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-          <SegmentedControl
-            options={FREQ_OPTIONS.map((o) => o.label)}
-            selectedIndex={FREQ_OPTIONS.findIndex((o) => o.value === freq)}
-            onChange={(i) => handleFreqChange(FREQ_OPTIONS[i].value)}
-            cardBg={cardBg}
-            segBg={segBg}
-            textPrimary={textPrimary}
+          <NativeSegmented
+            options={FREQ_OPTIONS}
+            selectedValue={freq}
+            onValueChange={handleFreqChange}
+            testID="rrule-frequency"
           />
         </View>
 
@@ -302,13 +254,11 @@ export function RRuleBuilder({ value, dtstart, tz, onChangeRRule }: Props) {
           <>
             <RowSeparator color={sep} />
             <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-              <SegmentedControl
-                options={MONTH_TYPE_OPTIONS.map((o) => o.label)}
-                selectedIndex={MONTH_TYPE_OPTIONS.findIndex((o) => o.value === monthType)}
-                onChange={(i) => handleMonthTypeChange(MONTH_TYPE_OPTIONS[i].value)}
-                cardBg={cardBg}
-                segBg={segBg}
-                textPrimary={textPrimary}
+              <NativeSegmented
+                options={MONTH_TYPE_OPTIONS}
+                selectedValue={monthType}
+                onValueChange={handleMonthTypeChange}
+                testID="rrule-month-type"
               />
             </View>
 
