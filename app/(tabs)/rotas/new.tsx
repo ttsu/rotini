@@ -4,6 +4,7 @@ import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -70,6 +71,7 @@ function describeRRule(rrule: string): string {
 
 export default function NewRotaScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const createRota = useCreateRota();
   const { defaultTimeZone } = useAppPreferences();
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -342,7 +344,9 @@ export default function NewRotaScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 16,
-              paddingTop: 32,
+              // Android ignores pageSheet and renders full-screen edge-to-edge,
+              // so the header needs the status-bar inset.
+              paddingTop: Platform.OS === 'android' ? insets.top + 8 : 32,
               paddingBottom: 12,
               borderBottomWidth: 0.5,
               borderBottomColor: sep,

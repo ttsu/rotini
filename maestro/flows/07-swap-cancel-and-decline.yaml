@@ -20,6 +20,11 @@ appId: com.gorotini.app
 - tapOn:
     id: "swap-message-input"
 - inputText: "Cancel test"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "send-swap-request-button"
+    direction: DOWN
 - tapOn:
     id: "send-swap-request-button"
 - extendedWaitUntil:
@@ -55,6 +60,11 @@ appId: com.gorotini.app
 - tapOn:
     id: "swap-message-input"
 - inputText: "Decline test"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "send-swap-request-button"
+    direction: DOWN
 - tapOn:
     id: "send-swap-request-button"
 - extendedWaitUntil:

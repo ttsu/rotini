@@ -21,6 +21,24 @@ appId: com.gorotini.app
 - inputText: "Created by Maestro"
 - tapOn:
     id: "edit-schedule-button"
+# On Android the legacy @react-native-community/datetimepicker mounts as a
+# dialog and auto-opens over the schedule modal (goes away when unit 42
+# replaces it) — wait for it to animate in, then dismiss however many stack
+# up; all no-ops on iOS.
+- extendedWaitUntil:
+    optional: true
+    visible:
+      text: "OK"
+    timeout: 5000
+- repeat:
+    times: 4
+    while:
+      visible:
+        text: "OK"
+    commands:
+      - tapOn:
+          text: "OK"
+          optional: true
 - assertVisible:
     id: "schedule-modal"
 - assertVisible:
@@ -37,5 +55,8 @@ appId: com.gorotini.app
     id: "rota-detail-duration-row"
 - assertVisible:
     id: "rota-detail-assignment-row"
+- scrollUntilVisible:
+    element:
+      id: "rota-members-section"
 - assertVisible:
     id: "rota-members-section"

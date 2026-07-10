@@ -1,6 +1,23 @@
 appId: com.gorotini.app
 ---
-- launchApp
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+# Wait for the app root to mount before deep-linking (a link arriving
+# mid-startup races the bundle load); any signed-in/out root counts.
+- extendedWaitUntil:
+    optional: true
+    visible:
+      id: "sign-in-screen|home-today-section|onboarding-profile-screen"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        text: "Try again"
+    commands:
+      - tapOn:
+          text: "Try again"
 - openLink: "rotini://e2e-auth?action=logout"
 - extendedWaitUntil:
     visible:

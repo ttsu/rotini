@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as Haptics from 'expo-haptics';
 import { ErrorState } from '@/components/ui/error-state';
@@ -68,6 +69,7 @@ export function EditRotaScreenContent({
   editOrigin: EditRotaOrigin;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data: rota, isLoading, error, refetch } = useRotaData(rotaId);
   const rotaNow = useRotaNow(rotaId);
   const updateRota = useUpdateRota();
@@ -437,7 +439,9 @@ export function EditRotaScreenContent({
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 16,
-              paddingTop: 32,
+              // Android ignores pageSheet and renders full-screen edge-to-edge,
+              // so the header needs the status-bar inset.
+              paddingTop: Platform.OS === 'android' ? insets.top + 8 : 32,
               paddingBottom: 12,
               borderBottomWidth: 0.5,
               borderBottomColor: sep,

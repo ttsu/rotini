@@ -19,6 +19,11 @@ appId: com.gorotini.app
 - tapOn:
     id: "swap-message-input"
 - inputText: "Can you cover this?"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "send-swap-request-button"
+    direction: DOWN
 - tapOn:
     id: "send-swap-request-button"
 - extendedWaitUntil:

@@ -1,0 +1,13 @@
+# Maestro 2.x runs folder flows in random order by default; these flows share
+# seeded state (e2e:prepare) and must run in sequence.
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-auth-screen
+    - 02-home-and-settings
+    - 03-create-shift
+    - 04-rota-detail
+    - 05-swap-and-override
+    - 06-home-detail-stays-on-home-tab
+    - 07-swap-cancel-and-decline
+    - 08-edit-and-delete-shift

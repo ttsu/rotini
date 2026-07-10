@@ -26,6 +26,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { ToastProvider } from '@/components/ui/toast';
 import { initSentry } from '@/lib/sentry';
+import { supabase } from '@/lib/supabase';
 import { AppPreferencesProvider } from '@/contexts/app-preferences';
 import { CalendarSyncProvider } from '@/contexts/calendar-sync';
 
@@ -46,6 +47,26 @@ const persister = createAsyncStoragePersister({
   storage: AsyncStorage,
   throttleTime: 3000,
   key: 'rotini-query-cache',
+});
+
+// On sign-out or account switch, drop the previous user's client state: cached
+// queries would leak one account's data into the next session, and the old
+// user's realtime channels throw "subscribe multiple times" when hooks
+// re-subscribe (full channel refactor is docs/plan/07-rota-realtime-scope.md).
+// The first event after startup restores the persisted session — skip it so
+// the offline cache survives normal launches.
+let lastAuthUserId: string | null | undefined;
+supabase.auth.onAuthStateChange((_event, session) => {
+  const userId = session?.user.id ?? null;
+  if (lastAuthUserId === undefined) {
+    lastAuthUserId = userId;
+    return;
+  }
+  if (userId !== lastAuthUserId) {
+    lastAuthUserId = userId;
+    void supabase.removeAllChannels();
+    queryClient.clear();
+  }
 });
 
 function AuthGate() {
