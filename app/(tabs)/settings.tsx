@@ -547,7 +547,9 @@ export default function SettingsScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 16,
-              paddingTop: 20,
+              // Android ignores pageSheet and renders full-screen edge-to-edge,
+              // so the header needs the status-bar inset.
+              paddingTop: Platform.OS === 'android' ? insets.top + 8 : 20,
               paddingBottom: 12,
               borderBottomWidth: 0.5,
               borderBottomColor: sep,
@@ -628,7 +630,9 @@ export default function SettingsScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 16,
-              paddingTop: 20,
+              // Android ignores pageSheet and renders full-screen edge-to-edge,
+              // so the header needs the status-bar inset.
+              paddingTop: Platform.OS === 'android' ? insets.top + 8 : 20,
               paddingBottom: 12,
               borderBottomWidth: 0.5,
               borderBottomColor: sep,

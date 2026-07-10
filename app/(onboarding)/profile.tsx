@@ -37,7 +37,7 @@ export default function OnboardingProfileScreen() {
   }
 
   return (
-    <View className="flex-1 justify-center px-6 bg-white dark:bg-black">
+    <View testID="onboarding-profile-screen" className="flex-1 justify-center px-6 bg-white dark:bg-black">
       <Text className="text-3xl font-bold mb-2 text-black dark:text-white">
         {"What's your name?"}
       </Text>

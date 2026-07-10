@@ -17,6 +17,11 @@ function main() {
   }
 
   loadEnvFile(path.join(ROOT, '.env.e2e'), { override: true });
+  // Non-e2e vars (Google client IDs, Sentry, EAS project) still come from the
+  // regular env files — EXPO_NO_DOTENV=1 stops the Expo CLI from loading them,
+  // so load them here with .env.e2e taking precedence.
+  loadEnvFile(path.join(ROOT, '.env.local'));
+  loadEnvFile(path.join(ROOT, '.env'));
   process.env.EXPO_NO_DOTENV = '1';
   process.env.EXPO_PUBLIC_E2E ??= '1';
   process.env.ROTINI_E2E_ENV = '1';

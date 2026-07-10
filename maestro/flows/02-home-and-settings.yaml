@@ -2,7 +2,7 @@ appId: com.gorotini.app
 ---
 - runFlow: ../generated/login-owner.yaml
 - assertVisible:
-    id: "home-your-shifts-section"
+    id: "home-today-section"
 - assertVisible:
     id: "home-rota-card-e2e-kitchen-duty"
 - assertVisible:

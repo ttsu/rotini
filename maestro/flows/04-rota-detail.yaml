@@ -38,5 +38,9 @@ appId: com.gorotini.app
     direction: DOWN
 - assertVisible:
     id: 'reminder-picker-row'
+- scrollUntilVisible:
+    element:
+      id: 'leave-shift-button'
+    direction: DOWN
 - assertVisible:
     id: 'leave-shift-button'

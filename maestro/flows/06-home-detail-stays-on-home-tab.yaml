@@ -2,7 +2,7 @@ appId: com.gorotini.app
 ---
 - runFlow: ../generated/login-owner.yaml
 - assertVisible:
-    id: 'home-your-shifts-section'
+    id: 'home-today-section'
 - tapOn:
     id: 'home-rota-card-e2e-kitchen-duty'
 - extendedWaitUntil:
@@ -19,7 +19,7 @@ appId: com.gorotini.app
     id: 'tab-home'
 - extendedWaitUntil:
     visible:
-      id: 'home-your-shifts-section'
+      id: 'home-today-section'
     timeout: 15000
 - assertNotVisible:
     id: 'rota-detail-screen'

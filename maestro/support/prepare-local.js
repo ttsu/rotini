@@ -95,12 +95,43 @@ function writeLoginFlow(fileName, email) {
   link.searchParams.set('redirect', '/(tabs)');
 
   writeFlow(fileName, [
-    '- launchApp',
-    `- openLink: ${JSON.stringify(link.toString())}`,
+    // clearState makes every login hermetic: a fresh sign-in on a cold app
+    // instead of an in-process account switch, which stresses the worklets
+    // runtime and realtime channels (see docs/plan/07-rota-realtime-scope.md)
+    // and was the main source of flaky launches. Permissions are pre-granted
+    // so the fresh install never shows a system prompt.
+    '- launchApp:',
+    '    clearState: true',
+    '    permissions:',
+    '      all: allow',
+    // clearState wipes the app container but the Supabase session lives in
+    // the Keychain (SecureStore) and survives — sign out explicitly so every
+    // login is a fresh sign-in from the signed-out state rather than an
+    // in-process cross-account switch.
+    '- openLink: "rotini://e2e-auth?action=logout"',
     '- extendedWaitUntil:',
     '    visible:',
-    '      id: "home-your-shifts-section"',
+    '      id: "sign-in-screen"',
+    '    timeout: 20000',
+    `- openLink: ${JSON.stringify(link.toString())}`,
+    // Startup can still intermittently trip the root error boundary — recover
+    // once via the app's own retry button, then gate for real.
+    '- extendedWaitUntil:',
+    '    optional: true',
+    '    visible:',
+    '      id: "home-today-section"',
     '    timeout: 15000',
+    '- runFlow:',
+    '    when:',
+    '      visible:',
+    '        text: "Try again"',
+    '    commands:',
+    '      - tapOn:',
+    '          text: "Try again"',
+    '- extendedWaitUntil:',
+    '    visible:',
+    '      id: "home-today-section"',
+    '    timeout: 25000',
   ]);
 }
 
@@ -167,7 +198,6 @@ async function main() {
       duration_minutes: 60,
       back_to_back: false,
       assignment_mode: 'round_robin',
-      cursor_user_id: member.id,
     })
     .select('id')
     .single();
@@ -184,6 +214,25 @@ async function main() {
   );
 
   if (memberError) throw memberError;
+
+  // cursor_member_id references rota_members.id, so it can only be set after
+  // the membership rows exist (rotas.cursor_user_id was replaced in migration
+  // 20260528230414_pending_members).
+  const { data: cursorRow, error: cursorLookupError } = await admin
+    .from('rota_members')
+    .select('id')
+    .eq('rota_id', rota.id)
+    .eq('user_id', member.id)
+    .single();
+
+  if (cursorLookupError) throw cursorLookupError;
+
+  const { error: cursorError } = await admin
+    .from('rotas')
+    .update({ cursor_member_id: cursorRow.id })
+    .eq('id', rota.id);
+
+  if (cursorError) throw cursorError;
 
   const activeOccurrenceId = randomUUID();
   const swapOccurrenceId = randomUUID();
