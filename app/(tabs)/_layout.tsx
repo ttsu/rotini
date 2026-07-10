@@ -1,78 +1,38 @@
-import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { FeatureErrorBoundary } from '@/components/feature-error-boundary';
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { RotaRealtimeRoot } from '@/features/rotas/rota-realtime-root';
 import { usePendingSwapsForMe } from '@/features/swaps/hooks';
-import { Colors } from '@/constants/theme';
-import { tabBlurPopNestedStackToRoot } from '@/lib/navigation/tab-blur-reset-stack';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 function TabLayoutInner() {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const tint = useThemeColor({}, 'tint');
   const { data: pendingSwaps } = usePendingSwapsForMe();
-  const inboxBadge = (pendingSwaps?.length ?? 0) > 0 ? pendingSwaps!.length : undefined;
+  const inboxBadge = pendingSwaps?.length ? String(pendingSwaps.length) : undefined;
 
+  // Native tab bars pop nested stacks to root on tab switch by default,
+  // which replaces the old tabBlurPopNestedStackToRoot listeners.
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarActiveTintColor: Colors[isDark ? 'dark' : 'light'].tint,
-        tabBarInactiveTintColor: Colors[isDark ? 'dark' : 'light'].tabIconDefault,
-        tabBarStyle: {
-          backgroundColor: isDark ? 'rgba(21,23,24,0.92)' : 'rgba(255,255,255,0.85)',
-          borderTopWidth: 0.5,
-          borderTopColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(60,60,67,0.10)',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        listeners={tabBlurPopNestedStackToRoot('home')}
-        options={{
-          title: 'Home',
-          tabBarButtonTestID: 'tab-home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="rotas"
-        listeners={tabBlurPopNestedStackToRoot('rotas')}
-        options={{
-          title: 'Shifts',
-          tabBarButtonTestID: 'tab-shifts',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: 'Inbox',
-          tabBarButtonTestID: 'tab-inbox',
-          tabBarBadge: inboxBadge,
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="tray.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarButtonTestID: 'tab-settings',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="gearshape.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          href: null,
-        }}
-      />
-    </Tabs>
+    <NativeTabs tintColor={tint}>
+      <NativeTabs.Trigger name="home">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="rotas">
+        <NativeTabs.Trigger.Label>Shifts</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="list.bullet" md="list" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="inbox">
+        <NativeTabs.Trigger.Label>Inbox</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="tray.fill" md="inbox" />
+        {inboxBadge ? <NativeTabs.Trigger.Badge>{inboxBadge}</NativeTabs.Trigger.Badge> : null}
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="index" hidden />
+    </NativeTabs>
   );
 }
 

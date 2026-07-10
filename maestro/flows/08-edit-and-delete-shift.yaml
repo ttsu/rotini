@@ -56,7 +56,7 @@ appId: com.gorotini.app
 
 # PART 2: Create and delete a rota
 - tapOn:
-    id: "tab-shifts"
+    text: "Shifts"
 - extendedWaitUntil:
     visible:
       id: "shifts-screen"

@@ -10,13 +10,22 @@ appId: com.gorotini.app
       id: 'rota-detail-screen'
     timeout: 15000
 - tapOn:
-    id: 'tab-shifts'
+    text: 'Shifts'
 - extendedWaitUntil:
     visible:
       id: 'shifts-screen'
     timeout: 15000
+# Native tabs preserve each tab's stack on switch: returning to Home shows
+# the detail where we left it (it stays on the Home tab, not Shifts)...
 - tapOn:
-    id: 'tab-home'
+    text: 'Home'
+- extendedWaitUntil:
+    visible:
+      id: 'rota-detail-screen'
+    timeout: 15000
+# ...and re-tapping the active tab pops its stack to the root (iOS convention).
+- tapOn:
+    text: 'Home'
 - extendedWaitUntil:
     visible:
       id: 'home-today-section'
