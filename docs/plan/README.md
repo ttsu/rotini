@@ -90,7 +90,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 39. NativeTabs — `app/(tabs)/_layout.tsx`
 - [x] 40. Confirmation dialogs — ActionSheetIOS → native
 - [x] 41. Create-shift form controls (RHF uncontrolled TextField pattern)
-- [ ] 42. RRuleBuilder + duration picker (platform-split wheel)
+- [x] 42. RRuleBuilder + duration picker (platform-split wheel)
 - [ ] 43. Edit surfaces — edit-rota, edit-profile, reminders
 - [ ] 44. Auth & onboarding controls
 - [ ] 45. Settings as full native List (gated stretch)

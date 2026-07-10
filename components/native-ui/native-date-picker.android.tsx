@@ -25,7 +25,12 @@ export function NativeDatePicker({
   const selectableDates =
     minimumDate || maximumDate ? { start: minimumDate, end: maximumDate } : undefined;
   return (
-    <Host matchContents style={height != null ? { height } : undefined}>
+    // Width must be bounded: the Compose picker contains horizontally
+    // scrollable rows that throw on infinite max-width constraints.
+    <Host
+      matchContents={{ vertical: true }}
+      style={height != null ? { width: '100%', height } : { width: '100%' }}
+    >
       <DateTimePicker
         initialDate={value.toISOString()}
         onDateSelected={onChange}
