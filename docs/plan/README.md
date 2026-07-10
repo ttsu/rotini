@@ -92,6 +92,6 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 41. Create-shift form controls (RHF uncontrolled TextField pattern)
 - [x] 42. RRuleBuilder + duration picker (platform-split wheel)
 - [x] 43. Edit surfaces — edit-rota, edit-profile, reminders
-- [ ] 44. Auth & onboarding controls
+- [x] 44. Auth & onboarding controls
 - [ ] 45. Settings as full native List (gated stretch)
 - [ ] 46. Cleanup + full regression (both platforms, light+dark)

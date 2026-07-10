@@ -2,8 +2,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 
+import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeTextField } from '@/components/native-ui/native-text-field';
 import { supabase } from '@/lib/supabase';
 
 export default function SignInScreen() {
@@ -88,31 +90,27 @@ export default function SignInScreen() {
         Sign in to continue
       </Text>
 
-      <TextInput
-        testID="sign-in-email-input"
-        className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-3 text-base text-black dark:text-white"
-        placeholder="Email address"
-        placeholderTextColor="#9ca3af"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!busy}
-      />
+      <View className="mb-3">
+        <NativeTextField
+          testID="sign-in-email-input"
+          placeholder="Email address"
+          onChangeText={setEmail}
+          keyboardType="email"
+          autoCapitalize="none"
+          autoCorrect={false}
+          disabled={busy}
+        />
+      </View>
 
-      <TouchableOpacity
-        testID="sign-in-magic-link-button"
-        className="bg-[#0a7ea4] rounded-xl py-3 mb-6 items-center"
-        onPress={signInWithMagicLink}
-        disabled={busy}
-        accessibilityLabel="Send magic link"
-        accessibilityRole="button"
-      >
-        <Text className="text-white font-semibold text-base">
-          {loading === 'magic' ? 'Sending…' : 'Send magic link'}
-        </Text>
-      </TouchableOpacity>
+      <View className="mb-6">
+        <NativeButton
+          testID="sign-in-magic-link-button"
+          label={loading === 'magic' ? 'Sending…' : 'Send magic link'}
+          onPress={signInWithMagicLink}
+          disabled={busy}
+          fullWidth
+        />
+      </View>
 
       <View className="flex-row items-center mb-6">
         <View className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
