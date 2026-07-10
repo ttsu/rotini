@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 
+import { NativeButton } from '@/components/native-ui/native-button';
 import { useAuth } from '@/contexts/auth';
 import { routes } from '@/lib/navigation/routes';
 import { supabase } from '@/lib/supabase';
@@ -27,24 +28,21 @@ export default function ProfileRetryScreen() {
       <Text className="text-base text-neutral-600 dark:text-neutral-400 mb-8">
         Check your connection and try again. If the problem continues, sign out and sign back in.
       </Text>
-      <TouchableOpacity
-        testID="profile-retry-button"
-        className="bg-[#0a7ea4] rounded-xl py-3 items-center mb-3"
-        onPress={() => void onRetry()}
-        accessibilityRole="button"
-        accessibilityLabel="Retry loading profile"
-      >
-        <Text className="text-white font-semibold text-base">Retry</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      <View className="mb-3">
+        <NativeButton
+          testID="profile-retry-button"
+          label="Retry"
+          onPress={() => void onRetry()}
+          fullWidth
+        />
+      </View>
+      <NativeButton
         testID="profile-sign-out-button"
-        className="border border-neutral-400 rounded-xl py-3 items-center"
+        label="Sign out"
         onPress={() => void onSignOut()}
-        accessibilityRole="button"
-        accessibilityLabel="Sign out"
-      >
-        <Text className="text-[#0a7ea4] font-semibold text-base">Sign out</Text>
-      </TouchableOpacity>
+        variant="plain"
+        fullWidth
+      />
     </View>
   );
 }

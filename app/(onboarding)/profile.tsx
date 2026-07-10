@@ -1,7 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
+
+import { NativeButton } from '@/components/native-ui/native-button';
+import { NativeTextField } from '@/components/native-ui/native-text-field';
 
 import { useAuth } from '@/contexts/auth';
 import { displayNameSchema, type DisplayNameFormValues } from '@/features/profile/display-name-schema';
@@ -48,18 +51,14 @@ export default function OnboardingProfileScreen() {
       <Controller
         control={control}
         name="display_name"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            className="border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-3 mb-1 text-base text-black dark:text-white"
+        render={({ field: { onChange } }) => (
+          <NativeTextField
+            testID="onboarding-display-name"
             placeholder="Display name"
-            placeholderTextColor="#9ca3af"
-            value={value}
             onChangeText={onChange}
-            onBlur={onBlur}
             autoFocus
             autoCapitalize="words"
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit(onSubmit)}
+            onSubmit={handleSubmit(onSubmit)}
           />
         )}
       />
@@ -70,15 +69,15 @@ export default function OnboardingProfileScreen() {
       {/* Avatar placeholder — upload deferred to a later phase */}
       <View className="h-4" />
 
-      <TouchableOpacity
-        className="bg-blue-600 rounded-xl py-3 items-center mt-4"
-        onPress={handleSubmit(onSubmit)}
-        disabled={isSubmitting}
-      >
-        <Text className="text-white font-semibold text-base">
-          {isSubmitting ? 'Saving…' : 'Continue'}
-        </Text>
-      </TouchableOpacity>
+      <View className="mt-4">
+        <NativeButton
+          testID="onboarding-continue-button"
+          label={isSubmitting ? 'Saving…' : 'Continue'}
+          onPress={handleSubmit(onSubmit)}
+          disabled={isSubmitting}
+          fullWidth
+        />
+      </View>
     </View>
   );
 }
