@@ -93,5 +93,5 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 42. RRuleBuilder + duration picker (platform-split wheel)
 - [x] 43. Edit surfaces — edit-rota, edit-profile, reminders
 - [x] 44. Auth & onboarding controls
-- [ ] 45. Settings as full native List (gated stretch)
-- [ ] 46. Cleanup + full regression (both platforms, light+dark)
+- [ ] ~~45. Settings as full native List (gated stretch)~~ — skipped: gate not met (units 38–44 needed Host-sizing fixes in three wrappers; deeper adoption deferred)
+- [x] 46. Cleanup + full regression (both platforms, light+dark)
