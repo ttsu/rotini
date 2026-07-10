@@ -11,6 +11,9 @@ import {
 import { menuAnchor, testID as testIDModifier } from '@expo/ui/jetpack-compose/modifiers';
 import { useEffect, useRef, useState } from 'react';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
 import type { NativeMenuPickerProps } from './types';
 
 export function NativeMenuPicker<V extends string>({
@@ -22,6 +25,7 @@ export function NativeMenuPicker<V extends string>({
   testID,
   height,
 }: NativeMenuPickerProps<V>) {
+  const scheme = useColorScheme() ?? 'light';
   const [expanded, setExpanded] = useState(false);
   const selectedLabel = options.find((option) => option.value === selectedValue)?.label ?? '';
   const text = useNativeState(selectedLabel);
@@ -40,6 +44,12 @@ export function NativeMenuPicker<V extends string>({
           readOnly
           singleLine
           enabled={!disabled}
+          colors={{
+            focusedTextColor: Colors[scheme].text,
+            unfocusedTextColor: Colors[scheme].text,
+            focusedIndicatorColor: Colors[scheme].tint,
+            unfocusedIndicatorColor: Colors[scheme].icon,
+          }}
           modifiers={[menuAnchor('primaryNotEditable', !disabled), testIDModifier(testID)]}
         >
           {label ? (

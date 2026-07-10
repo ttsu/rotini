@@ -32,6 +32,9 @@ export function NativeSegmented<V extends string>({
             colors={{
               activeContainerColor: Colors[scheme].tint,
               activeContentColor: Colors[scheme].background,
+              inactiveContentColor: Colors[scheme].text,
+              inactiveBorderColor: Colors[scheme].icon,
+              activeBorderColor: Colors[scheme].icon,
             }}
           >
             <SegmentedButton.Label>
