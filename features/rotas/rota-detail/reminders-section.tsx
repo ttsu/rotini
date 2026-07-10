@@ -1,5 +1,7 @@
-import { ActionSheetIOS, Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
+import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 import { SectionHeader } from '@/components/ui/section-header';
 import {
   formatLeadMinutes,
@@ -47,27 +49,10 @@ export function RemindersSection({
   const currentLabel =
     currentLeadMinutes === null ? 'None' : formatLeadMinutes(currentLeadMinutes);
 
-  function handleReminderPress() {
-    const options = [...PRESETS.map((p) => p.label), 'Cancel'];
-    const cancelIndex = options.length - 1;
+  const [reminderPickerOpen, setReminderPickerOpen] = useState(false);
 
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: cancelIndex, title: 'Reminder' },
-        (idx) => {
-          if (idx === cancelIndex) return;
-          setReminder.mutate(PRESETS[idx].value);
-        }
-      );
-    } else {
-      Alert.alert('Reminder', undefined, [
-        ...PRESETS.map((p) => ({
-          text: p.label,
-          onPress: () => setReminder.mutate(p.value),
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    }
+  function handleReminderPress() {
+    setReminderPickerOpen(true);
   }
 
   function handleScopeToggle(scope: 'own' | 'all') {
@@ -79,6 +64,19 @@ export function RemindersSection({
   return (
     <>
       <SectionHeader label="Reminder" testID="rota-reminders-heading" />
+      <NativeConfirmation
+        visible={reminderPickerOpen}
+        onDismiss={() => setReminderPickerOpen(false)}
+        title="Reminder"
+        actions={[
+          ...PRESETS.map((preset) => ({
+            label: preset.label,
+            onPress: () => setReminder.mutate(preset.value),
+          })),
+          { label: 'Cancel', role: 'cancel' as const, onPress: () => {} },
+        ]}
+        testID="reminder-confirmation"
+      />
       <View
         style={{
           backgroundColor: card,

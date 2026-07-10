@@ -3,6 +3,7 @@ import {
   fillMaxWidth,
   paddingAll,
   testID as testIDModifier,
+  verticalScroll,
 } from '@expo/ui/jetpack-compose/modifiers';
 import { StyleSheet } from 'react-native';
 
@@ -31,7 +32,7 @@ export function NativeConfirmation({
   return (
     <Host style={styles.anchor}>
       <ModalBottomSheet onDismissRequest={onDismiss} skipPartiallyExpanded>
-        <Column modifiers={[testIDModifier(testID), paddingAll(16)]}>
+        <Column modifiers={[testIDModifier(testID), paddingAll(16), verticalScroll()]}>
           <Text style={{ typography: 'titleMedium' }}>{title}</Text>
           {message ? (
             <Text color={Colors[scheme].icon} style={{ typography: 'bodyMedium' }}>

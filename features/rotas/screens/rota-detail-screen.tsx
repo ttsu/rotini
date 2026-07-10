@@ -6,18 +6,18 @@ import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 import { ErrorState } from '@/components/ui/error-state';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
@@ -65,7 +65,9 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
   const scheme = useColorScheme();
 
   // Reorder state
+  const insets = useSafeAreaInsets();
   const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
+  const [applyOrderPickerOpen, setApplyOrderPickerOpen] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => {
     const d = new Date();
@@ -176,26 +178,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
 
   function handleSaveOrder() {
     if (!pendingOrder) return;
-    const saved = pendingOrder;
-
-    const options = ['Apply immediately', 'After one rotation', 'After a specific date', 'Cancel'];
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { title: 'Apply new order', options, cancelButtonIndex: 3 },
-        (idx) => {
-          if (idx === 3) return;
-          applyOrder(saved, idx as 0 | 1 | 2);
-        }
-      );
-    } else {
-      Alert.alert('Apply new order', undefined, [
-        { text: 'Apply immediately', onPress: () => applyOrder(saved, 0) },
-        { text: 'After one rotation', onPress: () => applyOrder(saved, 1) },
-        { text: 'After a specific date', onPress: () => applyOrder(saved, 2) },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
+    setApplyOrderPickerOpen(true);
   }
 
   function handleDateConfirm() {
@@ -304,6 +287,22 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
         }}
       />
 
+      <NativeConfirmation
+        visible={applyOrderPickerOpen}
+        onDismiss={() => setApplyOrderPickerOpen(false)}
+        title="Apply new order"
+        actions={[
+          { label: 'Apply immediately', onPress: () => pendingOrder && applyOrder(pendingOrder, 0) },
+          { label: 'After one rotation', onPress: () => pendingOrder && applyOrder(pendingOrder, 1) },
+          {
+            label: 'After a specific date',
+            onPress: () => pendingOrder && applyOrder(pendingOrder, 2),
+          },
+          { label: 'Cancel', role: 'cancel', onPress: () => {} },
+        ]}
+        testID="apply-order-confirmation"
+      />
+
       {/* Date picker modal for "after a specific date" reorder option */}
       <Modal
         visible={datePickerVisible}
@@ -358,7 +357,10 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
       <ScrollView
         testID="rota-detail-screen"
         style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
+        // The native tab bar floats over content; the extra bottom padding and
+        // automatic inset keep the trailing buttons tappable above it.
+        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 + insets.bottom + 60 }}
+        contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >
