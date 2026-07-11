@@ -20,6 +20,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Generates the gitignored expo-env.d.ts (Expo ambient module types, e.g.
+      # `declare module '*.css'`) and .expo/types/router.d.ts (typed routes) that
+      # `tsc` needs. `expo customize` runs the typegen without Metro and leaves
+      # the committed tsconfig.json untouched.
+      - name: Generate Expo types
+        run: npx expo customize tsconfig.json
+
       - name: Typecheck
         run: npm run typecheck
 
