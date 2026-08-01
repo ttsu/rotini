@@ -11,3 +11,6 @@ executionOrder:
     - 06-home-detail-stays-on-home-tab
     - 07-swap-cancel-and-decline
     - 08-edit-and-delete-shift
+    # Last: creates an away window for today and deletes it again, so it leaves
+    # the seeded state untouched for a re-run.
+    - 09-availability
