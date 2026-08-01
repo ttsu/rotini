@@ -5,24 +5,10 @@ import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 
 import { Pill } from '@/components/ui/pill';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
+import { formatDateRange } from '@/features/unavailability/formatting';
 import { useRotaMemberUnavailability } from '@/features/unavailability/hooks';
 import { getUserMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
-
-/** Format a compact date range, e.g. "14 Jun – 20 Jun 2026". */
-function formatAwayDates(start: string, end: string): string {
-  try {
-    const s = new Date(`${start}T12:00:00`);
-    const e = new Date(`${end}T12:00:00`);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const sStr = `${s.getDate()} ${months[s.getMonth()]}`;
-    const eStr = `${e.getDate()} ${months[e.getMonth()]} ${e.getFullYear()}`;
-    if (start === end) return `${sStr} ${s.getFullYear()}`;
-    return `${sStr} – ${eStr}`;
-  } catch {
-    return start;
-  }
-}
 
 /**
  * Compact summary card listing all members with upcoming absence windows (next 60 days).
@@ -100,7 +86,7 @@ export function WhoIsAway({
         >
           <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>{entry.name}</Text>
           <Text style={{ fontSize: 14, color: '#FF9F0A' }}>
-            {formatAwayDates(entry.start_date, entry.end_date)}
+            {formatDateRange(entry.start_date, entry.end_date)}
           </Text>
         </View>
       ))}
@@ -532,7 +518,7 @@ export function MemberRow({
           }}
         >
           <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
-            Away {formatAwayDates(awayWindow.start_date, awayWindow.end_date)}
+            Away {formatDateRange(awayWindow.start_date, awayWindow.end_date)}
           </Text>
         </View>
       )}

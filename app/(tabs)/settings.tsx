@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -22,6 +21,7 @@ import { routes } from '@/lib/navigation/routes';
 import { usePushToken } from '@/features/notifications/usePushToken';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
 import { useMyProfile } from '@/features/profile/use-my-profile';
+import { formatDateRange } from '@/features/unavailability/formatting';
 import { useMyUnavailability, useSetUnavailability, useClearUnavailability } from '@/features/unavailability/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -61,24 +61,6 @@ const TIMEZONE_OPTIONS: readonly { label: string; value: string }[] = COMMON_TIM
 
 function RowChevron() {
   return <Text style={{ fontSize: 17, color: '#AEAEB2', marginLeft: 8 }}>›</Text>;
-}
-
-/** Format a YYYY-MM-DD date string for display (e.g. "14 Jun 2026"). */
-function formatDateRange(start: string, end: string): string {
-  try {
-    const s = new Date(`${start}T12:00:00`);
-    const e = new Date(`${end}T12:00:00`);
-    const sFormatted = format(s, 'd MMM yyyy');
-    const eFormatted = format(e, 'd MMM yyyy');
-    if (sFormatted === eFormatted) return sFormatted;
-    // If same year, show year only on end
-    if (s.getFullYear() === e.getFullYear()) {
-      return `${format(s, 'd MMM')} – ${eFormatted}`;
-    }
-    return `${sFormatted} – ${eFormatted}`;
-  } catch {
-    return `${start} – ${end}`;
-  }
 }
 
 export default function SettingsScreen() {

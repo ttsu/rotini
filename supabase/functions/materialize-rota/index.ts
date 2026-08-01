@@ -87,7 +87,13 @@ interface UnavailabilityWindow {
 }
 
 /** Returns true if the occurrence (given as UTC Date) falls within any of the
- *  user's unavailability windows, comparing in each window's own tz. */
+ *  user's unavailability windows, comparing in each window's own tz.
+ *
+ *  MIRRORED CLIENT-SIDE by windowCovering() in features/unavailability/conflicts.ts,
+ *  which decides whether an already-assigned turn is flagged as clashing with
+ *  the assignee's time away. Deno cannot import from features/, so the rule
+ *  lives in two places — change both together, or the app will flag conflicts
+ *  this function would never have created (or stay silent on ones it would). */
 function isUserAbsent(
   userId: string,
   occurrenceUtc: Date,

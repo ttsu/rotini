@@ -9,6 +9,8 @@ export const queryKeys = {
     all: (): QueryKey => ['occurrences'],
     forRota: (rotaId: string): QueryKey => ['occurrences', rotaId],
     detail: (occurrenceId: string): QueryKey => ['occurrences', occurrenceId],
+    /** The caller's own upcoming turns across every rota. */
+    mine: (): QueryKey => ['my-occurrences'],
   },
   homeRotas: {
     all: (): QueryKey => ['home-rotas'],
