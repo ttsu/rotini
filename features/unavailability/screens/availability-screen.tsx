@@ -49,7 +49,6 @@ export function AvailabilityScreen() {
 
   const [reviewWindowId, setReviewWindowId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string; openCovers: number } | null>(null);
-  const [requestingOccurrenceId, setRequestingOccurrenceId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftRange | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<AwayWindow | null>(null);
@@ -200,18 +199,6 @@ export function AvailabilityScreen() {
       showToast('Away dates removed');
     } catch (err) {
       showToast(getUserMessage(err));
-    }
-  }
-
-  async function handleRequestCover(occurrenceId: string) {
-    setRequestingOccurrenceId(occurrenceId);
-    try {
-      await requestCoverage.mutateAsync({ occurrenceId, message: null });
-      showToast('Cover requested — anyone can take it');
-    } catch (err) {
-      showToast(getUserMessage(err));
-    } finally {
-      setRequestingOccurrenceId(null);
     }
   }
 

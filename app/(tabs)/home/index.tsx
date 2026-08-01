@@ -17,6 +17,8 @@ import {
   useRespondSwap,
   type PendingSwapForMe,
 } from '@/features/swaps/hooks';
+import { ConflictBadge, CONFLICT_RED } from '@/features/unavailability/components/conflict-badge';
+import { useAvailabilityConflicts } from '@/features/unavailability/use-availability-conflicts';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/lib/navigation/routes';
 import { getUserMessage } from '@/lib/errors';
@@ -31,15 +33,20 @@ function ShiftCard({
   card,
   textPrimary,
   textSec,
+  hasConflict = false,
 }: {
   item: HomeRota;
   onPress: () => void;
   card: string;
   textPrimary: string;
   textSec: string;
+  /** The viewer is marked away for this turn. */
+  hasConflict?: boolean;
 }) {
   const { isActive, nextOccurrence: occ, rota } = item;
-  const barColor = isActive ? '#34C759' : '#0a7ea4';
+  // A clash outranks "on now"/"upcoming" in the colour bar: it's the thing the
+  // member has to act on.
+  const barColor = hasConflict ? CONFLICT_RED : isActive ? '#34C759' : '#0a7ea4';
   const targetIso = isActive ? occ!.ends_at : occ!.scheduled_at;
   const timeLabel = formatInTimeZone(new Date(targetIso), rota.tz, 'EEE d MMM, h:mm a');
   const rotaTestId = toTestIdSegment(rota.name);
@@ -59,7 +66,9 @@ function ShiftCard({
         elevation: 2,
       }}
       onPress={onPress}
-      accessibilityLabel={`${item.rota.name}, ${item.isActive ? 'on now' : 'your turn upcoming'}`}
+      accessibilityLabel={`${item.rota.name}, ${item.isActive ? 'on now' : 'your turn upcoming'}${
+        hasConflict ? ", you're marked away" : ''
+      }`}
       accessibilityRole="button"
     >
       <View style={{ height: 3, backgroundColor: barColor }} />
@@ -72,12 +81,16 @@ function ShiftCard({
           >
             {rota.name}
           </Text>
-          <Pill
-            label={isActive ? 'On now' : 'Your turn'}
-            color={isActive ? 'green' : 'teal'}
-            dot={isActive}
-            testID={`home-rota-status-${rotaTestId}`}
-          />
+          {hasConflict ? (
+            <ConflictBadge variant="pill" testID={`home-rota-conflict-${rotaTestId}`} />
+          ) : (
+            <Pill
+              label={isActive ? 'On now' : 'Your turn'}
+              color={isActive ? 'green' : 'teal'}
+              dot={isActive}
+              testID={`home-rota-status-${rotaTestId}`}
+            />
+          )}
         </View>
         <View
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
@@ -223,6 +236,9 @@ export default function HomeScreen() {
   const { session } = useAuth();
   const { data: profile } = useMyProfile();
   const { data, isLoading, error, refetch } = useHomeRotas();
+  // Read once here and pass down, rather than per card — the underlying
+  // queries are shared, but one lookup keeps the cards dumb.
+  const { byOccurrenceId: conflictsByOccurrenceId } = useAvailabilityConflicts();
   const { data: pendingSwaps } = usePendingSwapsForMe();
   const respondSwap = useRespondSwap();
   const { showToast } = useToast();
@@ -363,6 +379,9 @@ export default function HomeScreen() {
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
+              hasConflict={
+                !!item.nextOccurrence && conflictsByOccurrenceId.has(item.nextOccurrence.id)
+              }
             />
           ))
         )}
@@ -382,6 +401,9 @@ export default function HomeScreen() {
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}
+              hasConflict={
+                !!item.nextOccurrence && conflictsByOccurrenceId.has(item.nextOccurrence.id)
+              }
             />
           ))}
         </View>
