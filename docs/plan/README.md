@@ -106,5 +106,5 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 51. Availability screen — route, calendar, list (read/delete)
 - [x] 52. Add / edit sheet with range selection
 - [x] 53. Bulk "Request cover" confirmation
-- [ ] 54. Conflict indicators on Home + rota detail
+- [x] 54. Conflict indicators on Home + rota detail
 - [ ] 55. Retire settings modal, docs, e2e, regression

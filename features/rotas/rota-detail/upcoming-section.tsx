@@ -4,6 +4,12 @@ import { Calendar } from 'react-native-calendars';
 import { formatInTimeZone } from 'date-fns-tz';
 
 import { Pill } from '@/components/ui/pill';
+import {
+  ConflictBadge,
+  CONFLICT_RED,
+  CONFLICT_ROW_TINT,
+} from '@/features/unavailability/components/conflict-badge';
+import { useAvailabilityConflicts } from '@/features/unavailability/use-availability-conflicts';
 
 import { useRotaOccurrences, type OccurrenceRow } from '../use-rotas-queries';
 
@@ -17,6 +23,7 @@ function OccurrenceListRow({
   textSec,
   sep,
   showSep,
+  hasConflict = false,
 }: {
   occ: OccurrenceRow;
   name: string;
@@ -27,6 +34,8 @@ function OccurrenceListRow({
   textSec: string;
   sep: string;
   showSep: boolean;
+  /** The viewer is marked away for this turn (only ever set for their own). */
+  hasConflict?: boolean;
 }) {
   const isActive = occ.id === activeOccId;
   const initial = name.charAt(0).toUpperCase();
@@ -36,14 +45,18 @@ function OccurrenceListRow({
   return (
     <TouchableOpacity
       onPress={onPress}
-      accessibilityLabel={`${name}, ${startStr}`}
+      accessibilityLabel={`${name}, ${startStr}${hasConflict ? ", you're marked away" : ''}`}
       accessibilityRole="button"
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: isActive ? 'rgba(52,199,89,0.07)' : undefined,
+        backgroundColor: hasConflict
+          ? CONFLICT_ROW_TINT
+          : isActive
+            ? 'rgba(52,199,89,0.07)'
+            : undefined,
         borderBottomWidth: showSep ? 0.5 : 0,
         borderBottomColor: sep,
       }}
@@ -67,7 +80,11 @@ function OccurrenceListRow({
           {startStr} → {endStr}
         </Text>
       </View>
-      {isActive && <Pill label="On now" color="green" dot />}
+      {hasConflict ? (
+        <ConflictBadge variant="dot" testID={`rota-occurrence-conflict-${occ.id}`} />
+      ) : isActive ? (
+        <Pill label="On now" color="green" dot />
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -101,15 +118,19 @@ export function UpcomingSection({
 }) {
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const { data: occurrences, isLoading } = useRotaOccurrences(rotaId);
+  // Only the viewer's own turns are ever flagged — a peer's absence is their
+  // business, and the reason behind it is private.
+  const { byOccurrenceId: conflictsByOccurrenceId } = useAvailabilityConflicts();
 
   const markedDates: Record<string, Record<string, unknown>> = {};
   const today = new Date().toISOString().slice(0, 10);
 
   for (const occ of occurrences ?? []) {
     const isActive = occ.id === activeOccId;
+    const hasConflict = conflictsByOccurrenceId.has(occ.id);
     markedDates[occ.scheduled_local_date] = {
       marked: true,
-      dotColor: isActive ? '#fff' : '#0a7ea4',
+      dotColor: isActive ? '#fff' : hasConflict ? CONFLICT_RED : '#0a7ea4',
       ...(isActive ? { selected: true, selectedColor: '#34C759' } : {}),
     };
   }
@@ -207,6 +228,7 @@ export function UpcomingSection({
               textSec={textSec}
               sep={sep}
               showSep={i < occurrences.length - 1}
+              hasConflict={conflictsByOccurrenceId.has(occ.id)}
             />
           ))
         ) : (
