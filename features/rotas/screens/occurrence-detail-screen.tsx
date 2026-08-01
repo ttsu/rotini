@@ -31,6 +31,8 @@ import {
   useClaimPendingSlot,
   useOverrideOccurrence,
 } from '@/features/swaps/hooks';
+import { ConflictBanner } from '@/features/unavailability/components/conflict-banner';
+import { useOccurrenceConflict } from '@/features/unavailability/use-availability-conflicts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -170,6 +172,12 @@ export function OccurrenceDetailScreenContent({
     !isPendingSlot &&
     isMember &&
     mySwapsAsRequester.length === 0;
+  // Availability conflict — only meaningful for a turn assigned to me.
+  const conflict = useOccurrenceConflict(isAssignee ? occ?.id : null);
+  const myOpenCoverageBannerShowing =
+    !!openCoverageRequest && openCoverageRequest.requester_id === userId;
+  const showConflictBanner = !!conflict && !myOpenCoverageBannerShowing;
+
   const canClaim = isPendingSlot && isFuture && isMember;
   const canClaimOpenCoverage =
     !!openCoverageRequest &&
@@ -249,6 +257,24 @@ export function OccurrenceDetailScreenContent({
     } catch (err: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', getUserMessage(err) || 'Failed to request swap');
+    }
+  }
+
+  /**
+   * One-tap "get this covered" from the availability conflict banner.
+   *
+   * Skips the swap modal entirely — the user has already told us they're away,
+   * so there is nothing left to ask them.
+   */
+  async function handleRequestCoverForConflict() {
+    if (!occ) return;
+    try {
+      await requestCoverage.mutateAsync({ occurrenceId: occ.id, message: null });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast('Cover requested — anyone can take it');
+    } catch (err: unknown) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', getUserMessage(err) || 'Failed to request cover');
     }
   }
 
@@ -419,6 +445,16 @@ export function OccurrenceDetailScreenContent({
                 </Text>
               </View>
             ) : null}
+
+            {/* ── Availability conflict ─────────────────────────────────── */}
+            {/* Suppressed once my own open-coverage banner is showing below —
+                that banner already says cover has been requested, and two
+                stacked cards saying overlapping things is noise. */}
+            <ConflictBanner
+              conflict={showConflictBanner ? conflict : null}
+              onRequestCover={handleRequestCoverForConflict}
+              isRequesting={requestCoverage.isPending}
+            />
 
             {/* ── Pending swap banners ──────────────────────────────────── */}
             {hasPendingSwap

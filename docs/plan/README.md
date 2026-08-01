@@ -102,7 +102,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 47. Migration — availability v2 (grants + view RLS + realtime + merge/`update_unavailability`)
 - [x] 48. Client data layer — typed hooks, no shim, no auto-reassign
 - [x] 49. Conflict primitive — pure module + hook
-- [ ] 50. Conflict UI primitives + occurrence detail banner
+- [x] 50. Conflict UI primitives + occurrence detail banner
 - [ ] 51. Availability screen — route, calendar, list (read/delete)
 - [ ] 52. Add / edit sheet with range selection
 - [ ] 53. Bulk "Request cover" confirmation
