@@ -19,25 +19,8 @@ import { queryKeys } from './query-keys';
  */
 export function useMyUpcomingOccurrences() {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
-  const key = queryKeys.occurrences.mine();
-  const id = useId();
-
-  useEffect(() => {
-    if (!session) return;
-    const channel = supabase
-      .channel(`my-occurrences-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () =>
-        queryClient.invalidateQueries({ queryKey: key }),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session?.user.id, queryClient, id]);
-
   return useQuery({
-    queryKey: key,
+    queryKey: queryKeys.occurrences.mine(),
     queryFn: async (): Promise<MyOccurrence[]> => {
       const { data, error } = await supabase
         .from('occurrences')
@@ -50,4 +33,32 @@ export function useMyUpcomingOccurrences() {
     },
     enabled: !!session,
   });
+}
+
+/**
+ * Registers the realtime subscription for the caller's own occurrences.
+ * Call once, at screen level.
+ *
+ * Kept out of useMyUpcomingOccurrences because the conflict primitive reads
+ * that query from several screens at once, and one channel per mount is waste
+ * at best and a collision at worst — see useRegisterSentSwapsRealtime.
+ */
+export function useRegisterMyOccurrencesRealtime() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const key = queryKeys.occurrences.mine();
+  const id = useId();
+
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel(`my-occurrences:${session.user.id}:${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () =>
+        queryClient.invalidateQueries({ queryKey: key }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user.id, queryClient, id]);
 }

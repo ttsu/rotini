@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeButton } from '@/components/native-ui/native-button';
-import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useToast } from '@/components/ui/toast';
 import { useAppPreferences } from '@/contexts/app-preferences';
-import { useMyUpcomingOccurrences } from '@/features/rotas/use-my-occurrences';
+import {
+  useMyUpcomingOccurrences,
+  useRegisterMyOccurrencesRealtime,
+} from '@/features/rotas/use-my-occurrences';
 import { useRequestCoverage } from '@/features/swaps/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getUserMessage } from '@/lib/errors';
@@ -21,7 +23,13 @@ import { ConflictReviewSheet } from '../components/conflict-review-sheet';
 import type { AwayWindow } from '../conflicts';
 import { formatDateRange } from '../formatting';
 import { handleDayPress, type DraftRange } from '../range-selection';
-import { useClearUnavailability, useMyUnavailability, useSetUnavailability, useUpdateUnavailability } from '../hooks';
+import {
+  useClearUnavailability,
+  useMyUnavailability,
+  useRegisterMyUnavailabilityRealtime,
+  useSetUnavailability,
+  useUpdateUnavailability,
+} from '../hooks';
 import { useAvailabilityConflicts, useConflictPreview } from '../use-availability-conflicts';
 
 const CARD_SHADOW = {
@@ -38,6 +46,11 @@ export function AvailabilityScreen() {
   const { showToast } = useToast();
   const { defaultTimeZone } = useAppPreferences();
 
+  // This screen is where live freshness matters: a peer claiming cover, or a
+  // window changed on another device, should show up without a refresh.
+  useRegisterMyUnavailabilityRealtime();
+  useRegisterMyOccurrencesRealtime();
+
   const { data: windows = [], isLoading } = useMyUnavailability();
   const { data: shifts = [] } = useMyUpcomingOccurrences();
   const { byWindowId } = useAvailabilityConflicts();
@@ -48,7 +61,6 @@ export function AvailabilityScreen() {
   const updateUnavailability = useUpdateUnavailability();
 
   const [reviewWindowId, setReviewWindowId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string; openCovers: number } | null>(null);
   const [draft, setDraft] = useState<DraftRange | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<AwayWindow | null>(null);
@@ -183,17 +195,24 @@ export function AvailabilityScreen() {
     const openCovers = (byWindowId.get(w.id) ?? []).filter(
       (c) => c.coverState === 'requested',
     ).length;
-    setPendingDelete({
-      id: w.id,
-      label: formatDateRange(w.start_date, w.end_date),
-      openCovers,
-    });
+    // Alert.alert rather than NativeConfirmation: this screen keeps two RN
+    // Modals mounted (the add/edit sheet and the review sheet), and the SwiftUI
+    // ConfirmationDialog anchored behind them never presented. Alert matches
+    // the destructive-delete pattern already used for "Delete Shift" on rota
+    // detail, and is the only confirmation style the e2e suite can drive.
+    Alert.alert(
+      `Remove ${formatDateRange(w.start_date, w.end_date)}?`,
+      openCovers > 0
+        ? `You have ${openCovers} open cover ${openCovers === 1 ? 'request' : 'requests'} for shifts in this period. They'll stay open — cancel them from each shift if you no longer need cover.`
+        : "You'll be available for turns on these dates again.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => void handleDelete(w.id) },
+      ],
+    );
   }
 
-  async function handleDelete() {
-    if (!pendingDelete) return;
-    const id = pendingDelete.id;
-    setPendingDelete(null);
+  async function handleDelete(id: string) {
     try {
       await clearUnavailability.mutateAsync({ unavailabilityId: id });
       showToast('Away dates removed');
@@ -372,24 +391,7 @@ export function AvailabilityScreen() {
         sep={sep}
       />
 
-      {/* Deleting a window deliberately leaves any cover requests it prompted
-          open — someone may already be planning around them — so say so rather
-          than silently cancelling on the user's behalf. */}
-      <NativeConfirmation
-        visible={pendingDelete !== null}
-        onDismiss={() => setPendingDelete(null)}
-        title={pendingDelete ? `Remove ${pendingDelete.label}?` : ''}
-        message={
-          pendingDelete?.openCovers
-            ? `You have ${pendingDelete.openCovers} open cover ${pendingDelete.openCovers === 1 ? 'request' : 'requests'} for shifts in this period. They'll stay open — cancel them from each shift if you no longer need cover.`
-            : "You'll be available for turns on these dates again."
-        }
-        actions={[
-          { label: 'Remove', role: 'destructive', onPress: handleDelete },
-          { label: 'Cancel', role: 'cancel', onPress: () => setPendingDelete(null) },
-        ]}
-        testID="availability-delete-confirm"
-      />
+
     </>
   );
 }

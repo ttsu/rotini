@@ -43,12 +43,15 @@ appId: com.gorotini.app
 - tapOn:
     id: "away-sheet-save"
 
-# Back on the screen, the window is listed. If it clashed with a seeded shift
-# the review sheet opens first — dismiss it, which must not lose the window.
+# If the new window clashes with a seeded shift, the review sheet opens on top
+# of the screen and must be dismissed FIRST — while it's up, the screen behind
+# it isn't visible to Maestro, so asserting on the screen before dismissing
+# would always fail.
 - extendedWaitUntil:
     visible:
-      id: "availability-screen"
-    timeout: 15000
+      id: "conflict-review-sheet"
+    timeout: 10000
+    optional: true
 - runFlow:
     when:
       visible:
@@ -56,11 +59,11 @@ appId: com.gorotini.app
     commands:
       - tapOn:
           id: "conflict-review-dismiss"
-      - extendedWaitUntil:
-          visible:
-            id: "availability-screen"
-          timeout: 10000
 
+- extendedWaitUntil:
+    visible:
+      id: "availability-screen"
+    timeout: 15000
 - assertVisible:
     id: "availability-upcoming-header"
 - assertVisible:
@@ -71,9 +74,11 @@ appId: com.gorotini.app
 # so the button matcher is anchored to avoid tapping the title instead.
 - tapOn:
     id: "availability-window-0-delete"
+# Alert.alert, so the action is queryable. Anchored because the alert's title
+# is "Remove <dates>?", which also contains the word.
 - extendedWaitUntil:
     visible:
-      id: "availability-delete-confirm"
+      text: "^Remove$"
     timeout: 10000
 - tapOn:
     text: "^Remove$"

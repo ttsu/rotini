@@ -9,6 +9,7 @@ import {
   usePendingOpenCoverageRequests,
   usePendingSwapsForMe,
   usePendingSentSwaps,
+  useRegisterSentSwapsRealtime,
   useClaimCoverage,
   useRespondSwap,
   useCancelSwap,
@@ -313,6 +314,9 @@ export default function SwapInboxScreen() {
   const { showToast } = useToast();
 
   const { data: receivedSwaps = [], isLoading: loadingReceived } = usePendingSwapsForMe();
+  // Inbox is the surface that needs live outgoing-swap updates; the conflict
+  // primitive only reads the cache.
+  useRegisterSentSwapsRealtime();
   const { data: sentSwaps = [], isLoading: loadingSent } = usePendingSentSwaps();
   const { data: openCoverageRequests = [], isLoading: loadingOpenCoverage } = usePendingOpenCoverageRequests();
   const respondSwap = useRespondSwap();

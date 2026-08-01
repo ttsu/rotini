@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
@@ -48,13 +48,15 @@ export type UpsertUnavailabilityResult = {
  * 20260731000001 granted `authenticated` the SELECT this needs. Before that
  * grant every read here failed with 42501 and the empty-array default made it
  * look like the user simply had no away windows.
+ *
+ * Read-only. Pair with useRegisterMyUnavailabilityRealtime on the screen that
+ * needs live updates — the conflict primitive reads this from several screens
+ * at once, so subscribing here would open a channel per mount.
  */
 export function useMyUnavailability() {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
-  const userId = session?.user.id;
 
-  const query = useQuery({
+  return useQuery({
     queryKey: queryKeys.unavailability.mine(),
     queryFn: async (): Promise<UnavailabilityWindow[]> => {
       const { data, error } = await supabase
@@ -66,18 +68,19 @@ export function useMyUnavailability() {
     },
     enabled: !!session,
   });
+}
 
-  // Scoped to this user's own rows — unlike the per-rota subscription below,
-  // which deliberately watches everyone's.
-  //
-  // The Date.now() suffix matches the convention elsewhere in the app: this
-  // hook backs the conflict primitive and so is mounted by several screens at
-  // once, and a fixed channel name would make those mounts collide (the
-  // duplicate-channel problem Phase 7 exists to address).
+/** Registers the realtime subscription for the caller's own away windows. Call once, at screen level. */
+export function useRegisterMyUnavailabilityRealtime() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = session?.user.id;
+  const id = useId();
+
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`unavailability-mine:${userId}:${Date.now()}`)
+      .channel(`unavailability-mine:${userId}:${id}`)
       .on(
         'postgres_changes',
         {
@@ -92,9 +95,7 @@ export function useMyUnavailability() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient]);
-
-  return query;
+  }, [userId, queryClient, id]);
 }
 
 /** Registers a realtime subscription for unavailability changes on a rota. Call once at screen level. */
