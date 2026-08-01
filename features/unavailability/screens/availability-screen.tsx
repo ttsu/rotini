@@ -17,6 +17,7 @@ import { AvailabilityCalendar } from '../components/availability-calendar';
 import { AvailabilityEmptyState } from '../components/availability-empty-state';
 import { AwayWindowRow } from '../components/away-window-row';
 import { AwayWindowSheet } from '../components/away-window-sheet';
+import { ConflictReviewSheet } from '../components/conflict-review-sheet';
 import type { AwayWindow } from '../conflicts';
 import { formatDateRange } from '../formatting';
 import { handleDayPress, type DraftRange } from '../range-selection';
@@ -46,7 +47,7 @@ export function AvailabilityScreen() {
   const setUnavailability = useSetUnavailability();
   const updateUnavailability = useUpdateUnavailability();
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reviewWindowId, setReviewWindowId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string; openCovers: number } | null>(null);
   const [requestingOccurrenceId, setRequestingOccurrenceId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftRange | null>(null);
@@ -139,9 +140,44 @@ export function AvailabilityScreen() {
       showToast(
         result.merged_ids.length > 0 ? `Merged into ${storedRange}` : `Away ${storedRange}`,
       );
+      // Straight into the review step when the new window collides with
+      // something. Dismissing is safe — the row keeps the count and reopens it.
+      if (conflictPreviewCount > 0) setReviewWindowId(result.id);
     } catch (err) {
       showToast(getUserMessage(err));
     }
+  }
+
+  /**
+   * Opens each selected shift for cover, one at a time.
+   *
+   * Sequential rather than Promise.all: a fortnight's absence can be a dozen
+   * RPCs, and a failure partway through must not lose the ones that already
+   * succeeded. Rows that became ineligible between preview and submit simply
+   * fail and are counted.
+   */
+  async function handleBulkRequestCover(occurrenceIds: string[]) {
+    let succeeded = 0;
+    let failed = 0;
+    for (const occurrenceId of occurrenceIds) {
+      try {
+        await requestCoverage.mutateAsync({ occurrenceId, message: null });
+        succeeded += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    setReviewWindowId(null);
+    if (failed === 0) {
+      showToast(
+        succeeded === 1 ? 'Cover requested for 1 shift' : `Cover requested for ${succeeded} shifts`,
+      );
+    } else {
+      showToast(
+        `Cover requested for ${succeeded} of ${succeeded + failed} — try the rest from the shift`,
+      );
+    }
+    return { succeeded, failed };
   }
 
   function confirmDelete(w: AwayWindow) {
@@ -262,16 +298,13 @@ export function AvailabilityScreen() {
                     testID={`availability-window-${i}`}
                     window={{ ...w, reason: w.reason ?? null }}
                     conflicts={byWindowId.get(w.id) ?? []}
-                    expanded={expandedId === w.id}
-                    onToggleExpand={() => setExpandedId(expandedId === w.id ? null : w.id)}
+                    onReviewConflicts={() => setReviewWindowId(w.id)}
                     onDelete={() => confirmDelete(w)}
                     onEdit={() => {
                       setEditing(w);
                       setDraft({ anchor: w.start_date, start: w.start_date, end: w.end_date });
                       setSheetOpen(true);
                     }}
-                    onRequestCover={handleRequestCover}
-                    requestingOccurrenceId={requestingOccurrenceId}
                     showTz={w.tz !== defaultTimeZone}
                     textPrimary={textPrimary}
                     textSec={textSec}
@@ -295,8 +328,6 @@ export function AvailabilityScreen() {
                     testID={`availability-past-window-${i}`}
                     window={{ ...w, reason: w.reason ?? null }}
                     conflicts={[]}
-                    expanded={false}
-                    onToggleExpand={() => {}}
                     onDelete={() => confirmDelete(w)}
                     isPast
                     showTz={w.tz !== defaultTimeZone}
@@ -324,6 +355,18 @@ export function AvailabilityScreen() {
           you can see the reason.
         </Text>
       </ScrollView>
+
+      <ConflictReviewSheet
+        visible={reviewWindowId !== null}
+        conflicts={reviewWindowId ? (byWindowId.get(reviewWindowId) ?? []) : []}
+        onDismiss={() => setReviewWindowId(null)}
+        onRequestCover={handleBulkRequestCover}
+        card={card}
+        bg={bg}
+        textPrimary={textPrimary}
+        textSec={textSec}
+        sep={sep}
+      />
 
       <AwayWindowSheet
         visible={sheetOpen}

@@ -4,11 +4,13 @@ import { Pill } from '@/components/ui/pill';
 
 import type { Conflict } from '../conflicts';
 import { formatDateRange, formatDayCount } from '../formatting';
-import { ConflictBanner } from './conflict-banner';
 
 /**
- * One saved away window, with its clash count and an expandable list of the
- * shifts it covers.
+ * One saved away window, with the count of shifts it collides with.
+ *
+ * Tapping the clash count opens the review sheet; tapping elsewhere edits the
+ * window. Reviewing clashes deliberately has a single entry point rather than
+ * both an inline expansion and a sheet, so there's one place to act on them.
  *
  * Past windows are rendered dimmed and without conflicts — anything already
  * behind us cannot be covered, so offering the action would be noise.
@@ -16,12 +18,9 @@ import { ConflictBanner } from './conflict-banner';
 export function AwayWindowRow({
   window,
   conflicts,
-  expanded,
-  onToggleExpand,
+  onReviewConflicts,
   onEdit,
   onDelete,
-  onRequestCover,
-  requestingOccurrenceId,
   isPast = false,
   showTz = false,
   textPrimary,
@@ -32,12 +31,9 @@ export function AwayWindowRow({
 }: {
   window: { id: string; start_date: string; end_date: string; reason: string | null; tz: string };
   conflicts: Conflict[];
-  expanded: boolean;
-  onToggleExpand: () => void;
+  onReviewConflicts?: () => void;
   onEdit?: () => void;
   onDelete: () => void;
-  onRequestCover?: (occurrenceId: string) => void;
-  requestingOccurrenceId?: string | null;
   isPast?: boolean;
   /** Set when the window's tz differs from the user's current one. */
   showTz?: boolean;
@@ -64,8 +60,8 @@ export function AwayWindowRow({
     >
       <TouchableOpacity
         testID={testID}
-        onPress={hasConflicts ? onToggleExpand : onEdit}
-        disabled={!hasConflicts && !onEdit}
+        onPress={onEdit}
+        disabled={!onEdit}
         accessibilityRole="button"
         accessibilityLabel={`Away ${range}${hasConflicts ? `, ${conflicts.length} shifts affected` : ''}`}
         style={{
@@ -83,14 +79,21 @@ export function AwayWindowRow({
         </View>
 
         {hasConflicts ? (
-          <View style={{ marginRight: 8 }}>
+          <TouchableOpacity
+            onPress={onReviewConflicts}
+            disabled={!onReviewConflicts}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Review ${conflicts.length} clashing shifts`}
+            style={{ marginRight: 8 }}
+          >
             <Pill
               label={`${conflicts.length} ${conflicts.length === 1 ? 'shift' : 'shifts'}`}
               color="red"
               dot
               testID={testID ? `${testID}-conflict-count` : undefined}
             />
-          </View>
+          </TouchableOpacity>
         ) : null}
 
         <TouchableOpacity
@@ -104,21 +107,6 @@ export function AwayWindowRow({
         </TouchableOpacity>
       </TouchableOpacity>
 
-      {expanded && hasConflicts ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-          {conflicts.map((conflict) => (
-            <ConflictBanner
-              key={conflict.occurrence.id}
-              conflict={conflict}
-              onRequestCover={
-                onRequestCover ? () => onRequestCover(conflict.occurrence.id) : undefined
-              }
-              isRequesting={requestingOccurrenceId === conflict.occurrence.id}
-              testID={`away-window-conflict-${conflict.occurrence.id}`}
-            />
-          ))}
-        </View>
-      ) : null}
     </View>
   );
 }
