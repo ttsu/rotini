@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
-import { supabase, supabaseAnonKey, supabaseUrl } from '@/lib/supabase';
-
-const MATERIALIZE_URL = `${supabaseUrl}/functions/v1/materialize-rota`;
+import { queryKeys } from '@/features/rotas/query-keys';
+import { getUserMessage } from '@/lib/errors';
+import { supabase } from '@/lib/supabase';
 
 export type UnavailabilityWindow = {
   id: string;
@@ -25,77 +25,82 @@ export type UnavailabilityPublic = {
   created_at: string;
 };
 
-const unavailabilityKeys = {
-  mine: () => ['unavailability', 'mine'] as const,
-  forRota: (rotaId: string) => ['unavailability', 'rota', rotaId] as const,
+/**
+ * Shape returned by set_unavailability / update_unavailability.
+ *
+ * `start_date` / `end_date` are the *stored* dates, which may be wider than
+ * what the caller asked for when the window merged with neighbours, and
+ * `merged_ids` lists what was absorbed — together they let the UI say
+ * "merged into 1–8 Aug" rather than silently changing what the user drew.
+ */
+export type UpsertUnavailabilityResult = {
+  id: string;
+  start_date: string;
+  end_date: string;
+  merged_ids: string[];
+  rota_ids: string[];
 };
 
-/** Fan-out helper: calls materialize-rota for each affected rota_id (fire-and-forget). */
-async function fanOutMaterialize(
-  rotaIds: string[],
-  accessToken: string,
-  startDate: string,
-  endDate: string,
-) {
-  for (const rotaId of rotaIds) {
-    fetch(MATERIALIZE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'apikey': supabaseAnonKey,
-      },
-      body: JSON.stringify({
-        rota_id: rotaId,
-        invalidate_window: { start_date: startDate, end_date: endDate },
-      }),
-    }).catch(() => {
-      // fire-and-forget; ignore errors
-    });
-  }
-}
-
-// Typed REST shim for tables not yet in database.types.ts (added in Unit 31 migration).
-// Use the Supabase REST API via fetch rather than the typed .from() overload.
-const supabaseRest = {
-  async from<T>(table: string, query: string): Promise<T[]> {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${query}`, {
-      headers: {
-        apikey: supabaseAnonKey,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        Accept: 'application/json',
-      },
-    });
-    if (!response.ok) throw new Error(`REST error ${response.status}`);
-    return (await response.json()) as T[];
-  },
-};
-
-/** Current user's own absence windows, ordered by start_date ascending. */
+/**
+ * Current user's own absence windows, ordered by start_date ascending.
+ *
+ * Reads the base table directly: RLS ("owner all") scopes it to the caller, and
+ * 20260731000001 granted `authenticated` the SELECT this needs. Before that
+ * grant every read here failed with 42501 and the empty-array default made it
+ * look like the user simply had no away windows.
+ */
 export function useMyUnavailability() {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = session?.user.id;
 
-  return useQuery({
-    queryKey: unavailabilityKeys.mine(),
+  const query = useQuery({
+    queryKey: queryKeys.unavailability.mine(),
     queryFn: async (): Promise<UnavailabilityWindow[]> => {
-      // user_unavailability has RLS — only returns the current user's rows
-      const rows = await supabaseRest.from<UnavailabilityWindow>(
-        'user_unavailability',
-        'select=id,user_id,start_date,end_date,reason,tz,created_at&order=start_date.asc',
-      );
-      return rows;
+      const { data, error } = await supabase
+        .from('user_unavailability')
+        .select('id, user_id, start_date, end_date, reason, tz, created_at')
+        .order('start_date', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!session,
   });
+
+  // Scoped to this user's own rows — unlike the per-rota subscription below,
+  // which deliberately watches everyone's.
+  //
+  // The Date.now() suffix matches the convention elsewhere in the app: this
+  // hook backs the conflict primitive and so is mounted by several screens at
+  // once, and a fixed channel name would make those mounts collide (the
+  // duplicate-channel problem Phase 7 exists to address).
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`unavailability-mine:${userId}:${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_unavailability',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => queryClient.invalidateQueries({ queryKey: queryKeys.unavailability.mine() }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
+
+  return query;
 }
 
 /** Registers a realtime subscription for unavailability changes on a rota. Call once at screen level. */
 export function useRegisterUnavailabilityRealtime(rotaId: string | null | undefined) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const key = unavailabilityKeys.forRota(rotaId ?? '');
 
   useEffect(() => {
     if (!session || !rotaId) return;
@@ -108,7 +113,8 @@ export function useRegisterUnavailabilityRealtime(rotaId: string | null | undefi
           schema: 'public',
           table: 'user_unavailability',
         },
-        () => queryClient.invalidateQueries({ queryKey: key }),
+        () =>
+          queryClient.invalidateQueries({ queryKey: queryKeys.unavailability.forRota(rotaId) }),
       )
       .subscribe();
     return () => {
@@ -120,12 +126,10 @@ export function useRegisterUnavailabilityRealtime(rotaId: string | null | undefi
 /** Upcoming absence windows for all members of a rota (public view, no reason). */
 export function useRotaMemberUnavailability(rotaId: string | null | undefined) {
   const { session } = useAuth();
-  const key = unavailabilityKeys.forRota(rotaId ?? '');
 
   return useQuery({
-    queryKey: key,
+    queryKey: queryKeys.unavailability.forRota(rotaId ?? ''),
     queryFn: async (): Promise<UnavailabilityPublic[]> => {
-      // Get the members of this rota first, then fetch their unavailability
       const { data: members, error: membersError } = await supabase
         .from('rota_members')
         .select('user_id')
@@ -142,19 +146,49 @@ export function useRotaMemberUnavailability(rotaId: string | null | undefined) {
       const today = new Date().toISOString().slice(0, 10);
       const future = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-      // user_unavailability_public is a view not yet in database.types.ts
-      const inList = memberIds.join(',');
-      const rows = await supabaseRest.from<UnavailabilityPublic>(
-        'user_unavailability_public',
-        `select=id,user_id,start_date,end_date,tz,created_at&user_id=in.(${inList})&start_date=lte.${future}&end_date=gte.${today}&order=start_date.asc`,
+      // The public view omits `reason`. Since 20260731000001 it also runs with
+      // security_invoker, so RLS restricts it to rota peers — the member filter
+      // below is now belt-and-braces rather than the only thing protecting it.
+      const { data, error } = await supabase
+        .from('user_unavailability_public')
+        .select('id, user_id, start_date, end_date, tz, created_at')
+        .in('user_id', memberIds)
+        .lte('start_date', future)
+        .gte('end_date', today)
+        .order('start_date', { ascending: true });
+      if (error) throw error;
+
+      return (data ?? []).filter(
+        (row): row is UnavailabilityPublic =>
+          row.id !== null &&
+          row.user_id !== null &&
+          row.start_date !== null &&
+          row.end_date !== null &&
+          row.tz !== null &&
+          row.created_at !== null,
       );
-      return rows;
     },
     enabled: !!session && !!rotaId,
   });
 }
 
-/** Mutation: calls set_unavailability RPC, triggers fan-out, invalidates query. */
+/**
+ * Invalidates every query that depends on a user's own away windows.
+ *
+ * Note what is deliberately absent: this no longer re-materializes the affected
+ * rotas. Passing an `invalidate_window` to materialize-rota made it discard and
+ * recompute existing assignments, so marking yourself away silently handed your
+ * shifts to someone else. Occurrences generated later still skip absent members
+ * (isUserAbsent runs when the round-robin picks an assignee for a row that does
+ * not exist yet); existing turns are now flagged as conflicts instead, and the
+ * user chooses whether to request cover. See docs/plan/10-availability.md.
+ */
+function invalidateUnavailability(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.unavailability.mine() });
+  queryClient.invalidateQueries({ queryKey: ['unavailability', 'rota'] });
+}
+
+/** Mutation: creates an away window, merging it into any it overlaps or touches. */
 export function useSetUnavailability() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -168,32 +202,52 @@ export function useSetUnavailability() {
       endDate: string;
       reason?: string | null;
       tz: string;
-    }): Promise<{ id: string; rota_ids: string[] }> => {
+    }): Promise<UpsertUnavailabilityResult> => {
       const { data, error } = await supabase.rpc('set_unavailability', {
         p_start_date: startDate,
         p_end_date: endDate,
         p_reason: reason ?? undefined,
         p_tz: tz,
       });
-      if (error) throw error;
-      return data as unknown as { id: string; rota_ids: string[] };
+      if (error) throw new Error(getUserMessage(error));
+      return data as unknown as UpsertUnavailabilityResult;
     },
-    onSuccess: async (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: unavailabilityKeys.mine() });
-      // Invalidate all rota unavailability queries
-      queryClient.invalidateQueries({ queryKey: ['unavailability', 'rota'] });
-
-      // Fan-out: trigger materialize-rota for each affected rota
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (token && data?.rota_ids?.length) {
-        void fanOutMaterialize(data.rota_ids, token, variables.startDate, variables.endDate);
-      }
-    },
+    onSuccess: () => invalidateUnavailability(queryClient),
   });
 }
 
-/** Mutation: calls clear_unavailability RPC, triggers fan-out, invalidates query. */
+/** Mutation: edits an existing away window in place (owner-gated server-side). */
+export function useUpdateUnavailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      unavailabilityId,
+      startDate,
+      endDate,
+      reason,
+      tz,
+    }: {
+      unavailabilityId: string;
+      startDate: string;
+      endDate: string;
+      reason?: string | null;
+      tz: string;
+    }): Promise<UpsertUnavailabilityResult> => {
+      const { data, error } = await supabase.rpc('update_unavailability', {
+        p_unavailability_id: unavailabilityId,
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_reason: reason ?? undefined,
+        p_tz: tz,
+      });
+      if (error) throw new Error(getUserMessage(error));
+      return data as unknown as UpsertUnavailabilityResult;
+    },
+    onSuccess: () => invalidateUnavailability(queryClient),
+  });
+}
+
+/** Mutation: deletes an away window. Any cover requests already opened stay open. */
 export function useClearUnavailability() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -205,22 +259,9 @@ export function useClearUnavailability() {
       const { data, error } = await supabase.rpc('clear_unavailability', {
         p_unavailability_id: unavailabilityId,
       });
-      if (error) throw error;
+      if (error) throw new Error(getUserMessage(error));
       return data as unknown as { rota_ids: string[] };
     },
-    onSuccess: async (data) => {
-      queryClient.invalidateQueries({ queryKey: unavailabilityKeys.mine() });
-      queryClient.invalidateQueries({ queryKey: ['unavailability', 'rota'] });
-
-      // Fan-out: trigger materialize-rota for each affected rota
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (token && data?.rota_ids?.length) {
-        // Use a wide window since we cleared an absence
-        const today = new Date().toISOString().slice(0, 10);
-        const future = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        void fanOutMaterialize(data.rota_ids, token, today, future);
-      }
-    },
+    onSuccess: () => invalidateUnavailability(queryClient),
   });
 }
