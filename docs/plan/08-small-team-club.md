@@ -143,12 +143,15 @@ These map cleanly onto a **coordinator/club tier** that does *not* gate the free
 
 **Enhancement A — absence**
 
-- User marks an away window → future occurrences on those dates reassign to the next eligible member **across every rota they're in**; cursors advance correctly; past/overridden/done rows untouched.
-- Window covering a date where **every** member is away → that occurrence becomes `open` (null assignee), not a crash or a gap.
-- Clearing a window re-materializes and restores normal rotation for future dates in all affected rotas.
-- Reminders for reassigned turns are cancelled for the away member and created for the new assignee.
+> **Superseded by [Phase 10](./10-availability.md) (units 47–55).** Marking yourself away no longer re-runs the round-robin over those dates. Silently handing a member's existing turns to someone else — with no confirmation and no record — destroyed arrangements they may have made. The absence is now recorded, existing assignments are left alone, and the collisions are surfaced on every surface the shift appears on with a one-tap "request cover". The bullets below are kept for the record; the struck-through ones describe behaviour that was deliberately reversed.
+
+- ~~User marks an away window → future occurrences on those dates reassign to the next eligible member **across every rota they're in**~~ → the member stays assigned; each clashing turn is flagged red on Home, the rota shift list, the rota calendar, and occurrence detail, and can be opened for cover individually or in bulk.
+- Newly generated occurrences (horizon extension) **do** still skip absent members — the materializer's absence-aware round-robin is unchanged. Only the re-materialization of *existing* rows was dropped.
+- Window covering a date where **every** member is away → that occurrence becomes `open` (null assignee), not a crash or a gap. *(Still true, for newly generated rows.)*
+- ~~Clearing a window re-materializes and restores normal rotation for future dates in all affected rotas.~~ → clearing removes the flags; it does not move anyone, and any cover requests already opened deliberately stay open.
+- ~~Reminders for reassigned turns are cancelled for the away member and created for the new assignee.~~ → reminders follow the assignee, which now only changes when someone actually claims the cover.
 - Owner cannot clear another user's window; only the owning user can.
-- Reason is private: a peer reading the window sees dates only, never the reason.
+- Reason is private: a peer reading the window sees dates only, never the reason. *(Phase 10 unit 47 fixed the view that was in fact leaking every user's dates — see the defect notes there.)*
 - Viewer guard: viewers can read away windows but the materializer never assigns them regardless.
 
 **Enhancement B — coverage**

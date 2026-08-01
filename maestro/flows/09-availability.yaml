@@ -1,0 +1,83 @@
+appId: com.gorotini.app
+---
+# Availability manager: reach it from Settings, draw a range on the calendar,
+# save it, decline the cover-review step, then delete the window again so the
+# flow is idempotent and can be re-run against the same seed.
+- runFlow: ../generated/login-owner.yaml
+
+- tapOn:
+    text: "Settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 10000
+
+- scrollUntilVisible:
+    element:
+      id: "settings-availability-row"
+    direction: DOWN
+- tapOn:
+    id: "settings-availability-row"
+- extendedWaitUntil:
+    visible:
+      id: "availability-screen"
+    timeout: 10000
+- assertVisible:
+    id: "availability-calendar"
+
+# Create a window via the explicit CTA rather than calendar taps: the month
+# grid's day cells have no stable testIDs, so tapping them by coordinate would
+# be brittle across devices and across months.
+- assertVisible:
+    id: "availability-add-button"
+- tapOn:
+    id: "availability-add-button"
+- extendedWaitUntil:
+    visible:
+      id: "away-sheet-save"
+    timeout: 10000
+- assertVisible:
+    id: "away-sheet-start"
+- assertVisible:
+    id: "away-sheet-end"
+- tapOn:
+    id: "away-sheet-save"
+
+# Back on the screen, the window is listed. If it clashed with a seeded shift
+# the review sheet opens first — dismiss it, which must not lose the window.
+- extendedWaitUntil:
+    visible:
+      id: "availability-screen"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "conflict-review-sheet"
+    commands:
+      - tapOn:
+          id: "conflict-review-dismiss"
+      - extendedWaitUntil:
+          visible:
+            id: "availability-screen"
+          timeout: 10000
+
+- assertVisible:
+    id: "availability-upcoming-header"
+- assertVisible:
+    id: "availability-window-0"
+
+# Delete it again, restoring the seed state.
+- tapOn:
+    id: "availability-window-0-delete"
+- extendedWaitUntil:
+    visible:
+      text: "Remove"
+    timeout: 10000
+- tapOn:
+    text: "Remove"
+- extendedWaitUntil:
+    visible:
+      id: "availability-screen"
+    timeout: 10000
+- assertNotVisible:
+    id: "availability-window-0"

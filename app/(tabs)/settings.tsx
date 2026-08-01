@@ -1,18 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeButton } from '@/components/native-ui/native-button';
 import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
-import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
 import { NativeMenuPicker } from '@/components/native-ui/native-menu-picker';
 import { NativeSegmented } from '@/components/native-ui/native-segmented';
 import { NativeSwitch } from '@/components/native-ui/native-switch';
 import { LargeTitle } from '@/components/ui/large-title';
 import { SectionHeader } from '@/components/ui/section-header';
-import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/contexts/auth';
 import { type ThemePreference, useAppPreferences } from '@/contexts/app-preferences';
 import { useCalendarSyncContext } from '@/contexts/calendar-sync';
@@ -22,7 +20,7 @@ import { usePushToken } from '@/features/notifications/usePushToken';
 import { ProfileAvatarTile } from '@/features/profile/profile-avatar';
 import { useMyProfile } from '@/features/profile/use-my-profile';
 import { formatDateRange } from '@/features/unavailability/formatting';
-import { useMyUnavailability, useSetUnavailability, useClearUnavailability } from '@/features/unavailability/hooks';
+import { useMyUnavailability } from '@/features/unavailability/hooks';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const SYNC_DAYS_OPTIONS: readonly { readonly value: 30 | 90 | 180; readonly label: string }[] = [
@@ -70,22 +68,10 @@ export default function SettingsScreen() {
   const { data: profile } = useMyProfile();
   const { themePreference, setThemePreference, defaultTimeZone, setDefaultTimeZone } = useAppPreferences();
   const scheme = useColorScheme();
-  const { showToast } = useToast();
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
   const [syncWindowPickerOpen, setSyncWindowPickerOpen] = useState(false);
 
-  // Availability state
-  const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  const [absenceStart, setAbsenceStart] = useState<Date>(today);
-  const [absenceEnd, setAbsenceEnd] = useState<Date>(today);
-  const [absenceReason, setAbsenceReason] = useState('');
-  const [absenceSubmitting, setAbsenceSubmitting] = useState(false);
-
   const { data: myUnavailability = [] } = useMyUnavailability();
-  const setUnavailability = useSetUnavailability();
-  const clearUnavailability = useClearUnavailability();
 
   // Filter to upcoming windows (end_date >= today)
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -143,50 +129,6 @@ export default function SettingsScreen() {
     await deregisterToken();
     const { error } = await supabase.auth.signOut();
     if (error) Alert.alert('Try again');
-  }
-
-  async function handleSaveAbsence() {
-    const startStr = absenceStart.toISOString().slice(0, 10);
-    const endStr = absenceEnd.toISOString().slice(0, 10);
-    if (endStr < startStr) {
-      Alert.alert('Invalid dates', 'End date must be on or after start date.');
-      return;
-    }
-    setAbsenceSubmitting(true);
-    try {
-      await setUnavailability.mutateAsync({
-        startDate: startStr,
-        endDate: endStr,
-        reason: absenceReason.trim() || null,
-        tz: defaultTimeZone,
-      });
-      setAbsenceModalOpen(false);
-      setAbsenceReason('');
-      showToast('Absence saved');
-    } catch {
-      Alert.alert('Error', 'Could not save absence. Please try again.');
-    } finally {
-      setAbsenceSubmitting(false);
-    }
-  }
-
-  function handleDeleteAbsence(id: string) {
-    Alert.alert('Remove absence?', 'This will restore your availability for that period.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => {
-          clearUnavailability.mutate(
-            { unavailabilityId: id },
-            {
-              onSuccess: () => showToast('Absence cleared'),
-              onError: () => Alert.alert('Error', 'Could not remove absence. Please try again.'),
-            },
-          );
-        },
-      },
-    ]);
   }
 
   return (
@@ -362,7 +304,7 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Availability section */}
+      {/* Availability section — the manager itself lives on /availability. */}
       <SectionHeader label="Availability" />
       <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
         <View
@@ -377,9 +319,6 @@ export default function SettingsScreen() {
             elevation: 2,
           }}
         >
-          {/* Full manager — calendar, editing, past windows, clash review.
-              The "I'm away…" row below is retired in unit 55 once the new
-              screen can create windows too. */}
           <TouchableOpacity
             testID="settings-availability-row"
             style={{
@@ -387,8 +326,6 @@ export default function SettingsScreen() {
               alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 14,
-              borderBottomWidth: 0.5,
-              borderBottomColor: sep,
             }}
             onPress={() => router.push(routes.availability)}
             accessibilityLabel="Manage availability"
@@ -407,57 +344,6 @@ export default function SettingsScreen() {
             </View>
             <RowChevron />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            testID="settings-add-absence-row"
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              borderBottomWidth: upcomingUnavailability.length > 0 ? 0.5 : 0,
-              borderBottomColor: sep,
-            }}
-            onPress={() => {
-              const d = new Date();
-              d.setHours(12, 0, 0, 0);
-              setAbsenceStart(d);
-              setAbsenceEnd(d);
-              setAbsenceReason('');
-              setAbsenceModalOpen(true);
-            }}
-            accessibilityLabel="Add absence window"
-            accessibilityRole="button"
-          >
-            <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>I&apos;m away…</Text>
-            <RowChevron />
-          </TouchableOpacity>
-
-          {upcomingUnavailability.map((w, idx) => (
-            <View
-              key={w.id}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                borderBottomWidth: idx < upcomingUnavailability.length - 1 ? 0.5 : 0,
-                borderBottomColor: sep,
-              }}
-            >
-              <Text style={{ flex: 1, fontSize: 15, color: textPrimary }}>
-                {formatDateRange(w.start_date, w.end_date)}
-              </Text>
-              <TouchableOpacity
-                onPress={() => handleDeleteAbsence(w.id)}
-                hitSlop={8}
-                accessibilityLabel={`Remove absence ${formatDateRange(w.start_date, w.end_date)}`}
-                accessibilityRole="button"
-              >
-                <Text style={{ fontSize: 18, color: '#FF3B30' }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
         </View>
       </View>
 
@@ -500,167 +386,6 @@ export default function SettingsScreen() {
         testID="sync-window-confirmation"
       />
 
-      {/* Add absence modal */}
-      <Modal
-        visible={absenceModalOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setAbsenceModalOpen(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: bg }}>
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              // Android ignores pageSheet and renders full-screen edge-to-edge,
-              // so the header needs the status-bar inset.
-              paddingTop: Platform.OS === 'android' ? insets.top + 8 : 20,
-              paddingBottom: 12,
-              borderBottomWidth: 0.5,
-              borderBottomColor: sep,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => setAbsenceModalOpen(false)}
-              accessibilityLabel="Cancel"
-              accessibilityRole="button"
-            >
-              <Text style={{ fontSize: 17, color: '#0a7ea4' }}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: textPrimary }}>
-              I&apos;m away…
-            </Text>
-            <TouchableOpacity
-              onPress={() => void handleSaveAbsence()}
-              disabled={absenceSubmitting}
-              accessibilityLabel="Save absence"
-              accessibilityRole="button"
-            >
-              <Text style={{ fontSize: 17, color: absenceSubmitting ? textSec : '#0a7ea4', fontWeight: '600' }}>
-                {absenceSubmitting ? 'Saving…' : 'Save'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
-            {/* Date pickers */}
-            <View
-              style={{
-                backgroundColor: card,
-                borderRadius: 18,
-                marginHorizontal: 16,
-                marginTop: 20,
-                overflow: 'hidden',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.06,
-                shadowRadius: 2,
-                elevation: 2,
-              }}
-            >
-              {/* From row — iOS shows compact pills inline; Android's inline
-                  picker is full-size, so it stacks under the label. */}
-              <View
-                style={{
-                  flexDirection: Platform.OS === 'ios' ? 'row' : 'column',
-                  alignItems: Platform.OS === 'ios' ? 'center' : 'stretch',
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  borderBottomWidth: 0.5,
-                  borderBottomColor: sep,
-                }}
-              >
-                <Text style={{ flex: Platform.OS === 'ios' ? 1 : undefined, fontSize: 17, color: textPrimary }}>From</Text>
-                <NativeDatePicker
-                  value={absenceStart}
-                  mode="date"
-                  onChange={(date) => {
-                    const d = new Date(date);
-                    d.setHours(12, 0, 0, 0);
-                    setAbsenceStart(d);
-                    // If end is before new start, move end to match
-                    if (absenceEnd < d) setAbsenceEnd(d);
-                  }}
-                  testID="absence-start-picker"
-                />
-              </View>
-              {/* To row */}
-              <View
-                style={{
-                  flexDirection: Platform.OS === 'ios' ? 'row' : 'column',
-                  alignItems: Platform.OS === 'ios' ? 'center' : 'stretch',
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  borderBottomWidth: 0.5,
-                  borderBottomColor: sep,
-                }}
-              >
-                <Text style={{ flex: Platform.OS === 'ios' ? 1 : undefined, fontSize: 17, color: textPrimary }}>To</Text>
-                <NativeDatePicker
-                  value={absenceEnd}
-                  mode="date"
-                  minimumDate={absenceStart}
-                  onChange={(date) => {
-                    const d = new Date(date);
-                    d.setHours(12, 0, 0, 0);
-                    setAbsenceEnd(d);
-                  }}
-                  testID="absence-end-picker"
-                />
-              </View>
-              {/* Timezone (read-only label) */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                }}
-              >
-                <Text style={{ flex: 1, fontSize: 17, color: textPrimary }}>Time zone</Text>
-                <Text style={{ fontSize: 15, color: textSec }} numberOfLines={1}>
-                  {defaultTimeZone}
-                </Text>
-              </View>
-            </View>
-
-            {/* Reason input */}
-            <View
-              style={{
-                backgroundColor: card,
-                borderRadius: 18,
-                marginHorizontal: 16,
-                marginTop: 16,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.06,
-                shadowRadius: 2,
-                elevation: 2,
-              }}
-            >
-              <TextInput
-                value={absenceReason}
-                onChangeText={setAbsenceReason}
-                placeholder="Reason (private, only you see this)"
-                placeholderTextColor={textSec}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 17,
-                  color: textPrimary,
-                  minHeight: 80,
-                  textAlignVertical: 'top',
-                }}
-                multiline
-                returnKeyType="done"
-                accessibilityLabel="Absence reason"
-              />
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
