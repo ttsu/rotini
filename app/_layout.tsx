@@ -32,7 +32,16 @@ import { CalendarSyncProvider } from '@/contexts/calendar-sync';
 
 initSentry();
 
-const PERSIST_KEYS = new Set(['rotas', 'all-rotas-now', 'rota-now', 'occurrences']);
+const PERSIST_KEYS = new Set([
+  'rotas',
+  'all-rotas-now',
+  'rota-now',
+  'occurrences',
+  // Backs the availability conflict badges, which should survive a cold start
+  // so a member sees their clashes offline.
+  'my-occurrences',
+  'unavailability',
+]);
 const E2E_AUTH_ENABLED = __DEV__ || process.env.EXPO_PUBLIC_E2E === '1';
 
 const queryClient = new QueryClient({
