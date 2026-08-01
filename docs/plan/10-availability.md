@@ -121,6 +121,15 @@ Not `occurrences.scheduled_local_date` — that is the date in the *rota's* tz, 
 - A window entirely in the past saves, lands in `Past`, and produces zero conflicts.
 - `supabase test db` (unavailability 27/27), `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e:test` on both platforms, light + dark.
 
+### e2e result — iOS Release build, 2026-08-01
+
+6/9 flows pass, including the new `09-availability` end to end (create → conflict-review sheet → dismiss → delete). The three reds are **one pre-existing bug, not three**:
+
+- `02-home-and-settings` fails **identically on `main` @ `3287346`** — verified by building the baseline and running the same flow. Its edit-profile round-trip depends on a race in `app/edit-profile.tsx`, which pushes the loaded name into an uncontrolled `NativeTextField` through a ref effect; when the profile resolves before the ref attaches, the field stays empty, `.` becomes the whole name, and `eraseText: 1` leaves it blank with Save disabled.
+- `04-rota-detail` and `07-swap-cancel-and-decline` fail only *after* 02, which leaves the owner's `display_name` as `.`; both assert testIDs derived from that name, and both pass on a fresh seed.
+
+Running the suite did catch a real regression in this phase, fixed in `b15b858` — see that commit. Android has not been run.
+
 ## Done-when
 
 - Availability has a dedicated calendar-first screen reachable from Settings, and the cramped Settings section is gone.
