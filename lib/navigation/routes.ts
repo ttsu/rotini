@@ -15,6 +15,7 @@ export const routes = {
   profile: {
     edit: '/edit-profile' as Href,
   },
+  availability: '/availability' as Href,
   rotas: {
     list: '/(tabs)/rotas' as const,
     detail: (id: string): Href => `/(tabs)/rotas/${id}`,

@@ -377,6 +377,37 @@ export default function SettingsScreen() {
             elevation: 2,
           }}
         >
+          {/* Full manager — calendar, editing, past windows, clash review.
+              The "I'm away…" row below is retired in unit 55 once the new
+              screen can create windows too. */}
+          <TouchableOpacity
+            testID="settings-availability-row"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderBottomWidth: 0.5,
+              borderBottomColor: sep,
+            }}
+            onPress={() => router.push(routes.availability)}
+            accessibilityLabel="Manage availability"
+            accessibilityRole="button"
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 17, color: textPrimary }}>Availability</Text>
+              <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
+                {upcomingUnavailability.length > 0
+                  ? `Next away ${formatDateRange(
+                      upcomingUnavailability[0].start_date,
+                      upcomingUnavailability[0].end_date,
+                    )}`
+                  : 'No away dates set'}
+              </Text>
+            </View>
+            <RowChevron />
+          </TouchableOpacity>
+
           <TouchableOpacity
             testID="settings-add-absence-row"
             style={{

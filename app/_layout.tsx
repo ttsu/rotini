@@ -150,6 +150,10 @@ function AppShell() {
               name="edit-profile"
               options={{ title: 'Edit profile', headerShown: true, headerBackTitle: 'Settings' }}
             />
+            <Stack.Screen
+              name="availability"
+              options={{ title: 'Availability', headerShown: true, headerBackTitle: 'Settings' }}
+            />
           </Stack>
           <AuthGate />
           <StatusBar style="auto" />
