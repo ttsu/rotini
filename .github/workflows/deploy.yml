@@ -218,8 +218,15 @@ jobs:
           EXPO_PUBLIC_SENTRY_ENVIRONMENT: preview
           GIT_COMMIT_SHA: ${{ github.sha }}
           EXPO_PUBLIC_SENTRY_DIST: ${{ github.sha }}
+          # Passed as an env var, not interpolated into the script below: `${{ }}`
+          # is substituted as raw text before the shell parses it, so a commit
+          # message containing a double quote ends the --message string early
+          # (and an arbitrary message could inject shell commands).
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          # Subject line only — bodies are multi-line and blow past the message limit.
+          SUBJECT=$(printf '%s\n' "$COMMIT_MESSAGE" | head -n 1)
           eas update \
             --branch preview \
-            --message "Deploy: ${{ github.event.head_commit.message }}" \
+            --message "Deploy: $SUBJECT" \
             --non-interactive
