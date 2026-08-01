@@ -104,7 +104,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 49. Conflict primitive — pure module + hook
 - [x] 50. Conflict UI primitives + occurrence detail banner
 - [x] 51. Availability screen — route, calendar, list (read/delete)
-- [ ] 52. Add / edit sheet with range selection
+- [x] 52. Add / edit sheet with range selection
 - [ ] 53. Bulk "Request cover" confirmation
 - [ ] 54. Conflict indicators on Home + rota detail
 - [ ] 55. Retire settings modal, docs, e2e, regression
