@@ -14,6 +14,7 @@ Per-phase implementation plan. Cross-cutting design lives in [SPEC.md](./SPEC.md
 - [Phase 7 — Centralized rota realtime](./07-rota-realtime-scope.md) (supplementary; run when fixing duplicate-channel errors)
 - [Phase 8 — Small-team / club enhancements](./08-small-team-club.md) (post-MVP; targets the club/small-team niche from [MARKET.md](../MARKET.md))
 - [Phase 9 — Native UI overhaul (@expo/ui)](./09-native-ui.md) (controls-first migration to SwiftUI/Jetpack Compose controls + NativeTabs)
+- [Phase 10 — Availability: view & manage](./10-availability.md) (dedicated calendar-first screen; absence flags conflicts instead of auto-reassigning)
 
 ## Working pattern
 
@@ -95,3 +96,15 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 - [x] 44. Auth & onboarding controls
 - [ ] ~~45. Settings as full native List (gated stretch)~~ — skipped: gate not met (units 38–44 needed Host-sizing fixes in three wrappers; deeper adoption deferred)
 - [x] 46. Cleanup + full regression (both platforms, light+dark)
+
+### Phase 10 — Availability: view & manage
+
+- [x] 47. Migration — availability v2 (grants + view RLS + realtime + merge/`update_unavailability`)
+- [ ] 48. Client data layer — typed hooks, no shim, no auto-reassign
+- [ ] 49. Conflict primitive — pure module + hook
+- [ ] 50. Conflict UI primitives + occurrence detail banner
+- [ ] 51. Availability screen — route, calendar, list (read/delete)
+- [ ] 52. Add / edit sheet with range selection
+- [ ] 53. Bulk "Request cover" confirmation
+- [ ] 54. Conflict indicators on Home + rota detail
+- [ ] 55. Retire settings modal, docs, e2e, regression

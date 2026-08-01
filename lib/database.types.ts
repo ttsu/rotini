@@ -771,6 +771,16 @@ export type Database = {
         Args: { p_removed_id: string; p_removed_pos: number; p_rota_id: string }
         Returns: undefined
       }
+      _unavailability_upsert_merged: {
+        Args: {
+          p_end_date: string
+          p_id: string
+          p_reason: string
+          p_start_date: string
+          p_tz: string
+        }
+        Returns: Json
+      }
       accept_invite: {
         Args: { p_code: string }
         Returns: {
@@ -1124,6 +1134,16 @@ export type Database = {
       update_pending_member_label: {
         Args: { p_label: string; p_member_id: string; p_rota_id: string }
         Returns: undefined
+      }
+      update_unavailability: {
+        Args: {
+          p_end_date: string
+          p_reason?: string
+          p_start_date: string
+          p_tz?: string
+          p_unavailability_id: string
+        }
+        Returns: Json
       }
       users_share_rota: { Args: { a: string; b: string }; Returns: boolean }
     }
