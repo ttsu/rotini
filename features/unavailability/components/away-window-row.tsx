@@ -58,12 +58,10 @@ export function AwayWindowRow({
         opacity: isPast ? 0.6 : 1,
       }}
     >
-      <TouchableOpacity
-        testID={testID}
-        onPress={onEdit}
-        disabled={!onEdit}
-        accessibilityRole="button"
-        accessibilityLabel={`Away ${range}${hasConflicts ? `, ${conflicts.length} shifts affected` : ''}`}
+      {/* The row is a plain View with separate pressable regions. Nesting the
+          delete and review controls inside an outer TouchableOpacity made hit
+          handling ambiguous — the inner taps did not reliably win. */}
+      <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -71,12 +69,19 @@ export function AwayWindowRow({
           paddingVertical: 14,
         }}
       >
-        <View style={{ flex: 1 }}>
+        <TouchableOpacity
+          testID={testID}
+          onPress={onEdit}
+          disabled={!onEdit}
+          accessibilityRole="button"
+          accessibilityLabel={`Away ${range}${hasConflicts ? `, ${conflicts.length} shifts affected` : ''}`}
+          style={{ flex: 1 }}
+        >
           <Text style={{ fontSize: 17, color: textPrimary }}>{range}</Text>
           <Text style={{ fontSize: 13, color: textSec, marginTop: 2 }}>
             {subtitleParts.join(' · ')}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {hasConflicts ? (
           <TouchableOpacity
@@ -85,7 +90,7 @@ export function AwayWindowRow({
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`Review ${conflicts.length} clashing shifts`}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: 12 }}
           >
             <Pill
               label={`${conflicts.length} ${conflicts.length === 1 ? 'shift' : 'shifts'}`}
@@ -98,14 +103,14 @@ export function AwayWindowRow({
 
         <TouchableOpacity
           onPress={onDelete}
-          hitSlop={10}
+          hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel={`Remove away dates ${range}`}
           testID={testID ? `${testID}-delete` : undefined}
         >
           <Text style={{ fontSize: 18, color: '#FF3B30' }}>✕</Text>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
 
     </View>
   );

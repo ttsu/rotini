@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/auth';
@@ -130,17 +130,30 @@ export function usePendingSwapsForMe() {
   });
 }
 
-/** Pending swaps where the current user is the requester (outgoing requests). */
-export function usePendingSentSwaps() {
+/**
+ * Registers the realtime subscription for the caller's outgoing swap requests.
+ * Call once, at screen level.
+ *
+ * Deliberately separate from usePendingSentSwaps: that hook is now read by the
+ * availability conflict primitive as well as the Inbox, so it can be mounted by
+ * several components at once. Subscribing from inside it meant the second mount
+ * called `.on()` on an already-subscribed channel, which throws
+ * "cannot add `postgres_changes` callbacks ... after `subscribe()`" and takes
+ * the whole tab down through the error boundary. Same split as
+ * useRegisterUnavailabilityRealtime.
+ */
+export function useRegisterSentSwapsRealtime() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const key = queryKeys.swaps.pendingSent();
+  const id = useId();
 
   useEffect(() => {
     if (!session) return;
     const uid = session.user.id;
     const channel = supabase
-      .channel('swap-sent')
+      // Unique per mount — a constant name is what made a second mount collide.
+      .channel(`swap-sent:${uid}:${id}`)
       .on(
         'postgres_changes',
         {
@@ -155,7 +168,14 @@ export function usePendingSentSwaps() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session?.user.id, queryClient]);
+  }, [session?.user.id, queryClient, id]);
+}
+
+/** Pending swaps where the current user is the requester. Read-only; pair with
+ *  useRegisterSentSwapsRealtime on the screen that needs live updates. */
+export function usePendingSentSwaps() {
+  const { session } = useAuth();
+  const key = queryKeys.swaps.pendingSent();
 
   return useQuery({
     queryKey: key,

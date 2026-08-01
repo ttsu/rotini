@@ -84,7 +84,12 @@ export function useHomeRotas() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'occurrences' },
-        () => queryClient.invalidateQueries({ queryKey: key }),
+        () => {
+          queryClient.invalidateQueries({ queryKey: key });
+          // Same rows back this query, which drives the availability conflict
+          // badges on these cards — piggyback rather than open a second channel.
+          queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.mine() });
+        },
       )
       .subscribe();
     return () => {
