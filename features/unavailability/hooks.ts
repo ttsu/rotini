@@ -169,30 +169,14 @@ export function useSetUnavailability() {
       reason?: string | null;
       tz: string;
     }): Promise<{ id: string; rota_ids: string[] }> => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error('Not authenticated');
-
-      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/set_unavailability`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          apikey: supabaseAnonKey,
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          start_date: startDate,
-          end_date: endDate,
-          reason: reason ?? null,
-          tz,
-        }),
+      const { data, error } = await supabase.rpc('set_unavailability', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_reason: reason ?? undefined,
+        p_tz: tz,
       });
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(body || `RPC error ${response.status}`);
-      }
-      return (await response.json()) as { id: string; rota_ids: string[] };
+      if (error) throw error;
+      return data as unknown as { id: string; rota_ids: string[] };
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: unavailabilityKeys.mine() });
@@ -218,25 +202,11 @@ export function useClearUnavailability() {
     }: {
       unavailabilityId: string;
     }): Promise<{ rota_ids: string[] }> => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error('Not authenticated');
-
-      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/clear_unavailability`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          apikey: supabaseAnonKey,
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ unavailability_id: unavailabilityId }),
+      const { data, error } = await supabase.rpc('clear_unavailability', {
+        p_unavailability_id: unavailabilityId,
       });
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(body || `RPC error ${response.status}`);
-      }
-      return (await response.json()) as { rota_ids: string[] };
+      if (error) throw error;
+      return data as unknown as { rota_ids: string[] };
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: unavailabilityKeys.mine() });
