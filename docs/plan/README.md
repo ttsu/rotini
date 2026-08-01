@@ -100,7 +100,7 @@ Within a phase: complete units in order; after each, tick its checkbox here and 
 ### Phase 10 — Availability: view & manage
 
 - [x] 47. Migration — availability v2 (grants + view RLS + realtime + merge/`update_unavailability`)
-- [ ] 48. Client data layer — typed hooks, no shim, no auto-reassign
+- [x] 48. Client data layer — typed hooks, no shim, no auto-reassign
 - [ ] 49. Conflict primitive — pure module + hook
 - [ ] 50. Conflict UI primitives + occurrence detail banner
 - [ ] 51. Availability screen — route, calendar, list (read/delete)
