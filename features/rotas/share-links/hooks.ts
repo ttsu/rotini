@@ -39,7 +39,9 @@ export function useCreateShareLink() {
     mutationFn: async ({ rotaId, expiresAt }: { rotaId: string; expiresAt?: string | null }) => {
       const { data, error } = await supabase.rpc('create_share_link', {
         p_rota_id: rotaId,
-        p_expires_at: expiresAt ?? null,
+        // Omit rather than pass null so the function's own DEFAULT applies.
+        // Equivalent server-side, but it matches the generated signature.
+        p_expires_at: expiresAt ?? undefined,
       });
       if (error) throw error;
       return data as ShareLink;
