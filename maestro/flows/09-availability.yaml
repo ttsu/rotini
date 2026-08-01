@@ -67,14 +67,16 @@ appId: com.gorotini.app
     id: "availability-window-0"
 
 # Delete it again, restoring the seed state.
+# The confirmation's title is "Remove <dates>?", which also contains "Remove",
+# so the button matcher is anchored to avoid tapping the title instead.
 - tapOn:
     id: "availability-window-0-delete"
 - extendedWaitUntil:
     visible:
-      text: "Remove"
+      id: "availability-delete-confirm"
     timeout: 10000
 - tapOn:
-    text: "Remove"
+    text: "^Remove$"
 - extendedWaitUntil:
     visible:
       id: "availability-screen"
