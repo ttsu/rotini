@@ -437,6 +437,61 @@ export type Database = {
           },
         ]
       }
+      rota_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          last_accessed_at: string | null
+          revoked_at: string | null
+          rota_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          revoked_at?: string | null
+          rota_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          revoked_at?: string | null
+          rota_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_share_links_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_share_links_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "v_rota_now"
+            referencedColumns: ["rota_id"]
+          },
+        ]
+      }
       rotas: {
         Row: {
           archived_at: string | null
@@ -625,54 +680,6 @@ export type Database = {
           },
         ]
       }
-      rota_share_links: {
-        Row: {
-          created_at: string
-          created_by: string
-          expires_at: string | null
-          id: string
-          last_accessed_at: string | null
-          rota_id: string
-          revoked_at: string | null
-          token: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          expires_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          rota_id: string
-          revoked_at?: string | null
-          token: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          expires_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          rota_id?: string
-          revoked_at?: string | null
-          token?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rota_share_links_rota_id_fkey"
-            columns: ["rota_id"]
-            isOneToOne: false
-            referencedRelation: "rotas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rota_share_links_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_unavailability: {
         Row: {
           created_at: string
@@ -721,6 +728,22 @@ export type Database = {
           start_date: string | null
           tz: string | null
           user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string | null
+          start_date?: string | null
+          tz?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string | null
+          start_date?: string | null
+          tz?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -826,25 +849,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      create_share_link: {
-        Args: { p_rota_id: string; p_expires_at?: string | null }
-        Returns: {
-          created_at: string
-          created_by: string
-          expires_at: string | null
-          id: string
-          last_accessed_at: string | null
-          rota_id: string
-          revoked_at: string | null
-          token: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "rota_share_links"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       claim_coverage: {
         Args: { p_swap_request_id: string }
         Returns: {
@@ -938,8 +942,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_share_link: {
+        Args: { p_expires_at?: string; p_rota_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          last_accessed_at: string | null
+          revoked_at: string | null
+          rota_id: string
+          token: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rota_share_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_rota: { Args: { p_rota_id: string }; Returns: undefined }
       dispatch_notifications: { Args: never; Returns: number }
+      get_shared_rota: { Args: { p_token: string }; Returns: Json }
       is_rota_manager: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_member: { Args: { p_rota_id: string }; Returns: boolean }
       is_rota_owner: { Args: { p_rota_id: string }; Returns: boolean }
@@ -1058,11 +1082,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      get_shared_rota: {
-        Args: { p_token: string }
-        Returns: Json
-      }
-      revoke_share_link: { Args: { p_link_id: string }; Returns: undefined }
       reshare_pending_invite: {
         Args: { p_member_id: string; p_rota_id: string }
         Returns: string
@@ -1090,6 +1109,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revoke_share_link: { Args: { p_link_id: string }; Returns: undefined }
       set_manager_flag: {
         Args: { p_is_manager: boolean; p_rota_id: string; p_user_id: string }
         Returns: {
