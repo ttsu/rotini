@@ -123,12 +123,14 @@ Not `occurrences.scheduled_local_date` — that is the date in the *rota's* tz, 
 
 ### e2e result — iOS Release build, 2026-08-01
 
-6/9 flows pass, including the new `09-availability` end to end (create → conflict-review sheet → dismiss → delete). The three reds are **one pre-existing bug, not three**:
+**9/9 flows pass**, including the new `09-availability` end to end (create → conflict-review sheet → dismiss → delete).
 
-- `02-home-and-settings` fails **identically on `main` @ `3287346`** — verified by building the baseline and running the same flow. Its edit-profile round-trip depends on a race in `app/edit-profile.tsx`, which pushes the loaded name into an uncontrolled `NativeTextField` through a ref effect; when the profile resolves before the ref attaches, the field stays empty, `.` becomes the whole name, and `eraseText: 1` leaves it blank with Save disabled.
-- `04-rota-detail` and `07-swap-cancel-and-decline` fail only *after* 02, which leaves the owner's `display_name` as `.`; both assert testIDs derived from that name, and both pass on a fresh seed.
+Getting there took two fixes that only running the suite could have surfaced:
 
-Running the suite did catch a real regression in this phase, fixed in `b15b858` — see that commit. Android has not been run.
+- **`b15b858`** — the conflict primitive mounted `usePendingSentSwaps`, whose channel name was the constant `'swap-sent'`. `supabase.channel()` returns the existing channel for a known topic, so the second mount called `.on()` after `subscribe()` and threw during render, taking Home down through the error boundary (8/9 red). Subscriptions now live in `useRegister*Realtime` hooks, called once per screen.
+- **`fix/edit-profile-name-race`** — `02-home-and-settings` had been red on `main` too (verified against `3287346`). `NativeTextField` initialises its uncontrolled native value from `defaultValue` **at mount**, and `app/edit-profile.tsx` passed none, relying on an imperative `setText` that fires before the SwiftUI view inside `Host` exists. The optional call silently no-ops, so the field renders blank and a user overwrites their name instead of editing it. Fixed by seeding `defaultValue`. This also cleared `04-rota-detail` and `07-swap-cancel-and-decline`, which were only failing because 02 left the owner's `display_name` as `.`.
+
+Android has not been run.
 
 ## Done-when
 
