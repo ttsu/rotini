@@ -338,6 +338,8 @@ export function useDeleteRota() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rotas.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      // Same rows drive the availability conflict badges.
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.mine() });
     },
   });
 }
