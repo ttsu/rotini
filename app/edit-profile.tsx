@@ -83,7 +83,9 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (!profile) return;
     reset({ display_name: profile.display_name ?? '' });
-    // Native text field is uncontrolled — push the loaded value in.
+    // The field's initial text comes from defaultValue (see below); this only
+    // covers *later* changes — e.g. the refetch after a successful save —
+    // where the native view already exists so setText actually lands.
     nameFieldRef.current?.setText(profile.display_name ?? '');
   }, [profile, reset]);
 
@@ -372,6 +374,14 @@ export default function EditProfileScreen() {
             render={({ field: { onChange } }) => (
               <NativeTextField
                 ref={nameFieldRef}
+                // Seed the initial text declaratively. NativeTextField holds an
+                // uncontrolled native value initialised from defaultValue at
+                // mount, so without this the field starts empty and depends on
+                // the imperative setText below landing after the SwiftUI view
+                // inside Host exists. It often does not — fieldRef is still
+                // null, the optional call silently no-ops, and the user sees a
+                // blank name they can overwrite without realising.
+                defaultValue={profile?.display_name ?? ''}
                 testID="edit-profile-display-name"
                 placeholder="Your name"
                 onChangeText={onChange}
