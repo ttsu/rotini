@@ -301,6 +301,8 @@ export function useClaimCoverage() {
       if (occ?.rota_id)
         queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      // Same rows drive the availability conflict badges.
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.mine() });
       queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingOpenCoverage() });
     },
   });
@@ -359,6 +361,8 @@ export function useRespondSwap() {
       if (occ?.rota_id)
         queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      // Same rows drive the availability conflict badges.
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.mine() });
       queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForMe() });
     },
   });
@@ -398,6 +402,8 @@ export function useClaimPendingSlot() {
       if (occ?.rota_id)
         queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      // Same rows drive the availability conflict badges.
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.mine() });
     },
   });
 }
@@ -432,6 +438,8 @@ export function useOverrideOccurrence() {
       if (occ?.rota_id)
         queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.forRota(occ.rota_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.homeRotas.all() });
+      // Same rows drive the availability conflict badges.
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrences.mine() });
       queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingForMe() });
       queryClient.invalidateQueries({ queryKey: queryKeys.swaps.pendingSent() });
     },
