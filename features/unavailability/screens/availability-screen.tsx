@@ -285,7 +285,6 @@ export function AvailabilityScreen() {
         {!isLoading && windows.length === 0 ? (
           <View style={{ marginHorizontal: 16, marginTop: 16 }}>
             <AvailabilityEmptyState
-              onAdd={startBlankDraft}
               card={card}
               textPrimary={textPrimary}
               textSec={textSec}

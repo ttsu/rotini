@@ -7,7 +7,7 @@ import {
   type ViewModifier,
 } from '@expo/ui/swift-ui/modifiers';
 
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { ButtonAccent } from '@/constants/theme';
 
 import type { NativeButtonProps } from './types';
 
@@ -21,7 +21,6 @@ export function NativeButton({
   testID,
   height,
 }: NativeButtonProps) {
-  const tintColor = useThemeColor({}, 'tint');
   const modifiers: ViewModifier[] = [
     buttonStyle(variant === 'filled' ? 'borderedProminent' : 'borderless'),
   ];
@@ -30,7 +29,7 @@ export function NativeButton({
   }
   // Destructive role supplies its own red; tinting would override it.
   if (role !== 'destructive') {
-    modifiers.push(tint(tintColor));
+    modifiers.push(tint(ButtonAccent));
   }
   if (disabled) {
     modifiers.push(disabledModifier());

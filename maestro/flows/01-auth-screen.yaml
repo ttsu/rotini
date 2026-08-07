@@ -19,6 +19,21 @@ appId: com.gorotini.app
       - tapOn:
           text: "Try again"
 - openLink: "rotini://e2e-auth?action=logout"
+# iOS 26 confirms external custom-scheme opens ("Open in "Rotini"?"), and the
+# open can fire more than once — accept every confirmation that stacks up.
+- repeat:
+    times: 6
+    while:
+      visible:
+        text: "^Open$"
+    commands:
+      - tapOn:
+          text: "^Open$"
+      - extendedWaitUntil:
+          optional: true
+          notVisible:
+            text: "^Open$"
+          timeout: 3000
 - extendedWaitUntil:
     visible:
       id: "sign-in-screen"
@@ -31,3 +46,4 @@ appId: com.gorotini.app
     id: "sign-in-magic-link-button"
 - assertVisible:
     id: "sign-in-google-button"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/01-sign-in

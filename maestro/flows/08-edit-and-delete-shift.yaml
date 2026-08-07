@@ -14,6 +14,7 @@ appId: com.gorotini.app
     visible:
       id: "shift-name-input"
     timeout: 10000
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/16-edit-shift
 - tapOn:
     id: "shift-name-input"
 - eraseText: 30
@@ -87,6 +88,7 @@ appId: com.gorotini.app
     direction: DOWN
 - tapOn:
     id: "delete-shift-button"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/17-delete-shift-confirm
 - tapOn:
     text: "Delete"
 - extendedWaitUntil:

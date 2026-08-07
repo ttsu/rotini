@@ -1,21 +1,18 @@
 import { Text, View } from 'react-native';
 
-import { NativeButton } from '@/components/native-ui/native-button';
-
 /**
  * Shown when the user has never set any away dates.
  *
  * Leads with what the feature is for rather than what's missing, and says the
  * two things that are not obvious: it applies to every rota at once, and the
- * reason stays private.
+ * reason stays private. Carries no CTA of its own — the "Add away dates" button
+ * sits directly above it.
  */
 export function AvailabilityEmptyState({
-  onAdd,
   card,
   textPrimary,
   textSec,
 }: {
-  onAdd: () => void;
   card: string;
   textPrimary: string;
   textSec: string;
@@ -38,11 +35,10 @@ export function AvailabilityEmptyState({
       <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary, marginBottom: 6 }}>
         No away dates yet
       </Text>
-      <Text style={{ fontSize: 14, color: textSec, textAlign: 'center', marginBottom: 16 }}>
+      <Text style={{ fontSize: 14, color: textSec, textAlign: 'center' }}>
         Tap any date above to tell your rotas when you can&apos;t take a turn. It applies
         everywhere you&apos;re a member, and only you can see the reason.
       </Text>
-      <NativeButton label="Add away dates" onPress={onAdd} testID="availability-empty-add" />
     </View>
   );
 }

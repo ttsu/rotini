@@ -7,6 +7,7 @@ appId: com.gorotini.app
     id: "home-rota-card-e2e-kitchen-duty"
 - assertVisible:
     id: "home-rota-status-e2e-kitchen-duty"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/02-home
 - tapOn:
     text: "Settings"
 - extendedWaitUntil:
@@ -21,6 +22,7 @@ appId: com.gorotini.app
     id: "settings-notifications-row"
 - assertVisible:
     id: "settings-appearance"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/03-settings
 - scrollUntilVisible:
     element:
       id: "settings-sign-out-button"
@@ -39,6 +41,7 @@ appId: com.gorotini.app
     timeout: 10000
 - assertVisible:
     id: "edit-profile-save-button"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/04-edit-profile
 - tapOn:
     id: "edit-profile-display-name"
 - inputText: "."

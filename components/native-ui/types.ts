@@ -10,7 +10,8 @@
  * Conventions:
  * - `testID` is required and forwarded to the native control so Maestro can target it.
  * - Each wrapper renders its own `<Host matchContents>`; call sites never see Host.
- * - Brand tint is applied inside the wrapper via `useThemeColor`; call sites never pass colors.
+ * - Brand tint is applied inside the wrapper (`ButtonAccent` for buttons, `useThemeColor`
+ *   elsewhere); call sites never pass colors.
  * - `height` is the explicit-height fallback for Hosts that collapse inside ScrollViews.
  */
 import type { Ref } from 'react';

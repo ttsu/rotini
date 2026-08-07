@@ -5,8 +5,21 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
+const brandAccent = '#0a7ea4';
+
+const tintColorLight = brandAccent;
 const tintColorDark = '#fff';
+
+/**
+ * Accent for buttons and other actionable chrome — the same teal in both
+ * schemes, matching the hand-rolled buttons throughout the app.
+ *
+ * Deliberately not `Colors[scheme].tint`: that is white in dark mode, which is
+ * right for tab icons and switches but renders a prominent button white-on-white.
+ */
+export const ButtonAccent = brandAccent;
+/** Label colour on top of `ButtonAccent`. */
+export const OnButtonAccent = '#FFFFFF';
 
 export const Colors = {
   light: {

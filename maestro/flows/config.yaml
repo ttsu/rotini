@@ -11,6 +11,8 @@ executionOrder:
     - 06-home-detail-stays-on-home-tab
     - 07-swap-cancel-and-decline
     - 08-edit-and-delete-shift
-    # Last: creates an away window for today and deletes it again, so it leaves
-    # the seeded state untouched for a re-run.
+    # Last: creates an away window for today, requests cover for the shift it
+    # clashes with, then deletes the window. It leaves an open cover request
+    # behind, so it must run after the swap flows and needs a fresh seed rather
+    # than a bare re-run.
     - 09-availability
