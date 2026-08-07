@@ -87,3 +87,4 @@ appId: com.gorotini.app
     id: "swap-pending-banner"
 - assertNotVisible:
     id: "decline-swap-button"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/15-swap-declined

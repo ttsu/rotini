@@ -7,12 +7,14 @@ appId: com.gorotini.app
     visible:
       id: "shifts-screen"
     timeout: 10000
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/05-shifts-list
 - tapOn:
     id: "create-new-shift-button"
 - extendedWaitUntil:
     visible:
       id: "shift-name-input"
     timeout: 10000
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/06-create-shift
 - tapOn:
     id: "shift-name-input"
 - inputText: "E2E Created Shift"
@@ -47,6 +49,7 @@ appId: com.gorotini.app
     direction: DOWN
 - assertVisible:
     id: "rrule-frequency-tabs"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/07-schedule-modal
 # iOS finds the header button by id; Android's accessibility bounds for the
 # modal header are offset, so the id tap lands wrong there — the text tap
 # works instead. Each is optional; whichever matches closes the modal.

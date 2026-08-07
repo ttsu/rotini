@@ -39,6 +39,27 @@ function localDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Start for a shift that falls later today and has not begun yet.
+ *
+ * 09-availability needs a conflict it can actually request cover for. The
+ * active shift starts ten minutes ago, and coverStateFor() in
+ * features/unavailability/conflicts.ts rejects anything already under way as
+ * 'in-progress', so an away window for today would otherwise only ever produce
+ * an uncoverable conflict.
+ *
+ * Two hours out normally; pulled back to the midpoint between now and local
+ * midnight when the suite runs late in the evening, so the shift always lands
+ * on the same local day the away sheet defaults to.
+ */
+function coverShiftStart(now) {
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const twoHours = addMinutes(now, 120);
+  if (twoHours < midnight) return twoHours;
+  return new Date(now.getTime() + (midnight.getTime() - now.getTime()) / 2);
+}
+
 async function findUserByEmail(admin, email) {
   for (let page = 1; page <= 10; page += 1) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 100 });
@@ -80,6 +101,26 @@ async function createUser(admin, email, displayName) {
   return data.user;
 }
 
+// iOS 26 confirms external custom-scheme opens with an "Open in \"Rotini\"?"
+// system dialog, and the open can fire more than once — accept every
+// confirmation that stacks up before waiting on the app UI. A no-op on OS
+// versions (and Android) that open the scheme without prompting.
+const OPEN_SCHEME_CONFIRM = [
+  '- repeat:',
+  '    times: 6',
+  '    while:',
+  '      visible:',
+  '        text: "^Open$"',
+  '    commands:',
+  '      - tapOn:',
+  '          text: "^Open$"',
+  '      - extendedWaitUntil:',
+  '          optional: true',
+  '          notVisible:',
+  '            text: "^Open$"',
+  '          timeout: 3000',
+];
+
 function writeFlow(fileName, lines) {
   fs.writeFileSync(
     path.join(GENERATED_DIR, fileName),
@@ -109,11 +150,13 @@ function writeLoginFlow(fileName, email) {
     // login is a fresh sign-in from the signed-out state rather than an
     // in-process cross-account switch.
     '- openLink: "rotini://e2e-auth?action=logout"',
+    ...OPEN_SCHEME_CONFIRM,
     '- extendedWaitUntil:',
     '    visible:',
     '      id: "sign-in-screen"',
     '    timeout: 20000',
     `- openLink: ${JSON.stringify(link.toString())}`,
+    ...OPEN_SCHEME_CONFIRM,
     // Startup can still intermittently trip the root error boundary — recover
     // once via the app's own retry button, then gate for real.
     '- extendedWaitUntil:',
@@ -138,6 +181,7 @@ function writeLoginFlow(fileName, email) {
 function writeOpenFlow(fileName, link, waitForId) {
   writeFlow(fileName, [
     `- openLink: ${JSON.stringify(link)}`,
+    ...OPEN_SCHEME_CONFIRM,
     '- extendedWaitUntil:',
     '    visible:',
     `      id: ${JSON.stringify(waitForId)}`,
@@ -185,6 +229,8 @@ async function main() {
   const overrideEnd = addMinutes(now, 49 * 60);
   const cancelDeclineStart = addMinutes(now, 72 * 60);
   const cancelDeclineEnd = addMinutes(now, 73 * 60);
+  const coverStart = coverShiftStart(now);
+  const coverEnd = addMinutes(coverStart, 60);
 
   const { data: rota, error: rotaError } = await admin
     .from('rotas')
@@ -238,6 +284,7 @@ async function main() {
   const swapOccurrenceId = randomUUID();
   const overrideOccurrenceId = randomUUID();
   const cancelDeclineOccurrenceId = randomUUID();
+  const coverOccurrenceId = randomUUID();
 
   const { error: occurrenceError } = await admin.from('occurrences').insert([
     {
@@ -279,6 +326,21 @@ async function main() {
       scheduled_at: cancelDeclineStart.toISOString(),
       ends_at: cancelDeclineEnd.toISOString(),
       scheduled_local_date: localDate(cancelDeclineStart),
+      assigned_user_id: owner.id,
+      original_assignee_id: owner.id,
+      status: 'scheduled',
+      generated_from_rule: true,
+    },
+    // Owner's, later today, not yet started: the one conflict 09-availability
+    // can legitimately request cover for. No other flow touches it, so it is
+    // still 'available' rather than 'other-request-pending' by the time that
+    // flow runs last.
+    {
+      id: coverOccurrenceId,
+      rota_id: rota.id,
+      scheduled_at: coverStart.toISOString(),
+      ends_at: coverEnd.toISOString(),
+      scheduled_local_date: localDate(coverStart),
       assigned_user_id: owner.id,
       original_assignee_id: owner.id,
       status: 'scheduled',

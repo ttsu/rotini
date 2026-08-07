@@ -1,8 +1,13 @@
 appId: com.gorotini.app
 ---
-# Availability manager: reach it from Settings, draw a range on the calendar,
-# save it, decline the cover-review step, then delete the window again so the
-# flow is idempotent and can be re-run against the same seed.
+# Availability manager: reach it from Settings, add an away window for today,
+# request cover for the shift it clashes with, then delete the window again.
+#
+# NOT idempotent on its own — requesting cover leaves an open request on the
+# seeded cover shift, which makes that shift 'requested' rather than
+# 'available' on a second pass and disables the submit button. Re-run via
+# `npm run e2e:test`, which re-seeds through e2e:prepare first, not by calling
+# `maestro test` directly against used state.
 - runFlow: ../generated/login-owner.yaml
 
 - tapOn:
@@ -24,6 +29,7 @@ appId: com.gorotini.app
     timeout: 10000
 - assertVisible:
     id: "availability-calendar"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/18-availability
 
 # Create a window via the explicit CTA rather than calendar taps: the month
 # grid's day cells have no stable testIDs, so tapping them by coordinate would
@@ -40,25 +46,41 @@ appId: com.gorotini.app
     id: "away-sheet-start"
 - assertVisible:
     id: "away-sheet-end"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/19-away-sheet
 - tapOn:
     id: "away-sheet-save"
 
-# If the new window clashes with a seeded shift, the review sheet opens on top
-# of the screen and must be dismissed FIRST — while it's up, the screen behind
-# it isn't visible to Maestro, so asserting on the screen before dismissing
-# would always fail.
+# The window covers today, which the seed guarantees holds two of the owner's
+# shifts: the active one (started 10 minutes ago, so 'in-progress' and not
+# coverable) and the cover shift a couple of hours out. The review sheet opens
+# on top of the screen and must be cleared FIRST — while it's up, the screen
+# behind it isn't visible to Maestro, so asserting on the screen before
+# clearing it would always fail.
 - extendedWaitUntil:
     visible:
       id: "conflict-review-sheet"
     timeout: 10000
-    optional: true
-- runFlow:
-    when:
-      visible:
-        id: "conflict-review-sheet"
-    commands:
-      - tapOn:
-          id: "conflict-review-dismiss"
+
+- assertVisible:
+    id: "conflict-review-row-0"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/20-conflict-review
+
+# The button counts only the ELIGIBLE conflicts, which are pre-selected below
+# the bulk opt-in threshold — so the singular label is the assertion that the
+# in-progress shift is excluded. If coverStateFor ever started treating a
+# started shift as coverable this would read "2 shifts" and fail.
+#
+# Deliberately not asserting on row/toggle indices: the active shift leaves the
+# list once its ends_at passes (50 minutes after seeding), which would renumber
+# the rows and make this flow fail on a slow suite rather than on a real bug.
+- assertVisible:
+    text: "Request cover for 1 shift"
+- tapOn:
+    id: "conflict-review-submit"
+- extendedWaitUntil:
+    visible:
+      text: "Cover requested for 1 shift"
+    timeout: 15000
 
 - extendedWaitUntil:
     visible:
@@ -68,14 +90,18 @@ appId: com.gorotini.app
     id: "availability-upcoming-header"
 - assertVisible:
     id: "availability-window-0"
+# The cover request is now open, so the row keeps its clash count rather than
+# clearing it — requesting cover does not unassign the shift.
+- assertVisible:
+    id: "availability-window-0-conflict-count"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/21-availability-with-window
 
-# Delete it again, restoring the seed state.
-# The confirmation's title is "Remove <dates>?", which also contains "Remove",
-# so the button matcher is anchored to avoid tapping the title instead.
+# Delete the window again. With a cover request open the confirmation swaps in
+# a different body, but the actions are unchanged.
 - tapOn:
     id: "availability-window-0-delete"
 # Alert.alert, so the action is queryable. Anchored because the alert's title
-# is "Remove <dates>?", which also contains the word.
+# is "Remove <dates>?", which also contains the word "Remove".
 - extendedWaitUntil:
     visible:
       text: "^Remove$"
@@ -88,3 +114,15 @@ appId: com.gorotini.app
     timeout: 10000
 - assertNotVisible:
     id: "availability-window-0"
+
+# Back to no windows, so the empty state takes over. It is deliberately
+# CTA-free: the "Add away dates" button above it is always mounted, and the
+# empty state used to repeat it, giving two identical buttons stacked on an
+# otherwise blank screen.
+- assertVisible:
+    id: "availability-empty-state"
+- assertVisible:
+    id: "availability-add-button"
+- assertNotVisible:
+    id: "availability-empty-add"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/22-availability-empty

@@ -8,6 +8,7 @@ appId: com.gorotini.app
     id: 'rota-detail-duration-row'
 - assertVisible:
     id: 'rota-detail-assignment-row'
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/08-rota-detail-top
 - scrollUntilVisible:
     element:
       id: 'rota-members-section'
@@ -44,3 +45,4 @@ appId: com.gorotini.app
     direction: DOWN
 - assertVisible:
     id: 'leave-shift-button'
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/09-rota-detail-bottom

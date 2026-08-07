@@ -6,6 +6,7 @@ appId: com.gorotini.app
     visible:
       id: "request-swap-button"
     timeout: 10000
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/10-occurrence-detail
 - tapOn:
     id: "request-swap-button"
 - assertVisible:
@@ -14,6 +15,7 @@ appId: com.gorotini.app
     id: "swap-target-e2e-member"
 - assertNotVisible:
     id: "swap-target-e2e-viewer"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/11-swap-request-modal
 - tapOn:
     id: "swap-target-e2e-member"
 - tapOn:
@@ -32,6 +34,7 @@ appId: com.gorotini.app
     timeout: 15000
 - assertVisible:
     id: "swap-pending-message"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/12-swap-pending
 - runFlow: ../generated/login-member.yaml
 - runFlow: ../generated/open-swap-occurrence.yaml
 - assertVisible:
@@ -58,6 +61,7 @@ appId: com.gorotini.app
     id: "override-target-e2e-member"
 - assertNotVisible:
     id: "override-target-e2e-viewer"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/13-override-modal
 - tapOn:
     id: "override-target-e2e-member"
 - tapOn:
@@ -71,3 +75,4 @@ appId: com.gorotini.app
     timeout: 15000
 - assertVisible:
     id: "override-reason-text"
+- takeScreenshot: /private/tmp/claude-501/-Users-tim-projects-rotini/9e7df1f9-9923-4e7b-acad-626e11fdb6eb/scratchpad/screens/14-override-applied

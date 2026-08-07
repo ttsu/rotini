@@ -1,8 +1,7 @@
 // Web fallback — iOS/Android resolve the platform files, which render real native controls.
 import { Pressable, Text } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ButtonAccent, OnButtonAccent } from '@/constants/theme';
 
 import type { NativeButtonProps } from './types';
 
@@ -18,8 +17,7 @@ export function NativeButton({
   testID,
   height,
 }: NativeButtonProps) {
-  const scheme = useColorScheme() ?? 'light';
-  const accent = role === 'destructive' ? DESTRUCTIVE : Colors[scheme].tint;
+  const accent = role === 'destructive' ? DESTRUCTIVE : ButtonAccent;
   const filled = variant === 'filled';
 
   return (
@@ -40,7 +38,7 @@ export function NativeButton({
     >
       <Text
         style={{
-          color: filled ? Colors[scheme].background : accent,
+          color: filled ? OnButtonAccent : accent,
           fontSize: 16,
           fontWeight: '600',
         }}
