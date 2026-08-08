@@ -1,15 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Platform, Text, TouchableOpacity, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeButton } from '@/components/native-ui/native-button';
 import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 import { NativeMenuPicker } from '@/components/native-ui/native-menu-picker';
 import { NativeSegmented } from '@/components/native-ui/native-segmented';
 import { NativeSwitch } from '@/components/native-ui/native-switch';
-import { LargeTitle } from '@/components/ui/large-title';
+import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import { type ThemePreference, useAppPreferences } from '@/contexts/app-preferences';
@@ -63,7 +62,6 @@ function RowChevron() {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { data: profile } = useMyProfile();
   const { themePreference, setThemePreference, defaultTimeZone, setDefaultTimeZone } = useAppPreferences();
@@ -132,15 +130,9 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView
-      testID="settings-screen"
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingTop: insets.top + 45, paddingBottom: 40 }}
-    >
-      <LargeTitle title="Settings" testID="settings-title" />
-
+    <Screen testID="settings-screen" style={{ backgroundColor: bg }}>
       {/* Profile card */}
-      <View style={{ marginHorizontal: 16, marginBottom: 8, marginTop: 16 }}>
+      <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
         <TouchableOpacity
           testID="settings-edit-profile-row"
           activeOpacity={0.7}
@@ -386,6 +378,6 @@ export default function SettingsScreen() {
         testID="sync-window-confirmation"
       />
 
-    </ScrollView>
+    </Screen>
   );
 }

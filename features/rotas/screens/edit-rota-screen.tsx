@@ -25,6 +25,7 @@ import type { NativeTextFieldRef } from '@/components/native-ui/types';
 
 import * as Haptics from 'expo-haptics';
 import { ErrorState } from '@/components/ui/error-state';
+import { Screen } from '@/components/ui/screen';
 import { DurationWheelPicker } from '@/components/ui/duration-wheel-picker';
 import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
 import { useRotaData, useUpdateRota } from '@/features/rotas/hooks';
@@ -242,9 +243,7 @@ export function EditRotaScreenContent({
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Stack.Screen options={{ title: 'Edit Shift', headerLargeTitleEnabled: false }} />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
+      <Screen
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -397,7 +396,7 @@ export function EditRotaScreenContent({
             />
           </View>
         </View>
-      </ScrollView>
+      </Screen>
 
       {/* Schedule builder modal */}
       <Modal

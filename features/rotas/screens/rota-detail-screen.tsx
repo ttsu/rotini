@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -19,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeConfirmation } from '@/components/native-ui/native-confirmation';
 import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
 import { ErrorState } from '@/components/ui/error-state';
+import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useAuth } from '@/contexts/auth';
 import { useDeleteRota, useLeaveRota, useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
@@ -353,13 +353,12 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
         </View>
       </Modal>
 
-      <ScrollView
+      <Screen
         testID="rota-detail-screen"
-        style={{ flex: 1, backgroundColor: bg }}
-        // The native tab bar floats over content; the extra bottom padding and
-        // automatic inset keep the trailing buttons tappable above it.
-        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 + insets.bottom + 60 }}
-        contentInsetAdjustmentBehavior="automatic"
+        style={{ backgroundColor: bg }}
+        // The native tab bar floats over content; this keeps the trailing
+        // buttons tappable above it.
+        extraBottomPadding={insets.bottom + 60}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >
@@ -597,7 +596,7 @@ export function RotaDetailScreenContent({ rotaId, detailOrigin }: RotaDetailScre
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </Screen>
     </>
   );
 }

@@ -19,6 +19,7 @@ import { NativeButton } from '@/components/native-ui/native-button';
 import { NativeDatePicker } from '@/components/native-ui/native-date-picker';
 import { NativeSwitch } from '@/components/native-ui/native-switch';
 import { NativeTextField } from '@/components/native-ui/native-text-field';
+import { Screen } from '@/components/ui/screen';
 import { RRuleBuilder } from '@/features/rotas/RRuleBuilder';
 import { useCreateRota } from '@/features/rotas/hooks';
 import { type CreateRotaValues, createRotaSchema } from '@/features/rotas/schemas';
@@ -137,9 +138,7 @@ export default function NewRotaScreen() {
       style={{ flex: 1, backgroundColor: bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: 120, paddingBottom: 40 }}
+      <Screen
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -292,7 +291,7 @@ export default function NewRotaScreen() {
             />
           </View>
         </View>
-      </ScrollView>
+      </Screen>
 
       {/* Schedule builder modal */}
       <Modal

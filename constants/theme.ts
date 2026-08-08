@@ -40,6 +40,16 @@ export const Colors = {
   },
 };
 
+/**
+ * Shared scroll-content padding for screens sitting under a native stack
+ * header. Pair with `Screen` (components/ui/screen.tsx) rather than reaching
+ * for these directly, so top-inset handling stays centralized.
+ */
+export const Spacing = {
+  screenTop: 16,
+  screenBottom: 40,
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

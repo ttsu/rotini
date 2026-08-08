@@ -1,13 +1,12 @@
 import { formatInTimeZone } from 'date-fns-tz';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, AppState, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { ErrorState } from '@/components/ui/error-state';
-import { LargeTitle } from '@/components/ui/large-title';
 import { Pill } from '@/components/ui/pill';
+import { Screen } from '@/components/ui/screen';
 import { ShiftCardSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth';
 import { useMyProfile } from '@/features/profile/use-my-profile';
@@ -232,7 +231,6 @@ function SwapInboxCard({
 
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { data: profile } = useMyProfile();
   const { data, isLoading, error, refetch } = useHomeRotas();
@@ -308,11 +306,8 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingTop: insets.top + 45, paddingBottom: 40 }}
-    >
-      <LargeTitle title={greetingTitle} />
+    <Screen style={{ backgroundColor: bg }}>
+      <Stack.Screen options={{ title: greetingTitle }} />
 
       {/* Swap requests inbox */}
       {pendingSwaps && pendingSwaps.length > 0 && (
@@ -450,6 +445,6 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }

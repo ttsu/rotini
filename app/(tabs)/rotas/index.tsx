@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 import { Pill } from '@/components/ui/pill';
 import { ErrorState } from '@/components/ui/error-state';
+import { Screen } from '@/components/ui/screen';
 import { RotaRowSkeleton } from '@/components/ui/skeleton';
 import { useRotas } from '@/features/rotas/hooks';
 import { routes } from '@/lib/navigation/routes';
@@ -96,13 +97,7 @@ export default function RotasListScreen() {
   }
 
   return (
-    <ScrollView
-      testID="shifts-screen"
-      style={{ flex: 1, backgroundColor: bg }}
-      contentInsetAdjustmentBehavior="automatic"
-      automaticallyAdjustsScrollIndicatorInsets
-      contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
-    >
+    <Screen testID="shifts-screen" style={{ backgroundColor: bg }}>
       {/* Grouped card */}
       <View
         style={{
@@ -170,6 +165,6 @@ export default function RotasListScreen() {
           </TouchableOpacity>
         ))}
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
