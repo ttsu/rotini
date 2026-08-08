@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeButton } from '@/components/native-ui/native-button';
+import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useToast } from '@/components/ui/toast';
 import { useAppPreferences } from '@/contexts/app-preferences';
@@ -223,10 +224,11 @@ export function AvailabilityScreen() {
 
   return (
     <>
-      <ScrollView
+      <Screen
         testID="availability-screen"
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 40 }}
+        style={{ backgroundColor: bg }}
+        transparentHeader={false}
+        extraBottomPadding={insets.bottom}
       >
         <View style={{ marginHorizontal: 16 }}>
           <AvailabilityCalendar
@@ -359,7 +361,7 @@ export function AvailabilityScreen() {
           Away dates apply to every rota you&apos;re in. Other members can see the dates, but only
           you can see the reason.
         </Text>
-      </ScrollView>
+      </Screen>
 
       <ConflictReviewSheet
         visible={reviewWindowId !== null}

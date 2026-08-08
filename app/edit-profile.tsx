@@ -8,11 +8,11 @@ import { Controller, useForm } from 'react-hook-form';
 import { NativeButton } from '@/components/native-ui/native-button';
 import { NativeTextField } from '@/components/native-ui/native-text-field';
 import type { NativeTextFieldRef } from '@/components/native-ui/types';
+import { Screen } from '@/components/ui/screen';
 import {
   ActivityIndicator,
   Alert,
   Linking,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -275,10 +275,12 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <ScrollView
+    <Screen
         testID="edit-profile-screen"
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: insets.bottom + 24, paddingHorizontal: 16 }}
+        style={{ backgroundColor: bg }}
+        transparentHeader={false}
+        extraBottomPadding={insets.bottom}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
         keyboardShouldPersistTaps="handled"
       >
         {statusBanner ? (
@@ -406,6 +408,6 @@ export default function EditProfileScreen() {
           disabled={saving || !formDirty}
           fullWidth
         />
-      </ScrollView>
+      </Screen>
   );
 }

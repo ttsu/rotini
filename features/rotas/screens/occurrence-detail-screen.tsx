@@ -19,6 +19,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Pill } from '@/components/ui/pill';
+import { Screen } from '@/components/ui/screen';
 import { useAuth } from '@/contexts/auth';
 import { useRotaData, useRegisterRotaRealtime } from '@/features/rotas/hooks';
 import {
@@ -351,10 +352,10 @@ export function OccurrenceDetailScreenContent({
     <>
       <Stack.Screen options={{ title: occ?.rota?.name ?? 'Occurrence' }} />
 
-      <ScrollView
+      <Screen
         testID="occurrence-detail-screen"
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: insets.top + 56, paddingBottom: 40 }}
+        style={{ backgroundColor: bg }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
       >
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} />
@@ -799,7 +800,7 @@ export function OccurrenceDetailScreenContent({
             ) : null}
           </>
         )}
-      </ScrollView>
+      </Screen>
 
       {/* ── Swap request modal ──────────────────────────────────────────────── */}
       <Modal visible={showSwapModal} animationType="slide" presentationStyle="pageSheet">

@@ -1,10 +1,10 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { Pill } from '@/components/ui/pill';
+import { Screen } from '@/components/ui/screen';
 import {
   usePendingOpenCoverageRequests,
   usePendingSwapsForMe,
@@ -309,7 +309,6 @@ function SentCard({
 
 export default function SwapInboxScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const { showToast } = useToast();
 
@@ -408,10 +407,7 @@ export default function SwapInboxScreen() {
   const isEmpty = receivedSwaps.length === 0 && sentGroups.length === 0 && openCoverageRequests.length === 0;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: insets.top + 56, paddingBottom: 40 }}
-    >
+    <Screen style={{ backgroundColor: bg }} contentContainerStyle={{ paddingHorizontal: 16 }}>
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} />
       ) : isEmpty ? (
@@ -532,6 +528,6 @@ export default function SwapInboxScreen() {
           )}
         </>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
