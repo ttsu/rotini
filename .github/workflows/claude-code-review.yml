@@ -18,6 +18,11 @@ jobs:
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
 
+    # Skip pull requests from forks. GitHub withholds secrets from
+    # fork-triggered `pull_request` runs, so CLAUDE_CODE_OAUTH_TOKEN would be
+    # empty and the action would fail on every outside contributor's PR.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
     runs-on: ubuntu-latest
     permissions:
       contents: read

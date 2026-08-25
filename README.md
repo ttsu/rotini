@@ -23,3 +23,11 @@ Use [Expo docs](https://docs.expo.dev/) for simulators, development builds, and 
 ## Release
 
 See [`docs/release/ship-readiness.md`](docs/release/ship-readiness.md) for EAS env vars, production builds, store submission, and Sentry verification.
+
+## Security
+
+Found a vulnerability? Please report it privately — see [`SECURITY.md`](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © Tim Tsu
