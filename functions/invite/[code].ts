@@ -8,17 +8,52 @@ interface InviteRow {
   role: string;
 }
 
+/**
+ * Invite codes are the first 8 hex characters of a UUID (see create_invite).
+ * Anything else cannot correspond to a real invite, so it is rejected at the
+ * edge without touching Supabase.
+ */
+const INVITE_CODE = /^[0-9a-f]{8}$/;
+
+/** Successful previews change only when the invite is consumed or expires. */
+const CACHE_TTL_VALID = 300;
+/** Misses are cached too, so enumeration cannot be used to hammer the database. */
+const CACHE_TTL_INVALID = 60;
+
 export async function onRequestGet({
   params,
   env,
   request,
+  waitUntil,
 }: {
   params: Record<string, string | string[]>;
   env: Env;
   request: Request;
+  waitUntil: (promise: Promise<unknown>) => void;
 }): Promise<Response> {
   const code = Array.isArray(params.code) ? params.code[0] : params.code;
   const canonicalUrl = new URL(request.url).origin + `/invite/${code}`;
+
+  // Every request used to become one Supabase RPC — one cheap HTTP call
+  // amplified into database work on an unauthenticated, uncached path. Reject
+  // malformed codes first, then serve from the edge cache where possible.
+  if (typeof code !== 'string' || !INVITE_CODE.test(code)) {
+    return new Response(invalidHtml(), {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': `public, max-age=${CACHE_TTL_INVALID}`,
+      },
+    });
+  }
+
+  const cache = caches.default;
+  // Key on the normalised path alone; query strings must not fragment the cache.
+  const cacheKey = new Request(`${new URL(request.url).origin}/invite/${code}`, {
+    method: 'GET',
+  });
+
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
 
   let invite: InviteRow | null = null;
 
@@ -31,6 +66,8 @@ export async function onRequestGet({
         Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({ p_code: code }),
+      // Don't hold a worker open on a slow origin.
+      signal: AbortSignal.timeout(5000),
     });
 
     if (res.ok) {
@@ -42,10 +79,16 @@ export async function onRequestGet({
   }
 
   const html = invite ? validHtml(invite.rota_name, invite.role, code, canonicalUrl) : invalidHtml();
-  return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  const response = new Response(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': `public, max-age=${invite ? CACHE_TTL_VALID : CACHE_TTL_INVALID}`,
+    },
   });
-};
+
+  waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
+}
 
 function validHtml(rotaName: string, role: string, code: string, canonicalUrl: string): string {
   const title = `You're invited to ${rotaName}`;
