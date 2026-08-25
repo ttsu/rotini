@@ -25,6 +25,12 @@ export function NativeConfirmation({
         }}
         testID={testID}
       >
+        {/* SwiftUI's confirmationDialog modifier is attached to this slot; without a
+            real (if invisible) view here it falls back to an EmptyView anchor and the
+            dialog never presents, per ConfirmationDialog.swift's own trigger check. */}
+        <ConfirmationDialog.Trigger>
+          <Text></Text>
+        </ConfirmationDialog.Trigger>
         {message ? (
           <ConfirmationDialog.Message>
             <Text>{message}</Text>
