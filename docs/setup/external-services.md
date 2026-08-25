@@ -67,6 +67,49 @@ supabase functions deploy dispatch-notifications
 
 Edge Functions receive default Supabase secrets automatically, including `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS`, and `SUPABASE_SECRET_KEYS` (JSON maps; use the `default` entry as the API key — see [Environment variables](https://supabase.com/docs/guides/functions/secrets)). Legacy `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` are still injected on older stacks but are deprecated in docs; this repo’s functions read only the publishable/secret key maps.
 
+### 1.45 Invite SMS cost controls (important)
+
+`notify-invite` sends invite SMS through Twilio. Sign-up is open, so an attacker
+can mint accounts freely; without limits each new account is a fresh allowance to
+text arbitrary international numbers at your expense (SMS pumping). The caps below
+are enforced atomically in `reserve_invite_sms`
+(`[20260825120000_invite_sms_cost_controls.sql](../../supabase/migrations/20260825120000_invite_sms_cost_controls.sql)`),
+which reserves a slot before Twilio is called.
+
+Set these as Edge Function secrets:
+
+| Secret | Default | Purpose |
+| --- | --- | --- |
+| `INVITE_SMS_ALLOWED_COUNTRIES` | **unset = deny all** | Comma-separated calling codes permitted as SMS destinations, e.g. `44,353`. `*` allows everything. |
+| `INVITE_SMS_DAILY_LIMIT` | `20` | Per-user daily cap. |
+| `INVITE_SMS_GLOBAL_DAILY_LIMIT` | `200` | Project-wide daily ceiling. This is the control that survives the multi-account bypass — set it to a number you are willing to pay for every day. |
+| `INVITE_SMS_PER_INVITE_LIMIT` | `3` | Maximum sends for a single invite, so one recipient cannot be texted repeatedly. |
+
+```bash
+supabase secrets set INVITE_SMS_ALLOWED_COUNTRIES=44
+supabase secrets set INVITE_SMS_GLOBAL_DAILY_LIMIT=200
+supabase functions deploy notify-invite
+```
+
+**`INVITE_SMS_ALLOWED_COUNTRIES` fails closed.** If it is unset, `notify-invite`
+refuses every SMS and logs a warning. This is deliberate — an unconfigured deploy
+must not be able to text arbitrary destinations — but it does mean **phone invites
+stop working until you set it**. Email and push invites are unaffected.
+
+**Set Twilio Geo Permissions as well.** The calling-code allowlist above is coarse:
+prefix matching cannot separate countries that share a code, so `1` admits the
+entire North American Numbering Plan including several premium-rate Caribbean
+ranges. Twilio's own restriction cannot be bypassed by a bug in this repo:
+
+1. Twilio Console → **Messaging → Settings → Geo Permissions**.
+2. Disable every region you do not serve.
+3. Add a **spend trigger** (Console → **Billing → Usage triggers**) so a runaway
+   spend alerts you and, if you configure it to, suspends the account.
+
+Reservations count toward the caps whether or not Twilio ultimately succeeded — a
+failed call may still have been billed, and releasing on failure would let an
+attacker induce errors to evade the cap.
+
 ### 1.5 Cron jobs and hard-coded project URLs (important)
 
 Some migrations embed the **full HTTPS URL** of Edge Functions, for example:

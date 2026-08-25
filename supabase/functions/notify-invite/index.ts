@@ -14,7 +14,19 @@ type SmsStatus =
   | 'skipped_no_phone'
   | 'rate_limited'
   | 'skipped_no_credentials'
+  | 'skipped_invalid_phone'
+  | 'skipped_country_not_allowed'
   | 'failed';
+
+/** Why a reservation was refused. Mapped from SQLSTATE raised by reserve_invite_sms. */
+type SmsRefusal = 'invalid_phone' | 'per_invite_cap' | 'per_user_cap' | 'global_cap';
+
+const REFUSAL_BY_SQLSTATE: Record<string, SmsRefusal> = {
+  P0001: 'invalid_phone',
+  P0002: 'per_invite_cap',
+  P0003: 'per_user_cap',
+  P0004: 'global_cap',
+};
 
 type EmailStatus = 'sent' | 'skipped_no_email' | 'skipped_no_credentials' | 'failed';
 
@@ -32,15 +44,41 @@ function escapeHtml(s: string): string {
           .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function utcDayStartIso(): string {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)).toISOString();
-}
-
 function utcNextMidnightIso(): string {
   const d = new Date();
   const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 0, 0, 0));
   return next.toISOString();
+}
+
+const E164 = /^\+[1-9][0-9]{7,14}$/;
+
+/**
+ * Coarse destination filter: matches the leading digits of an E.164 number
+ * against an allowlist of calling codes (INVITE_SMS_ALLOWED_COUNTRIES, e.g.
+ * "44,353"). Prefix matching cannot distinguish countries that share a calling
+ * code — "1" admits the US, Canada, and the whole NANP including several
+ * premium-rate Caribbean ranges — so this is defence in depth only. Twilio Geo
+ * Permissions is the authoritative control; see docs/setup/external-services.md.
+ *
+ * Unset means deny: an unconfigured deploy must not be able to text arbitrary
+ * international destinations. "*" opts out explicitly.
+ */
+function isAllowedDestination(phone: string): boolean {
+  const raw = (Deno.env.get('INVITE_SMS_ALLOWED_COUNTRIES') ?? '').trim();
+  if (!raw) {
+    console.warn('[notify-invite] INVITE_SMS_ALLOWED_COUNTRIES unset — refusing SMS');
+    return false;
+  }
+  if (raw === '*') {
+    console.warn('[notify-invite] INVITE_SMS_ALLOWED_COUNTRIES="*" — all destinations permitted');
+    return true;
+  }
+  const digits = phone.replace(/^\+/, '');
+  return raw
+    .split(',')
+    .map((c) => c.trim().replace(/^\+/, ''))
+    .filter((c) => /^[0-9]+$/.test(c))
+    .some((code) => digits.startsWith(code));
 }
 
 serve(async (req) => {
@@ -109,11 +147,18 @@ serve(async (req) => {
   const webLink = publicBase ? `${publicBase}/invite/${invite.code}` : deepLink;
   const bodyText = `${inviterName} invited you to "${rotaName}" on Rotini. Open: ${webLink}`;
 
-  const limitRaw = Deno.env.get('INVITE_SMS_DAILY_LIMIT');
-  const dailyLimit = Math.max(0, parseInt(limitRaw ?? '20', 10) || 20);
+  function intEnv(name: string, fallback: number): number {
+    const parsed = parseInt(Deno.env.get(name) ?? '', 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  }
+
+  const dailyLimit = intEnv('INVITE_SMS_DAILY_LIMIT', 20);
+  const globalDailyLimit = intEnv('INVITE_SMS_GLOBAL_DAILY_LIMIT', 200);
+  const perInviteLimit = intEnv('INVITE_SMS_PER_INVITE_LIMIT', 3);
 
   let emailStatus: EmailStatus = 'skipped_no_email';
   let smsStatus: SmsStatus = 'skipped_no_phone';
+  let smsRefusal: SmsRefusal | null = null;
   let pushStatus: PushStatus = 'skipped_no_match';
 
   const resendKey = Deno.env.get('RESEND_API_KEY');
@@ -157,50 +202,88 @@ serve(async (req) => {
   const twilioFrom = Deno.env.get('TWILIO_PHONE_NUMBER');
 
   if (invite.phone_e164 && typeof invite.phone_e164 === 'string') {
+    const phone = invite.phone_e164.trim();
+
     if (!twilioSid || !twilioToken || !twilioFrom) {
       smsStatus = 'skipped_no_credentials';
       console.warn('[notify-invite] Twilio env missing — skip SMS');
+    } else if (!E164.test(phone)) {
+      // create_invite rejects these now, but rows predating that constraint,
+      // or any future writer, must not reach Twilio's `To`.
+      smsStatus = 'skipped_invalid_phone';
+      console.warn('[notify-invite] non-E.164 phone on invite', { invite: invite.id });
+    } else if (!isAllowedDestination(phone)) {
+      smsStatus = 'skipped_country_not_allowed';
+      console.warn('[notify-invite] destination not in allowlist', { invite: invite.id });
     } else {
-      const dayStart = utcDayStartIso();
-      const { count, error: cntErr } = await admin
-        .from('rota_invites')
-        .select('id', { count: 'exact', head: true })
-        .eq('invited_by', user.id)
-        .not('sms_sent_at', 'is', null)
-        .gte('sms_sent_at', dayStart);
+      // Reserve before sending. This is atomic in the database and enforces the
+      // per-invite, per-user, and global daily ceilings together, replacing the
+      // read-count-then-send sequence that concurrent requests could race past.
+      let reservationId: string | null = null;
 
-      if (cntErr) {
-        console.error('[notify-invite] SMS count error', cntErr);
-        smsStatus = 'failed';
-      } else if ((count ?? 0) >= dailyLimit) {
-        smsStatus = 'rate_limited';
-        console.warn('[notify-invite] SMS daily cap', { user: user.id, count, dailyLimit });
+      const { data: reserved, error: resErr } = await admin.rpc('reserve_invite_sms', {
+        p_invite_id: invite.id,
+        p_user_id: user.id,
+        p_phone: phone,
+        p_user_daily_cap: dailyLimit,
+        p_global_daily_cap: globalDailyLimit,
+        p_per_invite_cap: perInviteLimit,
+      });
+
+      if (resErr) {
+        smsRefusal = REFUSAL_BY_SQLSTATE[resErr.code ?? ''] ?? null;
+        if (!smsRefusal) {
+          console.error('[notify-invite] reserve_invite_sms failed', resErr);
+          smsStatus = 'failed';
+        } else {
+          smsStatus = smsRefusal === 'invalid_phone' ? 'skipped_invalid_phone' : 'rate_limited';
+          console.warn('[notify-invite] SMS refused', { user: user.id, refusal: smsRefusal });
+        }
       } else {
+        reservationId = reserved as unknown as string;
+      }
+
+      if (reservationId) {
         const params = new URLSearchParams();
-        params.set('To', invite.phone_e164);
+        params.set('To', phone);
         params.set('From', twilioFrom);
         params.set('Body', bodyText);
 
-        const twilioRes = await fetch(
-          `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: 'Basic ' + btoa(`${twilioSid}:${twilioToken}`),
-              'Content-Type': 'application/x-www-form-urlencoded',
+        let ok = false;
+        try {
+          const twilioRes = await fetch(
+            `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: 'Basic ' + btoa(`${twilioSid}:${twilioToken}`),
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: params.toString(),
             },
-            body: params.toString(),
-          },
-        );
+          );
+          ok = twilioRes.ok;
+          if (!ok) {
+            console.error('[notify-invite] Twilio error', twilioRes.status, await twilioRes.text());
+          }
+        } catch (e) {
+          console.error('[notify-invite] Twilio exception', e);
+        }
 
-        if (!twilioRes.ok) {
-          const t = await twilioRes.text();
-          console.error('[notify-invite] Twilio error', twilioRes.status, t);
-          smsStatus = 'failed';
-        } else {
-          smsStatus = 'sent';
-          const sentAt = new Date().toISOString();
-          await admin.from('rota_invites').update({ sms_sent_at: sentAt }).eq('id', invite.id);
+        smsStatus = ok ? 'sent' : 'failed';
+
+        // The reservation stands either way — a failed call may still have been
+        // billed, and releasing it would let induced failures evade the cap.
+        await admin.rpc('record_invite_sms_result', {
+          p_reservation_id: reservationId,
+          p_status: ok ? 'sent' : 'failed',
+        });
+
+        if (ok) {
+          await admin
+            .from('rota_invites')
+            .update({ sms_sent_at: new Date().toISOString() })
+            .eq('id', invite.id);
         }
       }
     }
@@ -262,7 +345,15 @@ serve(async (req) => {
     ...(rateLimited
       ? {
           code: 'sms_daily_limit' as const,
-          limit: dailyLimit,
+          reason: smsRefusal ?? 'per_user_cap',
+          // Only the per-user cap has a limit the caller can act on; the global
+          // ceiling is a project-wide budget guard and its value is not theirs
+          // to know.
+          ...(smsRefusal === 'per_invite_cap'
+            ? { limit: perInviteLimit }
+            : smsRefusal === 'global_cap'
+              ? {}
+              : { limit: dailyLimit }),
           resetsAt: utcNextMidnightIso(),
         }
       : {}),
